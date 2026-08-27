@@ -698,14 +698,8 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         const fadeTargets = hero
           ? [...hero.querySelectorAll('.hero-landing, .hero-glass-header, .hero-glass-nav, .scroll-hint')]
           : [];
-        let snapping = false;
         let stuck = false;
         let lastFade = -1;
-        const snapTo = (top) => {
-          snapping = true;
-          stage.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
-          window.setTimeout(() => { snapping = false; }, 800);
-        };
         const applyLandingFade = () => {
           if (!hero || !stage) return;
           const h = Math.max(1, hero.offsetHeight);
@@ -749,22 +743,6 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
           stage.addEventListener('scroll', onStageScroll, { passive: true });
           onStageScroll();
           window.addEventListener('callsal:intro-complete', applyLandingFade);
-          window.addEventListener('wheel', (event) => {
-            const heroH = hero.offsetHeight;
-            const atHero = stage.scrollTop < heroH * 0.55;
-            const atDirTop = stage.scrollTop >= heroH * 0.55 && stage.scrollTop < heroH + 40;
-            if (snapping) {
-              event.preventDefault();
-              return;
-            }
-            if (atHero && event.deltaY > 12) {
-              event.preventDefault();
-              snapTo(heroH);
-            } else if (atDirTop && event.deltaY < -12) {
-              event.preventDefault();
-              snapTo(0);
-            }
-          }, { passive: false });
         }
       }
 
