@@ -201,7 +201,7 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       if (tracing && introT < 1 && introStartedAt != null) {
         introT = Math.min(1, (performance.now() - introStartedAt) / TRACE_MS);
         introProgressRef.current = introT;
-        if (introT >= 1) fireComplete();
+        if (introT >= 0.72) fireComplete();
       }
 
       const last = lastDrawRef.current;
