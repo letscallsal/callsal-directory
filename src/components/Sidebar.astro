@@ -9,6 +9,7 @@ interface Props {
 const { directories, currentPath } = Astro.props;
 const currentCategory = currentPath.match(/^\/category\/([^/]+)/)?.[1] ?? '';
 const currentListing = currentPath.match(/^\/directory\/([^/]+)/)?.[1] ?? '';
+const isSaved = currentPath.replace(/\/$/, '') === '/saved';
 
 const grouped = CATEGORY_META.map((category) => ({
   ...category,
@@ -31,6 +32,7 @@ const grouped = CATEGORY_META.map((category) => ({
   </div>
 
   <nav class="sidebar-index sleek-scroll" aria-label="Categories" data-index>
+    <a class="sidebar-saved" href="/saved/" data-saved-link aria-current={isSaved ? 'page' : undefined}>Saved</a>
     {grouped.map((category) => {
       const open =
         category.slug === currentCategory ||
