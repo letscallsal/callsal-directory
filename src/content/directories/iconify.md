@@ -9,7 +9,7 @@ featured: false
 pricing: free
 whoItsFor: Designers and front-end people who need an icon and do not want to pick a single pack first.
 standout:
-  - Official site: over 300,000 open source vector icons from more than 200 sets, cleaned and kept current.
+  - "Official site: over 300,000 open source vector icons from more than 200 sets, cleaned and kept current."
   - Browse and copy SVG from the official icon sets site.
   - Figma and Sketch plugins exist. Each icon set keeps its own license.
 verdict: The first place to look when you need an icon and do not already live in one library. Free. Still check the set license before you ship.
