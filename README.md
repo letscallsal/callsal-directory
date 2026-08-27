@@ -2,11 +2,11 @@
 
 A curated index of tools and libraries for digital creatives. Free first.
 
-CALL SAL-branded app shell (black, white, lime). No 3D room, no auth, no booking.
+Visual twin of https://callsal.app (`letscallsal/callsal-website` master `2a422ccd`): same 3D room, boot pill, Syne + Inter, black / white / lime, glass chrome, EST MMXXVI, snap-scroll. Next stage is this index. No Armory, no booking, no portfolio, no diorama / bust / lidar leftovers.
 
 Live host (after you connect hosting): https://directory.callsal.app
 
-This is a static Astro site. No auth, no CMS, no database. Listings live as Markdown in a content collection. Search runs in the browser against that collection.
+Listings live as Markdown in `src/content/directories`. Search runs in the browser against that collection.
 
 ## Taste
 
@@ -21,11 +21,40 @@ This is not a directory of directories. It is for digital creatives — designer
 
 `components`, `inspiration`, `icons`, `fonts`, `illustrations`, `photos`, `ui-kits`, `tools`, `templates`, `3d`
 
+## Auth and bookmarks
+
+Registration is open to anybody (email + password). Login, logout, and a session cookie (`directory_auth`, httpOnly, 7 days).
+
+Pattern ports from callsal-website `/api/auth/{me,login,logout}` plus an open `/api/auth/register`. Users and bookmarks persist in the same Vercel-friendly store the website already uses: Vercel KV / Upstash Redis. In-memory fallback for local `astro dev` only (lost on restart). No sqlite. No paid add-ons beyond that KV.
+
+- `GET /api/auth/me`
+- `POST /api/auth/register` `{ email, password }`
+- `POST /api/auth/login` `{ email, password }`
+- `POST /api/auth/logout`
+- `GET /api/bookmarks` → `{ slugs }`
+- `POST /api/bookmarks` `{ slug }`
+- `DELETE /api/bookmarks?slug=`
+
+Bookmark controls sit on cards and listing pages. `/saved/` is the Saved view.
+
+### Environment variables (Vercel)
+
+Required in production:
+
+- `JWT_SECRET` — signing key for the session cookie. Generate a long random string.
+
+One of these pairs (reuse the website KV if it is already provisioned):
+
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN` (Vercel KV)
+- or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+
+Locally, omit them and the API uses in-memory storage.
+
 ## Run locally
 
 Install dependencies, then use the Astro dev and build scripts in package.json.
 
-astro.config.mjs sets output to static and site to https://directory.callsal.app.
+astro.config.mjs sets output to static and site to https://directory.callsal.app. Vercel serves `/api` as serverless functions next to the static build.
 
 ## Add a listing
 
@@ -34,6 +63,7 @@ astro.config.mjs sets output to static and site to https://directory.callsal.app
    Astro reserves slug on content collections, so it stays in the Markdown frontmatter and is not part of the Zod schema in src/content/config.ts.
 3. Write a short editorial body under the frontmatter if you want extra context on the listing page.
 4. Build or run the site and open /directory/<slug>.
+5. Quote standout lines that contain a colon, or YAML will treat them as objects.
 
 Frontmatter fields:
 
@@ -53,6 +83,6 @@ Frontmatter fields:
 
 ## Hosting
 
-This repo is the source. The owner connects Vercel to https://github.com/letscallsal/callsal-directory and points directory.callsal.app at that project. Do not put secrets in the repo; the site is static.
+This repo is the source. The owner connects Vercel to https://github.com/letscallsal/callsal-directory and points directory.callsal.app at that project. Set the env vars above on that project. Do not put secrets in the repo.
 
 © 2026 CALLSAL
