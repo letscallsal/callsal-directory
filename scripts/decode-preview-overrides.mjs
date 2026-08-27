@@ -7,12 +7,26 @@ const outDir = path.join(process.cwd(), "public", "previews");
 const mdDir = path.join(process.cwd(), "src", "content", "directories");
 fs.mkdirSync(outDir, { recursive: true });
 
+function readB64(slug) {
+  const single = path.join(overrideDir, `${slug}.jpg.b64`);
+  if (fs.existsSync(single)) {
+    return fs.readFileSync(single, "utf8").replace(/\s+/g, "");
+  }
+  if (!fs.existsSync(overrideDir)) return "";
+  const parts = fs
+    .readdirSync(overrideDir)
+    .filter((name) => name.startsWith(`${slug}.jpg.b64.`))
+    .sort();
+  if (!parts.length) return "";
+  return parts.map((name) => fs.readFileSync(path.join(overrideDir, name), "utf8")).join("").replace(/\s+/g, "");
+}
+
 const ok = [];
 for (const slug of slugs) {
-  const b64path = path.join(overrideDir, `${slug}.jpg.b64`);
-  if (!fs.existsSync(b64path)) continue;
+  const b64 = readB64(slug);
+  if (!b64) continue;
   const dest = path.join(outDir, `${slug}.jpg`);
-  const bytes = Buffer.from(fs.readFileSync(b64path, "utf8"), "base64");
+  const bytes = Buffer.from(b64, "base64");
   if (bytes.length < 4000) {
     console.error("too small", slug, bytes.length);
     continue;
