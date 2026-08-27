@@ -247,9 +247,15 @@ img {
   max-width: 100vw;
 }
 
-.app-chrome {
+.chrome-slot {
   flex: 0 0 var(--chrome);
   height: var(--chrome);
+  position: relative;
+}
+
+.app-chrome {
+  height: var(--chrome);
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -844,6 +850,16 @@ html.has-room .app {
   height: auto;
   min-height: 100dvh;
   background: var(--void);
+  overflow: visible;
+}
+
+html.has-room .app-chrome.is-stuck {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 40;
 }
 
 .hero-stage {
@@ -893,10 +909,12 @@ html.has-room .app {
   50% { transform: translateY(5px); }
 }
 
-html:not(.intro-done) .intro-ui {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  visibility: hidden;
+html.has-room:not(.intro-done) .intro-ui,
+html.has-room:not(.intro-done) .intro-trace,
+html.has-room:not(.intro-done) .intro-hold {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
 }
 
 .intro-ui {
@@ -905,26 +923,27 @@ html:not(.intro-done) .intro-ui {
   -webkit-tap-highlight-color: transparent;
 }
 
-html.intro-done .intro-trace {
-  animation-name: intro-trace-x;
-  animation-duration: 0.5s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+html.intro-done .intro-trace,
+html.intro-done .intro-hold {
+  animation-name: intro-arrive;
+  animation-duration: 0.52s;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   animation-fill-mode: backwards;
   animation-delay: var(--d, 0ms);
 }
-html.intro-done .intro-trace-down { animation-name: intro-trace-down; animation-duration: 0.62s; }
-html.intro-done .intro-trace-up { animation-name: intro-trace-up; animation-duration: 0.62s; }
+html.intro-done .intro-trace-down { animation-name: intro-arrive-down; animation-duration: 0.52s; }
+html.intro-done .intro-trace-up { animation-name: intro-arrive-up; animation-duration: 0.52s; }
 
-@keyframes intro-trace-x {
-  from { opacity: 0; transform: translateY(8px); }
+@keyframes intro-arrive {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes intro-trace-down {
-  from { opacity: 0; transform: translateY(-8px); }
+@keyframes intro-arrive-down {
+  from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes intro-trace-up {
-  from { opacity: 0; transform: translateY(8px); }
+@keyframes intro-arrive-up {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -1037,4 +1056,15 @@ textarea::placeholder {
 
 @media (prefers-reduced-motion: reduce) {
   .scroll-dot { animation: none; }
+  html.has-room:not(.intro-done) .intro-ui,
+  html.has-room:not(.intro-done) .intro-trace,
+  html.has-room:not(.intro-done) .intro-hold {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  html.intro-done .intro-trace,
+  html.intro-done .intro-hold {
+    animation: none;
+  }
 }
