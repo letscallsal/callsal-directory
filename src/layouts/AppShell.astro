@@ -2,25 +2,28 @@
 import '../styles/global.css';
 import Sidebar from '../components/Sidebar.astro';
 import BrandPill from '../components/BrandPill.astro';
+import DirectoryRoom from '../components/room/DirectoryRoom';
 import { getDirectories } from '../lib/catalog';
 
 interface Props {
   title: string;
   description?: string;
+  withRoom?: boolean;
 }
 
-const { title, description = 'Tools and libraries for digital creatives.' } = Astro.props;
+const { title, description = 'Tools and libraries for digital creatives.', withRoom = false } = Astro.props;
 const directories = await getDirectories();
-const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â€” Directory`;
+const pageTitle = title === 'Directory' ? 'DIRECTORY â€” CALL SAL' : `${title} â€” DIRECTORY`;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class:list={[{ 'has-room': withRoom }]}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="application-name" content="CALL SAL Directory" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -31,6 +34,7 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
     />
     <title>{pageTitle}</title>
     <style is:inline>
+      html, body { background: #fff; margin: 0; }
       #boot-loader {
         position: fixed; inset: 0; z-index: 100000;
         display: flex; align-items: center; justify-content: center;
@@ -98,47 +102,78 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
       }
     </style>
   </head>
-  <body>
+  <body class="noise-overlay">
     <div id="boot-loader" aria-hidden="true">
       <div class="boot-scrim"></div>
       <div class="boot-pill" id="boot-pill">
         <span class="boot-pill-fill" id="boot-pill-fill"></span>
         <span class="boot-pill-inner">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
-            <path d="M3 9h18"></path>
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <path d="M3 8h18"></path>
+            <path d="M12 8v12"></path>
+            <path d="M3 14h18"></path>
           </svg>
-          <span>Directory</span>
+          <span>DIRECTORY</span>
         </span>
       </div>
     </div>
 
-    <div class="app">
-      <header class="app-chrome">
-        <BrandPill />
-        <p class="est" data-est>
-          <span>EST</span>
-          <span class="est-year" data-est-year>MMXXVI</span>
-          <span>Â© CALL SAL</span>
-        </p>
-        <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
-          Index
-        </button>
-      </header>
+    <svg style="position:absolute;width:0;height:0;pointer-events:none" aria-hidden="true">
+      <defs>
+        <filter id="glass-displacement">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" result="noise"/>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+    </svg>
 
-      <div class="app-body">
-        <Sidebar directories={directories} currentPath={Astro.url.pathname} />
-        <div class="scrim" data-scrim hidden></div>
-        <div class="viewport sleek-scroll" data-viewport>
-          <main data-main>
-            <slot />
-          </main>
-          <footer class="page-foot">Â© 2026 CALLSAL</footer>
+    {withRoom && <DirectoryRoom client:load />}
+
+    <div class="stage-scroll sleek-scroll" id="stage-scroll">
+      {withRoom && (
+        <section class="hero-stage" id="hero-stage" aria-label="CALL SAL room">
+          <div class="scroll-hint intro-ui">
+            <span>Scroll the index</span>
+            <div class="scroll-mouse" aria-hidden="true"><div class="scroll-dot"></div></div>
+          </div>
+        </section>
+      )}
+
+      <div class="app" id="directory-stage">
+        <header class:list={['app-chrome', 'intro-ui']}>
+          <BrandPill />
+          <p class="est" data-est>
+            <span>EST</span>
+            <span class="est-year" data-est-year>MMXXVI</span>
+            <span>Â© CALL SAL .</span>
+          </p>
+          <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
+            Index
+          </button>
+        </header>
+
+        <div class="app-body">
+          <Sidebar directories={directories} currentPath={Astro.url.pathname} />
+          <div class="scrim" data-scrim hidden></div>
+          <div class="viewport sleek-scroll" data-viewport>
+            <main data-main>
+              <slot />
+            </main>
+            <footer class="page-foot">
+              <span class="est" data-est-foot>
+                <span>EST</span>
+                <span class="est-year" data-est-year-foot>MMXXVI</span>
+                <span>Â© CALL SAL .</span>
+              </span>
+              <span>Â© 2026 CALLSAL</span>
+            </footer>
+          </div>
         </div>
       </div>
     </div>
 
-    <script>
+    <script define:vars={{ withRoom }}>
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let dismissed = false;
@@ -152,6 +187,8 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
           fill.style.animation = 'none';
           fill.style.height = '100%';
         }
+        window.dispatchEvent(new Event('callsal:boot-hidden'));
+        window.dispatchEvent(new Event('callsal:ready'));
         if (!loader) return;
         if (reduceMotion) {
           finishBoot();
@@ -165,22 +202,34 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         dismissed = true;
         ackAndFade();
       }
+      function revealUiFallback() {
+        if (document.documentElement.classList.contains('intro-done')) return;
+        document.documentElement.classList.add('intro-done');
+        window.dispatchEvent(new Event('callsal:intro-complete'));
+      }
       const fontsReady = document.fonts?.ready?.catch(() => undefined) ?? Promise.resolve();
       const minPause = new Promise((resolve) => window.setTimeout(resolve, 700));
       Promise.all([fontsReady, minPause]).then(startBootOut);
       window.setTimeout(startBootOut, 2200);
+      window.setTimeout(revealUiFallback, 4500);
+      if (!withRoom) {
+        document.documentElement.classList.add('intro-done');
+      }
 
       const menu = document.querySelector('[data-menu]');
       const scrim = document.querySelector('[data-scrim]');
+      const sidebar = document.getElementById('sidebar');
       const viewport = document.querySelector('[data-viewport]');
       const main = document.querySelector('[data-main]');
       const est = document.querySelector('[data-est]');
       const estYear = document.querySelector('[data-est-year]');
+      const estFoot = document.querySelector('[data-est-foot]');
+      const estYearFoot = document.querySelector('[data-est-year-foot]');
 
-      function setOpen(open: boolean) {
+      function setOpen(open) {
         document.body.classList.toggle('drawer-open', open);
         menu?.setAttribute('aria-expanded', String(open));
-        if (scrim) (scrim as HTMLElement).hidden = !open;
+        if (scrim) scrim.hidden = !open;
       }
 
       menu?.addEventListener('click', () => {
@@ -191,14 +240,18 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         if (event.key === 'Escape') setOpen(false);
       });
 
-      est?.addEventListener('mouseenter', () => {
-        if (estYear) estYear.textContent = '2026';
-      });
-      est?.addEventListener('mouseleave', () => {
-        if (estYear) estYear.textContent = 'MMXXVI';
-      });
+      function bindEst(el, yearEl) {
+        el?.addEventListener('mouseenter', () => {
+          if (yearEl) yearEl.textContent = '2026';
+        });
+        el?.addEventListener('mouseleave', () => {
+          if (yearEl) yearEl.textContent = 'MMXXVI';
+        });
+      }
+      bindEst(est, estYear);
+      bindEst(estFoot, estYearFoot);
 
-      function normalize(path: string) {
+      function normalize(path) {
         try {
           const url = new URL(path, location.origin);
           let p = url.pathname;
@@ -209,15 +262,15 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         }
       }
 
-      const cache = new Map<string, { html: string; title: string }>();
-      const scrollMap = new Map<string, number>();
+      const cache = new Map();
+      const scrollMap = new Map();
       let navToken = 0;
 
       if (main) {
         cache.set(normalize(location.pathname), { html: main.innerHTML, title: document.title });
       }
 
-      function updateSidebar(path: string) {
+      function updateSidebar(path) {
         const listing = path.match(/\/directory\/([^/]+)/)?.[1] ?? '';
         const category = path.match(/\/category\/([^/]+)/)?.[1] ?? '';
 
@@ -229,17 +282,17 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         });
 
         document.querySelectorAll('[data-category]').forEach((el) => {
-          const slug = (el as HTMLElement).dataset.category ?? '';
+          const slug = el.dataset.category ?? '';
           const isCat = slug === category;
           const hasListing = [...el.querySelectorAll('[data-listing]')].some(
             (a) => a.getAttribute('aria-current') === 'page',
           );
           el.classList.toggle('is-active', isCat);
-          if (isCat || hasListing) (el as HTMLDetailsElement).open = true;
+          if (isCat || hasListing) el.open = true;
         });
       }
 
-      async function load(path: string) {
+      async function load(path) {
         const key = normalize(path);
         const hit = cache.get(key);
         if (hit) return hit;
@@ -253,7 +306,7 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         return payload;
       }
 
-      function apply(payload: { html: string; title: string }, path: string) {
+      function apply(payload, path) {
         if (!main || !viewport) return;
         main.innerHTML = payload.html;
         document.title = payload.title;
@@ -262,7 +315,7 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         updateSidebar(path);
       }
 
-      async function go(path: string, push: boolean) {
+      async function go(path, push) {
         if (!main || !viewport) return;
         const token = ++navToken;
         scrollMap.set(normalize(location.pathname), viewport.scrollTop);
@@ -278,7 +331,7 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
         const run = () => apply(payload, nextUrl.pathname);
 
         if (!reduceMotion && 'startViewTransition' in document) {
-          const vt = (document as Document & { startViewTransition: (cb: () => void) => { finished: Promise<void> } }).startViewTransition(run);
+          const vt = document.startViewTransition(run);
           try {
             await vt.finished;
           } catch {
@@ -298,7 +351,7 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
       }
 
       document.addEventListener('click', (event) => {
-        const target = event.target as Element | null;
+        const target = event.target;
         const link = target?.closest?.('a');
         if (!link || !(link instanceof HTMLAnchorElement)) return;
         if (event.defaultPrevented) return;
@@ -314,6 +367,35 @@ const pageTitle = title === 'Directory' ? 'Directory â€” CALL SAL' : `${title} â
       window.addEventListener('popstate', () => {
         void go(location.pathname + location.search, false);
       });
+
+      if (withRoom) {
+        const stage = document.getElementById('stage-scroll');
+        const hero = document.getElementById('hero-stage');
+        if (stage && hero) {
+          let snapping = false;
+          const snapTo = (top) => {
+            snapping = true;
+            stage.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+            window.setTimeout(() => { snapping = false; }, 800);
+          };
+          window.addEventListener('wheel', (event) => {
+            const heroH = hero.offsetHeight;
+            const atHero = stage.scrollTop < heroH * 0.55;
+            const atDirTop = stage.scrollTop >= heroH * 0.55 && stage.scrollTop < heroH + 40;
+            if (snapping) {
+              event.preventDefault();
+              return;
+            }
+            if (atHero && event.deltaY > 12) {
+              event.preventDefault();
+              snapTo(heroH);
+            } else if (atDirTop && event.deltaY < -12) {
+              event.preventDefault();
+              snapTo(0);
+            }
+          }, { passive: false });
+        }
+      }
     </script>
   </body>
 </html>
