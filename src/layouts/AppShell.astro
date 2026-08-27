@@ -14,6 +14,8 @@ interface Props {
 const { title, description = 'Tools and libraries for digital creatives.', withRoom = false } = Astro.props;
 const directories = await getDirectories();
 const pageTitle = title === 'Directory' ? 'DIRECTORY â€” CALL SAL' : `${title} â€” DIRECTORY`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
 ---
 
 <!doctype html>
@@ -25,13 +27,27 @@ const pageTitle = title === 'Directory' ? 'DIRECTORY â€” CALL SAL' : `${title} â
     <meta name="theme-color" content="#FFFFFF" />
     <meta name="application-name" content="CALL SAL Directory" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <link rel="apple-touch-icon" href="https://callsal.app/salman-bust.webp" />
+    <link rel="canonical" href={canonical} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="CALL SAL Directory" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_CA" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <title>{pageTitle}</title>
     <style is:inline>
       html, body { background: #fff; margin: 0; }
@@ -133,7 +149,7 @@ const pageTitle = title === 'Directory' ? 'DIRECTORY â€” CALL SAL' : `${title} â
     <div class="stage-scroll sleek-scroll" id="stage-scroll">
       {withRoom && (
         <section class="hero-stage" id="hero-stage" aria-label="CALL SAL room">
-          <div class="scroll-hint intro-ui">
+          <div class="scroll-hint intro-ui intro-trace intro-trace-up intro-d4">
             <span>Scroll the index</span>
             <div class="scroll-mouse" aria-hidden="true"><div class="scroll-dot"></div></div>
           </div>
@@ -141,7 +157,7 @@ const pageTitle = title === 'Directory' ? 'DIRECTORY â€” CALL SAL' : `${title} â
       )}
 
       <div class="app" id="directory-stage">
-        <header class:list={['app-chrome', 'intro-ui']}>
+        <header class:list={['app-chrome', 'intro-ui', 'intro-trace', 'intro-trace-down', 'intro-d0']}>
           <BrandPill />
           <p class="est" data-est>
             <span>EST</span>
@@ -160,7 +176,7 @@ const pageTitle = title === 'Directory' ? 'DIRECTORY â€” CALL SAL' : `${title} â
             <main data-main>
               <slot />
             </main>
-            <footer class="page-foot">
+            <footer class="page-foot intro-trace intro-trace-up intro-d2">
               <span class="est" data-est-foot>
                 <span>EST</span>
                 <span class="est-year" data-est-year-foot>MMXXVI</span>
