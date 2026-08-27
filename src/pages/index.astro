@@ -19,13 +19,13 @@ const genreRows = categoriesWithListings(directories).map((category) => ({
 ---
 
 <AppShell title="Directory" description="Libraries, kits, and free-first tools. Save the ones you use." withRoom>
-  <div class="lede">
+  <div class="lede intro-hold intro-trace intro-d3">
     <p class="page-kicker">FOR DIGITAL CREATIVES</p>
     <h1>THE INDEX</h1>
     <p>Libraries, kits, and free-first tools. Save the ones you use.</p>
   </div>
 
-  <div class="rows">
+  <div class="rows intro-hold intro-d5">
     <Carousel title="Featured" entries={featuredRow} />
     <Carousel title="New" entries={newRow} />
     {genreRows.map((row) => (
