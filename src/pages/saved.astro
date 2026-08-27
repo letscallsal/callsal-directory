@@ -1,0 +1,24 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+import DirectoryCard from '../components/DirectoryCard.astro';
+import { getDirectories } from '../lib/catalog';
+
+const directories = await getDirectories();
+---
+
+<AppShell title="Saved" description="Listings you bookmarked from the index.">
+  <header class="page-head">
+    <p class="page-kicker">FOR DIGITAL CREATIVES</p>
+    <h1 class="page-title">Saved</h1>
+    <p class="page-tag">Libraries, kits, and tools you marked to keep.</p>
+  </header>
+
+  <p class="empty" data-saved-empty hidden>Nothing saved yet. Open a listing and bookmark it.</p>
+  <p class="empty" data-saved-guest hidden>Join to save listings you use.</p>
+
+  <div class="grid" data-saved-grid>
+    {directories.map((entry) => (
+      <DirectoryCard entry={entry} />
+    ))}
+  </div>
+</AppShell>
