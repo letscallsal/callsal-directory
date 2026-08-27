@@ -13,16 +13,13 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install Playwright Chromium
-        run: |
-          npm install playwright
-          npx playwright install --with-deps chromium
-      - name: Screenshot listing homepages
+      - name: Fetch 1440 homepage shots
         run: node scripts/capture-previews.mjs
       - name: Commit preview images
         run: |

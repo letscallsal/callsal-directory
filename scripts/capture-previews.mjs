@@ -1,4 +1,3 @@
-import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -11,57 +10,37 @@ const listings = [
 const outDir = path.join(process.cwd(), "public", "previews");
 fs.mkdirSync(outDir, { recursive: true });
 
-const browser = await chromium.launch({
-  args: ["--disable-blink-features=AutomationControlled"],
-});
-const context = await browser.newContext({
-  viewport: { width: 1440, height: 900 },
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-  locale: "en-US",
-});
-const page = await context.newPage();
-
 const ok = [];
 for (const { slug, url } of listings) {
   const dest = path.join(outDir, `${slug}.jpg`);
+  const shot = `https://mini.s-shot.ru/1440x900/JPEG/1440/Z80/?${url}`;
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForTimeout(3500);
-    for (const label of ["Accept all", "Accept", "I agree", "Got it", "OK"]) {
-      const btn = page.getByRole("button", { name: new RegExp(`^${label}$`, "i") });
-      if (await btn.count()) {
-        await btn.first().click({ timeout: 1500 }).catch(() => {});
-      }
-    }
-    await page.screenshot({
-      path: dest,
-      type: "jpeg",
-      quality: 70,
-      clip: { x: 0, y: 0, width: 1440, height: 900 },
+    const res = await fetch(shot, {
+      headers: { "User-Agent": "Mozilla/5.0 DirectoryPreview/1.0" },
     });
-    if (fs.statSync(dest).size < 4000) {
-      throw new Error("screenshot too small");
+    if (!res.ok) throw new Error(`http ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 50000 || buf[0] !== 0xff || buf[1] !== 0xd8) {
+      throw new Error(`bad jpeg ${buf.length}`);
     }
-    console.log("captured", slug, fs.statSync(dest).size);
+    fs.writeFileSync(dest, buf);
+    const mdDir = path.join(process.cwd(), "src", "content", "directories");
+    const md = path.join(mdDir, `${slug}.md`);
+    if (fs.existsSync(md)) {
+      const text = fs.readFileSync(md, "utf8");
+      fs.writeFileSync(
+        md,
+        text.replace(/^preview: .*$/m, `preview: /previews/${slug}.jpg`),
+      );
+    }
+    const svg = path.join(outDir, `${slug}.svg`);
+    if (fs.existsSync(svg)) fs.unlinkSync(svg);
     ok.push(slug);
+    console.log("captured", slug, buf.length);
   } catch (err) {
     console.error("miss", slug, err.message);
-    if (fs.existsSync(dest)) fs.unlinkSync(dest);
   }
 }
 
-await browser.close();
-
-const dir = path.join(process.cwd(), "src", "content", "directories");
-for (const slug of ok) {
-  const md = path.join(dir, `${slug}.md`);
-  if (!fs.existsSync(md)) continue;
-  const text = fs.readFileSync(md, "utf8");
-  fs.writeFileSync(md, text.replace(/^preview: .*$/m, `preview: /previews/${slug}.jpg`));
-  const svg = path.join(outDir, `${slug}.svg`);
-  if (fs.existsSync(svg)) fs.unlinkSync(svg);
-}
-
 console.log("done", ok.join(",") || "none");
-if (!ok.length) process.exit(1);
+if (ok.length !== listings.length) process.exit(1);
