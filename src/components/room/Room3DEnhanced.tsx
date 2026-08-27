@@ -1,45 +1,134 @@
 import React, { useEffect, useRef } from 'react';
+
 interface Room3DEnhancedProps {
   opacity?: number;
   scrollProgress?: number;
   smoothMouse?: { x: number; y: number };
-  cinematicsMode?: boolean;
-  hideDiorama?: boolean;
-  hidePanel?: boolean;
   canvasClassName?: string;
 }
 
-// Fixed panel position and size matching Module3DOverlay
-const PREVIEW_POS = { x: 0, y: 3.5, z: 6.5 };
-const PREVIEW_SIZE = { w: 6.0, h: 3.5 };
+const TRACE_MS = 1650;
+const LIME = { r: 204, g: 255, b: 0 };
+
+let introStartedAt: number | null = null;
+let introHasPlayed = false;
+
+const shouldSkipIntro = () => {
+  if (introHasPlayed) return true;
+  if (typeof window === 'undefined') return true;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+  if (window.location.hash) return true;
+  return false;
+};
+
+const fireReady = (() => {
+  let fired = false;
+  return () => {
+    if (fired) return;
+    fired = true;
+    window.dispatchEvent(new Event('callsal:ready'));
+  };
+})();
+
+const fireComplete = () => {
+  if (introHasPlayed) return;
+  introHasPlayed = true;
+  document.documentElement.classList.add('intro-done');
+  window.dispatchEvent(new Event('callsal:intro-complete'));
+};
+
+type LineSeg = {
+  x1: number; y1: number; z1: number;
+  x2: number; y2: number; z2: number;
+  w: number;
+};
+
+const buildGridLines = (): LineSeg[] => {
+  const roomSize = 10;
+  const halfSize = roomSize / 2;
+  const zNear = 0.5;
+  const zFar = 10.5;
+  const gridDivisions = 10;
+  const step = roomSize / gridDivisions;
+  const lines: LineSeg[] = [];
+  const add = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, w = 2) => {
+    lines.push({ x1, y1, z1, x2, y2, z2, w });
+  };
+
+  add(-halfSize, -halfSize, zFar, -halfSize, halfSize, zFar, 3);
+  add(halfSize, -halfSize, zFar, halfSize, halfSize, zFar, 3);
+  add(-halfSize, -halfSize, zFar, halfSize, -halfSize, zFar, 3);
+  add(-halfSize, halfSize, zFar, halfSize, halfSize, zFar, 3);
+
+  for (let i = 1; i < gridDivisions; i++) {
+    const pos = -halfSize + i * step;
+    add(pos, -halfSize, zFar, pos, halfSize, zFar);
+    add(-halfSize, pos, zFar, halfSize, pos, zFar);
+  }
+
+  for (let i = gridDivisions - 1; i >= 1; i--) {
+    const zPos = zNear + i * step;
+    add(-halfSize, halfSize, zPos, halfSize, halfSize, zPos);
+  }
+  for (let i = 1; i < gridDivisions; i++) {
+    const pos = -halfSize + i * step;
+    add(pos, halfSize, zNear, pos, halfSize, zFar);
+  }
+
+  for (let i = gridDivisions - 1; i >= 1; i--) {
+    const zPos = zNear + i * step;
+    add(-halfSize, -halfSize, zPos, halfSize, -halfSize, zPos);
+  }
+  for (let i = 1; i < gridDivisions; i++) {
+    const pos = -halfSize + i * step;
+    add(pos, -halfSize, zNear, pos, -halfSize, zFar);
+  }
+
+  for (let i = gridDivisions - 1; i >= 1; i--) {
+    const zPos = zNear + i * step;
+    add(-halfSize, -halfSize, zPos, -halfSize, halfSize, zPos);
+  }
+  for (let i = 1; i < gridDivisions; i++) {
+    const pos = -halfSize + i * step;
+    add(-halfSize, pos, zNear, -halfSize, pos, zFar);
+  }
+
+  for (let i = gridDivisions - 1; i >= 1; i--) {
+    const zPos = zNear + i * step;
+    add(halfSize, -halfSize, zPos, halfSize, halfSize, zPos);
+  }
+  for (let i = 1; i < gridDivisions; i++) {
+    const pos = -halfSize + i * step;
+    add(halfSize, pos, zNear, halfSize, pos, zFar);
+  }
+
+  add(-halfSize, -halfSize, zNear, -halfSize, -halfSize, zFar, 3);
+  add(halfSize, -halfSize, zNear, halfSize, -halfSize, zFar, 3);
+  add(-halfSize, halfSize, zNear, -halfSize, halfSize, zFar, 3);
+  add(halfSize, halfSize, zNear, halfSize, halfSize, zFar, 3);
+
+  return lines;
+};
+
+const GRID_LINES = buildGridLines();
 
 export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
   opacity = 1,
   scrollProgress = 1,
   smoothMouse: smoothMouseProp,
-  cinematicsMode = false,
-  hideDiorama = false,
-  hidePanel = true,
   canvasClassName = 'room-canvas',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number | null>(null);
   const scrollProgressRef = useRef(scrollProgress);
   const smoothMouseRef = useRef({ x: 0.5, y: 0.5 });
-  const dioramaImageRef = useRef<HTMLImageElement | null>(null);
-  const dioramaPortraitRef = useRef<HTMLImageElement | null>(null);
-  const cinematicsModeRef = useRef(cinematicsMode);
-  const hideDioramaRef = useRef(hideDiorama);
-  const hidePanelRef = useRef(hidePanel);
   const lastDrawRef = useRef({ sp: -1, mx: -1, my: -1 });
   const needsResizeRef = useRef(false);
-  const dioramaFadeRef = useRef(cinematicsMode ? 0 : 1);
+  const introProgressRef = useRef(shouldSkipIntro() ? 1 : 0);
+  const tracingRef = useRef(shouldSkipIntro());
 
   useEffect(() => { scrollProgressRef.current = scrollProgress; }, [scrollProgress]);
   useEffect(() => { if (smoothMouseProp) smoothMouseRef.current = smoothMouseProp; }, [smoothMouseProp]);
-  useEffect(() => { cinematicsModeRef.current = cinematicsMode; }, [cinematicsMode]);
-  useEffect(() => { hideDioramaRef.current = hideDiorama; }, [hideDiorama]);
-  useEffect(() => { hidePanelRef.current = hidePanel; }, [hidePanel]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,16 +151,29 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
     resize();
     window.addEventListener('resize', resize);
 
-    // Load diorama images — landscape for desktop, portrait for mobile
-    const dioramaImg = new Image();
-    dioramaImg.src = '/calgary-diorama.webp';
-    dioramaImg.onerror = () => { dioramaImg.src = 'https://callsal.app/calgary-diorama.webp'; };
-    dioramaImg.onload = () => { dioramaImageRef.current = dioramaImg; needsResizeRef.current = true; };
+    const skipIntro = shouldSkipIntro();
+    if (skipIntro) {
+      introProgressRef.current = 1;
+      tracingRef.current = true;
+    }
 
-    const dioramaPortraitImg = new Image();
-    dioramaPortraitImg.src = '/calgary-diorama-mobile.webp';
-    dioramaPortraitImg.onerror = () => { dioramaPortraitImg.src = 'https://callsal.app/calgary-diorama-mobile.webp'; };
-    dioramaPortraitImg.onload = () => { dioramaPortraitRef.current = dioramaPortraitImg; needsResizeRef.current = true; };
+    const startTrace = () => {
+      if (tracingRef.current && introStartedAt != null) return;
+      tracingRef.current = true;
+      if (skipIntro || introHasPlayed) {
+        introProgressRef.current = 1;
+        fireComplete();
+        needsResizeRef.current = true;
+        return;
+      }
+      if (introStartedAt == null) introStartedAt = performance.now();
+      needsResizeRef.current = true;
+    };
+
+    window.addEventListener('callsal:boot-hidden', startTrace);
+    const boot = document.getElementById('boot-loader');
+    if (!boot || boot.classList.contains('is-done')) startTrace();
+    const traceFailsafe = window.setTimeout(startTrace, 2500);
 
     const project = (x: number, y: number, z: number, w: number, h: number, camX: number, camY: number, camZ: number) => {
       const fov = Math.PI / 2;
@@ -92,13 +194,22 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       const mx = smoothMouseRef.current.x;
       const my = smoothMouseRef.current.y;
 
+      fireReady();
+
+      const tracing = tracingRef.current;
+      let introT = introProgressRef.current;
+      if (tracing && introT < 1 && introStartedAt != null) {
+        introT = Math.min(1, (performance.now() - introStartedAt) / TRACE_MS);
+        introProgressRef.current = introT;
+        if (introT >= 1) fireComplete();
+      }
+
       const last = lastDrawRef.current;
       const spDelta = Math.abs(sp - last.sp);
       const mxDelta = Math.abs(mx - last.mx);
       const myDelta = Math.abs(my - last.my);
-      const fadeTarget = (cinematicsModeRef.current || hideDioramaRef.current) ? 0 : 1;
-      const isFading = Math.abs(dioramaFadeRef.current - fadeTarget) > 0.01;
-      if (!needsResizeRef.current && !isFading && spDelta < 0.002 && mxDelta < 0.003 && myDelta < 0.003) {
+      const introPlaying = tracing && introT < 1;
+      if (!needsResizeRef.current && !introPlaying && spDelta < 0.002 && mxDelta < 0.003 && myDelta < 0.003) {
         frameRef.current = requestAnimationFrame(draw);
         return;
       }
@@ -117,6 +228,11 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       ctx.fillStyle = wallColor;
       ctx.fillRect(0, 0, w, h);
 
+      if (!tracing) {
+        frameRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
       const zoomProgress2 = Math.min(1, sp);
       const easeZoom = (1 - Math.cos(zoomProgress2 * Math.PI)) / 2;
 
@@ -126,13 +242,9 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       const camYBase = isPortrait ? 2.8 : 2.5;
       const camYTarget = isPortrait ? 3.2 : 3.5;
 
-      const baseCamX = 0;
-      const baseCamY = camYBase + (camYTarget - camYBase) * easeZoom;
-      const baseCamZ = farZ + (nearZ - farZ) * easeZoom;
-
-      const camX = baseCamX;
-      const camY = baseCamY;
-      const camZ = baseCamZ;
+      const camX = 0;
+      const camY = camYBase + (camYTarget - camYBase) * easeZoom;
+      const camZ = farZ + (nearZ - farZ) * easeZoom;
 
       const maxPan = (isPortrait ? 0.25 : 0.08) * easeZoom;
       const maxTilt = (isPortrait ? 0.15 : 0.05) * easeZoom;
@@ -165,7 +277,6 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       const halfSize = roomSize / 2;
       const zNear = 0.5;
       const zFar = 10.5;
-      const gridDivisions = 10;
 
       const drawLine3D = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => {
         const r1 = rotatePoint(x1, y1, z1);
@@ -204,9 +315,9 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       };
 
       const fillQuad3D = (points: [number, number, number][], color: string) => {
-        const rotated = points.map(p => rotatePoint(p[0], p[1], p[2]));
-        const projected = rotated.map(p => project(p.x, p.y, p.z, w, h, camX, camY, camZ));
-        if (projected.some(p => !p)) return;
+        const rotated = points.map((p) => rotatePoint(p[0], p[1], p[2]));
+        const projected = rotated.map((p) => project(p.x, p.y, p.z, w, h, camX, camY, camZ));
+        if (projected.some((p) => !p)) return;
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.moveTo(projected[0]!.x, projected[0]!.y);
@@ -223,172 +334,42 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       fillQuad3D([[-halfSize, -halfSize, zNear], [-halfSize, -halfSize, zFar], [-halfSize, halfSize, zFar], [-halfSize, halfSize, zNear]], wallColor);
       fillQuad3D([[halfSize, -halfSize, zNear], [halfSize, -halfSize, zFar], [halfSize, halfSize, zFar], [halfSize, halfSize, zNear]], wallColor);
 
-      ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2;
-      const step = roomSize / gridDivisions;
+      const settle = introT >= 1 ? 1 : Math.max(0, Math.min(1, (introT - 0.7) / 0.3));
+      const lr = Math.round(LIME.r + (lineGrey - LIME.r) * settle);
+      const lg = Math.round(LIME.g + (lineGrey - LIME.g) * settle);
+      const lb = Math.round(LIME.b + (lineGrey - LIME.b) * settle);
+      ctx.strokeStyle = introT >= 1 ? lineColor : `rgb(${lr}, ${lg}, ${lb})`;
+      ctx.shadowBlur = 0;
 
-      for (let i = 1; i < gridDivisions; i++) {
-        const pos = -halfSize + i * step;
-        drawLine3D(pos, -halfSize, zFar, pos, halfSize, zFar);
-        drawLine3D(-halfSize, pos, zFar, halfSize, pos, zFar);
-      }
-
-      for (let i = 1; i < gridDivisions; i++) {
-        const pos = -halfSize + i * step;
-        const zPos = zNear + i * step;
-        drawLine3D(-halfSize, halfSize, zPos, halfSize, halfSize, zPos);
-        drawLine3D(pos, halfSize, zNear, pos, halfSize, zFar);
-      }
-
-      for (let i = 1; i < gridDivisions; i++) {
-        const pos = -halfSize + i * step;
-        const zPos = zNear + i * step;
-        drawLine3D(-halfSize, -halfSize, zPos, halfSize, -halfSize, zPos);
-        drawLine3D(pos, -halfSize, zNear, pos, -halfSize, zFar);
-      }
-
-      for (let i = 1; i < gridDivisions; i++) {
-        const pos = -halfSize + i * step;
-        const zPos = zNear + i * step;
-        drawLine3D(-halfSize, -halfSize, zPos, -halfSize, halfSize, zPos);
-        drawLine3D(-halfSize, pos, zNear, -halfSize, pos, zFar);
-      }
-
-      for (let i = 1; i < gridDivisions; i++) {
-        const pos = -halfSize + i * step;
-        const zPos = zNear + i * step;
-        drawLine3D(halfSize, -halfSize, zPos, halfSize, halfSize, zPos);
-        drawLine3D(halfSize, pos, zNear, halfSize, pos, zFar);
-      }
-
-      ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 3;
-      drawLine3D(-halfSize, -halfSize, zFar, -halfSize, halfSize, zFar);
-      drawLine3D(halfSize, -halfSize, zFar, halfSize, halfSize, zFar);
-      drawLine3D(-halfSize, -halfSize, zFar, halfSize, -halfSize, zFar);
-      drawLine3D(-halfSize, halfSize, zFar, halfSize, halfSize, zFar);
-      drawLine3D(-halfSize, -halfSize, zNear, -halfSize, -halfSize, zFar);
-      drawLine3D(halfSize, -halfSize, zNear, halfSize, -halfSize, zFar);
-      drawLine3D(-halfSize, halfSize, zNear, -halfSize, halfSize, zFar);
-      drawLine3D(halfSize, halfSize, zNear, halfSize, halfSize, zFar);
-
-      const frameOpacity = sp <= 0.7 ? 1 : Math.max(0, 1 - (sp - 0.7) / 0.2);
-      const fadeLerp = 0.15;
-      dioramaFadeRef.current += (fadeTarget - dioramaFadeRef.current) * fadeLerp;
-      if (Math.abs(dioramaFadeRef.current - fadeTarget) < 0.01) dioramaFadeRef.current = fadeTarget;
-      const dioramaFade = dioramaFadeRef.current;
-
-      const activeDiorama = isPortrait ? dioramaPortraitRef.current : dioramaImageRef.current;
-      if (activeDiorama && frameOpacity > 0 && dioramaFade > 0) {
-        const frameWidth = isPortrait ? 2.5 : 4;
-        const frameHeight = isPortrait ? 4.0 : 2.5;
-        const frameY = isPortrait ? 2.8 : 2.5;
-        const frameZ = zFar - 0.01;
-
-        const frameCorners = [
-          [-frameWidth/2, frameY - frameHeight/2, frameZ],
-          [frameWidth/2, frameY - frameHeight/2, frameZ],
-          [frameWidth/2, frameY + frameHeight/2, frameZ],
-          [-frameWidth/2, frameY + frameHeight/2, frameZ],
-        ];
-
-        const rotatedCorners = frameCorners.map(([x, y, z]) => rotatePoint(x, y, z));
-        const projectedCorners = rotatedCorners.map(p => project(p.x, p.y, p.z, w, h, camX, camY, camZ));
-
-        if (projectedCorners.every(p => p !== null)) {
-          const pc = projectedCorners as { x: number; y: number }[];
-
-          ctx.save();
-          ctx.globalAlpha = frameOpacity * dioramaFade;
-          ctx.beginPath();
-          ctx.moveTo(pc[0].x, pc[0].y);
-          ctx.lineTo(pc[1].x, pc[1].y);
-          ctx.lineTo(pc[2].x, pc[2].y);
-          ctx.lineTo(pc[3].x, pc[3].y);
-          ctx.closePath();
-          ctx.clip();
-
-          const minX = Math.min(pc[0].x, pc[1].x, pc[2].x, pc[3].x);
-          const maxX = Math.max(pc[0].x, pc[1].x, pc[2].x, pc[3].x);
-          const minY = Math.min(pc[0].y, pc[1].y, pc[2].y, pc[3].y);
-          const maxY = Math.max(pc[0].y, pc[1].y, pc[2].y, pc[3].y);
-
-          ctx.drawImage(activeDiorama, minX, minY, maxX - minX, maxY - minY);
-          ctx.restore();
-
-          ctx.save();
-          ctx.globalAlpha = frameOpacity * dioramaFade;
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 8;
-          ctx.lineCap = 'square';
-          ctx.lineJoin = 'miter';
-          ctx.beginPath();
-          ctx.moveTo(pc[0].x, pc[0].y);
-          ctx.lineTo(pc[1].x, pc[1].y);
-          ctx.lineTo(pc[2].x, pc[2].y);
-          ctx.lineTo(pc[3].x, pc[3].y);
-          ctx.closePath();
-          ctx.stroke();
-          ctx.restore();
+      const SPREAD = 16;
+      const lineCursor = introT >= 1 ? GRID_LINES.length + SPREAD : (introT / 0.8) * (GRID_LINES.length + SPREAD);
+      for (let i = 0; i < GRID_LINES.length; i++) {
+        const t = Math.max(0, Math.min(1, (lineCursor - i) / SPREAD));
+        if (t <= 0) continue;
+        const ln = GRID_LINES[i];
+        ctx.lineWidth = ln.w;
+        if (t >= 1) {
+          drawLine3D(ln.x1, ln.y1, ln.z1, ln.x2, ln.y2, ln.z2);
+        } else {
+          drawLine3D(
+            ln.x1, ln.y1, ln.z1,
+            ln.x1 + (ln.x2 - ln.x1) * t,
+            ln.y1 + (ln.y2 - ln.y1) * t,
+            ln.z1 + (ln.z2 - ln.z1) * t,
+          );
         }
       }
-
-      if (sp >= 0.8 && !hidePanelRef.current) {
-        const cardOpacity = Math.min(1, (sp - 0.8) * 5) * 0.3;
-
-        [{ pos: PREVIEW_POS, size: PREVIEW_SIZE }].forEach(({ pos, size }) => {
-          const halfW = size.w / 2;
-          const halfH = size.h / 2;
-          const cardCorners = [
-            [pos.x - halfW, pos.y - halfH, pos.z],
-            [pos.x + halfW, pos.y - halfH, pos.z],
-            [pos.x + halfW, pos.y + halfH, pos.z],
-            [pos.x - halfW, pos.y + halfH, pos.z],
-          ] as [number, number, number][];
-
-          const rotatedCorners = cardCorners.map(([x, y, z]) => rotatePoint(x, y, z));
-          const projectedCorners = rotatedCorners.map(p => project(p.x, p.y, p.z, w, h, camX, camY, camZ));
-
-          if (projectedCorners.every(p => p !== null)) {
-            const pc = projectedCorners as { x: number; y: number }[];
-
-            ctx.save();
-            ctx.globalAlpha = cardOpacity;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowBlur = 30;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 10;
-            ctx.beginPath();
-            ctx.moveTo(pc[0].x, pc[0].y);
-            ctx.lineTo(pc[1].x, pc[1].y);
-            ctx.lineTo(pc[2].x, pc[2].y);
-            ctx.lineTo(pc[3].x, pc[3].y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.restore();
-          }
-        });
-      }
+      ctx.shadowBlur = 0;
 
       frameRef.current = requestAnimationFrame(draw);
     };
 
     draw();
 
-    const onBootHidden = () => {
-      window.setTimeout(() => {
-        document.documentElement.classList.add('intro-done');
-        window.dispatchEvent(new Event('callsal:intro-complete'));
-      }, 200);
-    };
-    window.addEventListener('callsal:boot-hidden', onBootHidden);
-    if (!document.getElementById('boot-loader')) onBootHidden();
-
     return () => {
-      window.removeEventListener('callsal:boot-hidden', onBootHidden);
       window.removeEventListener('resize', resize);
+      window.removeEventListener('callsal:boot-hidden', startTrace);
+      window.clearTimeout(traceFailsafe);
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, []);
