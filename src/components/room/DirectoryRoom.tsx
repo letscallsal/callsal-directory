@@ -59,8 +59,6 @@ export default function DirectoryRoom() {
     <Room3DEnhanced
       scrollProgress={scrollProgress}
       smoothMouse={smoothMouse}
-      hideDiorama={false}
-      hidePanel={true}
       canvasClassName="room-canvas"
     />
   );
