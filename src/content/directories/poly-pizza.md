@@ -4,7 +4,7 @@ slug: poly-pizza
 category: 3d
 tagline: A library of free low-poly 3D models.
 website: https://poly.pizza
-preview: /previews/poly-pizza.jpg
+preview: /previews/poly-pizza.svg
 affiliateUrl: ""
 featured: false
 pricing: free
