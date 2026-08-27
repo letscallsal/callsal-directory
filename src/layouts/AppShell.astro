@@ -1,1 +1,20 @@
-FILE_FROM_DISK_DO_NOT_USE
+---
+import '../styles/global.css';
+import '../styles/landing.css';
+import Sidebar from '../components/Sidebar.astro';
+import BrandPill from '../components/BrandPill.astro';
+import DirectoryRoom from '../components/room/DirectoryRoom';
+import { getDirectories } from '../lib/catalog';
+
+interface Props {
+  title: string;
+  description?: string;
+  withRoom?: boolean;
+}
+
+const { title, description = 'Libraries, kits, and free-first tools.', withRoom = false } = Astro.props;
+const directories = await getDirectories();
+const pageTitle = title === 'Directory' ? 'DIRECTORY — CALL SAL' : `${title} — DIRECTORY`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
+---
