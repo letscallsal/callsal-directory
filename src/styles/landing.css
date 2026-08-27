@@ -333,10 +333,28 @@
     left: 1rem;
     right: 1rem;
     top: 1rem;
+    max-width: calc(100% - 2rem);
     justify-content: space-between;
   }
-  .hero-glass-header .est { display: none; }
-  .hero-title { font-size: clamp(2.4rem, 14vw, 4rem); }
+  .hero-glass-header .est {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 7px;
+    letter-spacing: 0.05em;
+    color: #000;
+    min-width: 0;
+  }
+  .hero-landing {
+    padding-left: 1.15rem;
+    padding-right: 1.15rem;
+    overflow-x: hidden;
+  }
+  .hero-title {
+    font-size: clamp(1.85rem, 10.4vw, 2.7rem);
+    letter-spacing: -0.06em;
+    max-width: 100%;
+  }
   .hero-sub { font-size: 0.72rem; }
 }
 
