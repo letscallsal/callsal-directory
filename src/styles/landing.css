@@ -346,3 +346,50 @@
   .hero-title { font-size: clamp(2.4rem, 14vw, 4rem); }
   .hero-sub { font-size: 0.72rem; }
 }
+
+/* A+B overlays: sticky second nav + no pop after room (beats global !important hide) */
+html.has-room .app {
+  overflow: visible;
+}
+html.has-room .app-chrome {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+html.has-room .app-body,
+html.has-room .viewport {
+  overflow: visible;
+  height: auto;
+  min-height: 0;
+}
+@media (min-width: 861px) {
+  html.has-room .sidebar {
+    position: sticky;
+    top: var(--chrome);
+    align-self: flex-start;
+    height: calc(100dvh - var(--chrome));
+  }
+}
+html:not(.intro-done) .intro-ui {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: visible !important;
+}
+.intro-ui {
+  transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--d, 0ms);
+}
+html.intro-done .intro-ui {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+html.intro-settled .hero-stage .intro-ui {
+  opacity: var(--hero-fade, 1) !important;
+  transition: none;
+}
+html.intro-done .intro-trace,
+html.intro-done .intro-trace-down,
+html.intro-done .intro-trace-up {
+  animation: none !important;
+}
