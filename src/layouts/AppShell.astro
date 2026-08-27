@@ -1,0 +1,74 @@
+---
+import '../styles/global.css';
+import Sidebar from '../components/Sidebar.astro';
+import { getDirectories } from '../lib/catalog';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'A directory of directories.' } = Astro.props;
+const directories = await getDirectories();
+const pageTitle = title === 'Directory' ? 'Directory — a directory of directories' : `${title} — Directory`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0b0b0c" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>{pageTitle}</title>
+  </head>
+  <body>
+    <div class="app">
+      <Sidebar directories={directories} currentPath={Astro.url.pathname} />
+      <div class="scrim" data-scrim hidden></div>
+      <div class="viewport sleek-scroll">
+        <header class="mobile-bar">
+          <a class="mobile-wordmark" href="/">Directory</a>
+          <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
+            Index
+          </button>
+        </header>
+        <main>
+          <slot />
+        </main>
+        <footer class="page-foot">© 2026 CALLSAL</footer>
+      </div>
+    </div>
+
+    <script>
+      const menu = document.querySelector('[data-menu]');
+      const scrim = document.querySelector('[data-scrim]');
+      const sidebar = document.getElementById('sidebar');
+
+      function setOpen(open) {
+        document.body.classList.toggle('drawer-open', open);
+        menu?.setAttribute('aria-expanded', String(open));
+        if (scrim) scrim.hidden = !open;
+      }
+
+      menu?.addEventListener('click', () => {
+        setOpen(!document.body.classList.contains('drawer-open'));
+      });
+      scrim?.addEventListener('click', () => setOpen(false));
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') setOpen(false);
+      });
+      sidebar?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => setOpen(false));
+      });
+    </script>
+  </body>
+</html>

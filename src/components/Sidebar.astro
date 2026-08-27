@@ -1,0 +1,100 @@
+---
+import { CATEGORY_META, type DirectoryEntry } from '../lib/catalog';
+
+interface Props {
+  directories: DirectoryEntry[];
+  currentPath: string;
+}
+
+const { directories, currentPath } = Astro.props;
+const currentCategory = currentPath.match(/^\/category\/([^/]+)/)?.[1] ?? '';
+const currentListing = currentPath.match(/^\/directory\/([^/]+)/)?.[1] ?? '';
+
+const grouped = CATEGORY_META.map((category) => ({
+  ...category,
+  listings: directories
+    .filter((entry) => entry.data.category === category.slug)
+    .sort((a, b) => a.data.title.localeCompare(b.data.title)),
+}));
+---
+
+<aside class="sidebar" id="sidebar" data-sidebar>
+  <div class="sidebar-brand">
+    <a class="sidebar-wordmark" href="/">Directory</a>
+    <span class="sidebar-tag">A directory of directories.</span>
+  </div>
+
+  <div class="sidebar-search">
+    <label for="directory-search">Search</label>
+    <input
+      id="directory-search"
+      type="search"
+      placeholder="Filter categories and names"
+      autocomplete="off"
+      data-search
+    />
+  </div>
+
+  <nav class="sidebar-index sleek-scroll" aria-label="Categories" data-index>
+    {grouped.map((category) => {
+      const open =
+        category.slug === currentCategory ||
+        category.listings.some((entry) => entry.slug === currentListing);
+      return (
+        <details
+          class:list={['cat', { 'is-active': category.slug === currentCategory }]}
+          data-category={category.slug}
+          data-label={category.label}
+          open={open}
+        >
+          <summary>
+            <a href={`/category/${category.slug}/`} data-cat-link>
+              {category.label}
+            </a>
+          </summary>
+          {category.listings.map((entry) => (
+            <a
+              class="listing"
+              href={`/directory/${entry.slug}/`}
+              data-listing
+              data-name={entry.data.title}
+              aria-current={entry.slug === currentListing ? 'page' : undefined}
+            >
+              {entry.data.title}
+            </a>
+          ))}
+        </details>
+      );
+    })}
+  </nav>
+
+  <div class="sidebar-foot">© 2026 CALLSAL</div>
+</aside>
+
+<script>
+  const search = document.querySelector('[data-search]');
+  const cats = document.querySelectorAll('[data-category]');
+
+  function filterIndex(query) {
+    const q = query.trim().toLowerCase();
+
+    for (const cat of cats) {
+      const label = (cat.dataset.label ?? '').toLowerCase();
+      const listings = cat.querySelectorAll('[data-listing]');
+      let visibleListings = 0;
+
+      for (const listing of listings) {
+        const name = (listing.dataset.name ?? '').toLowerCase();
+        const match = !q || name.includes(q) || label.includes(q);
+        listing.hidden = !match;
+        if (match) visibleListings += 1;
+      }
+
+      const catMatch = !q || label.includes(q) || visibleListings > 0;
+      cat.hidden = !catMatch;
+      if (q && catMatch) cat.open = true;
+    }
+  }
+
+  search?.addEventListener('input', () => filterIndex(search.value));
+</script>
