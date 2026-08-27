@@ -35,24 +35,20 @@ const { title, entries, href } = Astro.props;
 )}
 
 <script>
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!(window as Window & { __dirCarouselBound?: boolean }).__dirCarouselBound) {
+    (window as Window & { __dirCarouselBound?: boolean }).__dirCarouselBound = true;
 
-  for (const row of document.querySelectorAll('[data-carousel]')) {
-    if (row.dataset.bound === '1') continue;
-    row.dataset.bound = '1';
-
-    const track = row.querySelector('[data-track]');
-    const prev = row.querySelector('[data-prev]');
-    const next = row.querySelector('[data-next]');
-    if (!track) continue;
-
-    const step = () => Math.max(track.clientWidth * 0.72, 220);
-
-    prev?.addEventListener('click', () => {
-      track.scrollBy({ left: -step(), behavior: reduce ? 'auto' : 'smooth' });
-    });
-    next?.addEventListener('click', () => {
-      track.scrollBy({ left: step(), behavior: reduce ? 'auto' : 'smooth' });
+    document.addEventListener('click', (event) => {
+      const target = event.target as Element | null;
+      const btn = target?.closest?.('[data-prev], [data-next]');
+      if (!btn) return;
+      const row = btn.closest('[data-carousel]');
+      const track = row?.querySelector('[data-track]');
+      if (!track) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const step = Math.max((track as HTMLElement).clientWidth * 0.72, 220);
+      const left = btn.hasAttribute('data-prev') ? -step : step;
+      track.scrollBy({ left, behavior: reduce ? 'auto' : 'smooth' });
     });
   }
 </script>

@@ -19,11 +19,6 @@ const grouped = CATEGORY_META.map((category) => ({
 ---
 
 <aside class="sidebar" id="sidebar" data-sidebar>
-  <div class="sidebar-brand">
-    <a class="sidebar-wordmark" href="/">Directory</a>
-    <span class="sidebar-tag">Tools and libraries for digital creatives.</span>
-  </div>
-
   <div class="sidebar-search">
     <label for="directory-search">Search</label>
     <input
@@ -67,32 +62,30 @@ const grouped = CATEGORY_META.map((category) => ({
       );
     })}
   </nav>
-
-  <div class="sidebar-foot">© 2026 CALLSAL</div>
 </aside>
 
 <script>
-  const search = document.querySelector('[data-search]');
+  const search = document.querySelector('[data-search]') as HTMLInputElement | null;
   const cats = document.querySelectorAll('[data-category]');
 
-  function filterIndex(query) {
+  function filterIndex(query: string) {
     const q = query.trim().toLowerCase();
 
     for (const cat of cats) {
-      const label = (cat.dataset.label ?? '').toLowerCase();
+      const label = ((cat as HTMLElement).dataset.label ?? '').toLowerCase();
       const listings = cat.querySelectorAll('[data-listing]');
       let visibleListings = 0;
 
       for (const listing of listings) {
-        const name = (listing.dataset.name ?? '').toLowerCase();
+        const name = ((listing as HTMLElement).dataset.name ?? '').toLowerCase();
         const match = !q || name.includes(q) || label.includes(q);
-        listing.hidden = !match;
+        (listing as HTMLElement).hidden = !match;
         if (match) visibleListings += 1;
       }
 
       const catMatch = !q || label.includes(q) || visibleListings > 0;
-      cat.hidden = !catMatch;
-      if (q && catMatch) cat.open = true;
+      (cat as HTMLElement).hidden = !catMatch;
+      if (q && catMatch) (cat as HTMLDetailsElement).open = true;
     }
   }
 
