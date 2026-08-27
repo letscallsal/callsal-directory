@@ -7,6 +7,11 @@ const outDir = path.join(process.cwd(), "public", "previews");
 const mdDir = path.join(process.cwd(), "src", "content", "directories");
 fs.mkdirSync(outDir, { recursive: true });
 
+if (!fs.existsSync(path.join(overrideDir, "READY"))) {
+  console.log("overrides not marked READY; skip");
+  process.exit(0);
+}
+
 function readB64(slug) {
   const single = path.join(overrideDir, `${slug}.jpg.b64`);
   if (fs.existsSync(single)) {
