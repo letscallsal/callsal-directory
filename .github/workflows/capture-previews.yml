@@ -33,5 +33,5 @@ jobs:
             echo "No preview changes"
             exit 0
           fi
-          git commit -m "Add real homepage previews for Directory cards."
+          git commit -m "Replace soft SVG card wraps with real 1440 homepage shots."
           git push

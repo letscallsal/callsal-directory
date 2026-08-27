@@ -3,16 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const listings = [
-  { slug: "daisyui", url: "https://daisyui.com" },
-  { slug: "dribbble", url: "https://dribbble.com" },
-  { slug: "excalidraw", url: "https://excalidraw.com" },
-  { slug: "fontshare", url: "https://www.fontshare.com" },
-  { slug: "iconify", url: "https://iconify.design" },
   { slug: "lapa-ninja", url: "https://www.lapa.ninja" },
-  { slug: "lucide", url: "https://lucide.dev" },
   { slug: "poly-pizza", url: "https://poly.pizza" },
-  { slug: "shadcn-ui", url: "https://ui.shadcn.com" },
-  { slug: "undraw", url: "https://undraw.co" },
   { slug: "unsplash", url: "https://unsplash.com" },
 ];
 
