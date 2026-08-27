@@ -21,12 +21,24 @@ const shouldSkipIntro = () => {
   return false;
 };
 
+const HERO_START = 0.7;
+
 const fireReady = (() => {
   let fired = false;
   return () => {
     if (fired) return;
     fired = true;
     window.dispatchEvent(new Event('callsal:ready'));
+  };
+})();
+
+const fireRoomReady = (() => {
+  let fired = false;
+  return () => {
+    if (fired) return;
+    fired = true;
+    document.documentElement.setAttribute('data-room-ready', '');
+    window.dispatchEvent(new Event('callsal:room-ready'));
   };
 })();
 
@@ -131,6 +143,20 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
   useEffect(() => { if (smoothMouseProp) smoothMouseRef.current = smoothMouseProp; }, [smoothMouseProp]);
 
   useEffect(() => {
+    const stage = document.getElementById('stage-scroll');
+    if (!stage) return;
+    const update = () => {
+      const hero = document.getElementById('hero-stage');
+      const heroH = hero?.offsetHeight || window.innerHeight;
+      const t = Math.min(1, Math.max(0, stage.scrollTop / Math.max(1, heroH)));
+      scrollProgressRef.current = HERO_START + t * (1 - HERO_START);
+    };
+    stage.addEventListener('scroll', update, { passive: true });
+    update();
+    return () => stage.removeEventListener('scroll', update);
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -172,8 +198,7 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
 
     window.addEventListener('callsal:boot-hidden', startTrace);
     const boot = document.getElementById('boot-loader');
-    if (!boot || boot.classList.contains('is-done')) startTrace();
-    const traceFailsafe = window.setTimeout(startTrace, 2500);
+    if (!boot || boot.classList.contains('is-ack') || boot.classList.contains('is-done')) startTrace();
 
     const project = (x: number, y: number, z: number, w: number, h: number, camX: number, camY: number, camZ: number) => {
       const fov = Math.PI / 2;
@@ -201,7 +226,7 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       if (tracing && introT < 1 && introStartedAt != null) {
         introT = Math.min(1, (performance.now() - introStartedAt) / TRACE_MS);
         introProgressRef.current = introT;
-        if (introT >= 0.72) fireComplete();
+        if (introT >= 1) fireComplete();
       }
 
       const last = lastDrawRef.current;
@@ -227,6 +252,7 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = wallColor;
       ctx.fillRect(0, 0, w, h);
+      fireRoomReady();
 
       if (!tracing) {
         frameRef.current = requestAnimationFrame(draw);
@@ -369,7 +395,6 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
     return () => {
       window.removeEventListener('resize', resize);
       window.removeEventListener('callsal:boot-hidden', startTrace);
-      window.clearTimeout(traceFailsafe);
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, []);
@@ -379,7 +404,6 @@ export const Room3DEnhanced: React.FC<Room3DEnhancedProps> = ({
       ref={canvasRef}
       className={canvasClassName}
       style={{
-        opacity,
         pointerEvents: 'none',
       }}
     />
