@@ -421,7 +421,7 @@ img {
 }
 
 .cat[open] summary::after {
-  content: "\\2013";
+  content: "\2013";
 }
 
 .cat.is-active > summary,
@@ -699,7 +699,7 @@ main {
 }
 
 .editorial li::before {
-  content: "\\2013  ";
+  content: "\2013  ";
   color: var(--lime);
 }
 
@@ -751,8 +751,15 @@ main {
     overflow: hidden;
   }
 
-  .est {
+  .app-chrome .est,
+  .hero-glass-nav .est {
     display: none;
+  }
+
+  .hero-glass-header .est {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
   }
 
   .menu-btn {
@@ -947,6 +954,7 @@ html.intro-done .intro-hold {
 }
 html.intro-done .intro-trace-down { animation-name: intro-arrive-down; animation-duration: 0.52s; }
 html.intro-done .intro-trace-up { animation-name: intro-arrive-up; animation-duration: 0.52s; }
+html.intro-done .scroll-hint.intro-trace-up { animation-name: intro-arrive-up-center; }
 
 @keyframes intro-arrive {
   from { opacity: 0; transform: translateY(10px); }
@@ -959,6 +967,10 @@ html.intro-done .intro-trace-up { animation-name: intro-arrive-up; animation-dur
 @keyframes intro-arrive-up {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
+}
+@keyframes intro-arrive-up-center {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .intro-d0 { --d: 0ms; }
