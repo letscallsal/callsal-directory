@@ -2,6 +2,8 @@
 
 A curated index of tools and libraries for digital creatives. Free first.
 
+CALL SAL-branded app shell (black, white, lime). No 3D room, no auth, no booking.
+
 Live host (after you connect hosting): https://directory.callsal.app
 
 This is a static Astro site. No auth, no CMS, no database. Listings live as Markdown in a content collection. Search runs in the browser against that collection.
