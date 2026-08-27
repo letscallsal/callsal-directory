@@ -206,7 +206,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
             <main data-main>
               <slot />
             </main>
-            <footer class="page-foot intro-trace intro-trace-up intro-d2">
+            <footer class="page-foot">
               <span class="est" data-est-foot>
                 <span>EST</span>
                 <span class="est-year" data-est-year-foot>MMXXVI</span>
@@ -272,6 +272,12 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         document.documentElement.classList.add('intro-done');
         window.dispatchEvent(new Event('callsal:intro-complete'));
       }
+      function settleIntro() {
+        window.setTimeout(() => {
+          document.documentElement.classList.add('intro-settled');
+        }, reduceMotion ? 0 : 900);
+      }
+      window.addEventListener('callsal:intro-complete', settleIntro, { once: true });
       const fontsReady = document.fonts?.ready?.catch(() => undefined) ?? Promise.resolve();
       const minPause = new Promise((resolve) => window.setTimeout(resolve, 700));
       Promise.all([fontsReady, minPause]).then(startBootOut);
@@ -279,6 +285,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       window.setTimeout(revealUiFallback, 4500);
       if (!withRoom) {
         document.documentElement.classList.add('intro-done');
+        document.documentElement.classList.add('intro-settled');
       }
 
       const menu = document.querySelector('[data-menu]');
@@ -661,34 +668,16 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         const stage = document.getElementById('stage-scroll');
         const hero = document.getElementById('hero-stage');
         if (stage && hero) {
-          let snapping = false;
-          const snapTo = (top) => {
-            snapping = true;
-            stage.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
-            window.setTimeout(() => { snapping = false; }, 800);
-          };
           const onStageScroll = () => {
-            const t = stage.scrollTop / Math.max(1, hero.offsetHeight);
-            hero.classList.toggle('is-leaving', t > 0.28);
+            const t = Math.min(1, Math.max(0, stage.scrollTop / Math.max(1, hero.offsetHeight)));
+            const fade = reduceMotion ? (t > 0.45 ? 0 : 1) : Math.max(0, 1 - t / 0.8);
+            const value = fade.toFixed(4);
+            hero.style.setProperty('--hero-fade', value);
+            document.documentElement.style.setProperty('--hero-fade', value);
+            hero.classList.toggle('is-faded', fade < 0.04);
           };
           stage.addEventListener('scroll', onStageScroll, { passive: true });
           onStageScroll();
-          window.addEventListener('wheel', (event) => {
-            const heroH = hero.offsetHeight;
-            const atHero = stage.scrollTop < heroH * 0.55;
-            const atDirTop = stage.scrollTop >= heroH * 0.55 && stage.scrollTop < heroH + 40;
-            if (snapping) {
-              event.preventDefault();
-              return;
-            }
-            if (atHero && event.deltaY > 12) {
-              event.preventDefault();
-              snapTo(heroH);
-            } else if (atDirTop && event.deltaY < -12) {
-              event.preventDefault();
-              snapTo(0);
-            }
-          }, { passive: false });
         }
       }
 
