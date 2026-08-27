@@ -4,7 +4,7 @@ slug: daisyui
 category: ui-kits
 tagline: Semantic component classes on top of Tailwind CSS.
 website: https://daisyui.com
-preview: /previews/daisyui.svg
+preview: /previews/daisyui.jpg
 affiliateUrl: ""
 featured: false
 pricing: free

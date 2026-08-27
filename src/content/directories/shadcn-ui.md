@@ -4,7 +4,7 @@ slug: shadcn-ui
 category: components
 tagline: Open-code components you copy into your app.
 website: https://ui.shadcn.com
-preview: /previews/shadcn-ui.svg
+preview: /previews/shadcn-ui.jpg
 affiliateUrl: ""
 featured: true
 pricing: free

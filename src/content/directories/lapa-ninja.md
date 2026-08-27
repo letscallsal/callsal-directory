@@ -4,7 +4,7 @@ slug: lapa-ninja
 category: inspiration
 tagline: A curated archive of landing pages, shown full-page.
 website: https://www.lapa.ninja
-preview: /previews/lapa-ninja.svg
+preview: /previews/lapa-ninja.jpg
 affiliateUrl: ""
 featured: true
 pricing: free

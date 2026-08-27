@@ -4,7 +4,7 @@ slug: excalidraw
 category: tools
 tagline: A free hand-drawn whiteboard in the browser.
 website: https://excalidraw.com
-preview: /previews/excalidraw.svg
+preview: /previews/excalidraw.jpg
 affiliateUrl: ""
 featured: false
 pricing: free

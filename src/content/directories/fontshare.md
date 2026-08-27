@@ -4,7 +4,7 @@ slug: fontshare
 category: fonts
 tagline: Quality typefaces, free for personal and commercial use.
 website: https://www.fontshare.com
-preview: /previews/fontshare.svg
+preview: /previews/fontshare.jpg
 affiliateUrl: ""
 featured: false
 pricing: free

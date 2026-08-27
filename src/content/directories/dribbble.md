@@ -4,7 +4,7 @@ slug: dribbble
 category: inspiration
 tagline: A free-to-browse feed of shots from digital designers.
 website: https://dribbble.com
-preview: /previews/dribbble.svg
+preview: /previews/dribbble.jpg
 affiliateUrl: ""
 featured: false
 pricing: free

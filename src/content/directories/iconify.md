@@ -4,7 +4,7 @@ slug: iconify
 category: icons
 tagline: One search over hundreds of open source icon sets.
 website: https://iconify.design
-preview: /previews/iconify.svg
+preview: /previews/iconify.jpg
 affiliateUrl: ""
 featured: false
 pricing: free

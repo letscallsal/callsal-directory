@@ -4,7 +4,7 @@ slug: undraw
 category: illustrations
 tagline: Recolorable SVG illustrations you can use without attribution.
 website: https://undraw.co
-preview: /previews/undraw.svg
+preview: /previews/undraw.jpg
 affiliateUrl: ""
 featured: false
 pricing: free
