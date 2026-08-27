@@ -11,6 +11,14 @@ const href = `/directory/${entry.slug}/`;
 
 <div class="card-wrap" data-card-slug={entry.slug}>
   <a class="card hover-lift" href={href}>
+    <img
+      class="card-preview"
+      src={entry.data.preview}
+      alt={`${entry.data.title} website`}
+      width="640"
+      height="400"
+      loading="lazy"
+    />
     <span class="card-cat">{categoryLabel(entry.data.category)} · {pricingLabel(entry.data.pricing)}</span>
     <h3>{entry.data.title}</h3>
     <p>{entry.data.tagline}</p>

@@ -20,6 +20,7 @@ const directories = defineCollection({
     category: z.enum(categories),
     tagline: z.string(),
     website: z.string().url(),
+    preview: z.string(),
     affiliateUrl: z.string(),
     featured: z.boolean(),
     pricing: z.enum(['free', 'free-trial', 'freemium', 'paid']),

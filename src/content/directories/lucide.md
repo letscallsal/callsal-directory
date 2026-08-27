@@ -4,6 +4,7 @@ slug: lucide
 category: icons
 tagline: A consistent open-source icon set for interfaces.
 website: https://lucide.dev
+preview: /previews/lucide.svg
 affiliateUrl: ""
 featured: false
 pricing: free

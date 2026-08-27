@@ -22,6 +22,7 @@ export const PRICING_LABELS = {
 
 export type CategorySlug = (typeof CATEGORY_META)[number]['slug'];
 export type PricingSlug = keyof typeof PRICING_LABELS;
+/** Listing card data, including `data.preview` from the content schema. */
 export type DirectoryEntry = CollectionEntry<'directories'>;
 
 export function categoryLabel(slug: string): string {
