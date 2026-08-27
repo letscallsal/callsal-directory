@@ -9,7 +9,7 @@ const { entry } = Astro.props;
 const href = `/directory/${entry.slug}/`;
 ---
 
-<a class="card" href={href}>
+<a class="card hover-lift" href={href}>
   <span class="card-cat">{categoryLabel(entry.data.category)} · {pricingLabel(entry.data.pricing)}</span>
   <h3>{entry.data.title}</h3>
   <p>{entry.data.tagline}</p>
