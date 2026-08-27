@@ -188,7 +188,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
             </p>
             <div class="app-auth" data-auth-slot="app"></div>
             <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
-              Index
+              INDEX
             </button>
           </header>
         </div>
@@ -245,11 +245,12 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       }
       function ackAndFade() {
         setPillFill(100);
+        document.documentElement.classList.add('intro-ready', 'intro-done');
         window.dispatchEvent(new Event('callsal:boot-hidden'));
-        window.dispatchEvent(new Event('callsal:ready'));
         const loader = document.getElementById('boot-loader');
         if (!loader) return;
         if (reduceMotion) {
+          document.documentElement.classList.add('intro-settled');
           finishBoot();
           return;
         }
@@ -261,13 +262,20 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         dismissed = true;
         ackAndFade();
       }
-      function waitOnce(name, already) {
+      function waitOnce(name, already, ms) {
         return new Promise((resolve) => {
-          if (already()) {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
             resolve();
+          };
+          if (already()) {
+            finish();
             return;
           }
-          window.addEventListener(name, () => resolve(), { once: true });
+          window.addEventListener(name, finish, { once: true });
+          if (ms) window.setTimeout(finish, ms);
         });
       }
       function waitForCanvas() {
@@ -300,17 +308,19 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         fontsReady.then(() => setPillFill(34));
         const roomGate = waitForCanvas().then(() => {
           setPillFill(67);
-          return waitOnce('callsal:room-ready', () =>
-            document.documentElement.hasAttribute('data-room-ready'),
+          return waitOnce(
+            'callsal:room-ready',
+            () => document.documentElement.hasAttribute('data-room-ready'),
+            3200,
           );
         }).then(() => setPillFill(100));
-        Promise.all([fontsReady, roomGate]).then(startBootOut);
+        const minPause = new Promise((resolve) => window.setTimeout(resolve, 1150));
+        Promise.all([fontsReady, roomGate, minPause]).then(startBootOut);
+        window.setTimeout(startBootOut, 4800);
         window.addEventListener('callsal:boot-hidden', () => {
-          window.setTimeout(() => {
-            if (document.documentElement.classList.contains('intro-done')) return;
-            document.documentElement.classList.add('intro-done');
-            window.dispatchEvent(new Event('callsal:intro-complete'));
-          }, 2800);
+          document.documentElement.classList.add('intro-ready', 'intro-done');
+          window.dispatchEvent(new Event('callsal:intro-complete'));
+          window.setTimeout(() => document.documentElement.classList.add('intro-settled'), 560);
         }, { once: true });
       }
 
