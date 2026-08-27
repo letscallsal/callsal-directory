@@ -4,7 +4,7 @@ slug: unsplash
 category: photos
 tagline: A large library of photos free to use under the Unsplash License.
 website: https://unsplash.com
-preview: /previews/unsplash.jpg
+preview: /previews/unsplash.svg
 affiliateUrl: ""
 featured: true
 pricing: free
