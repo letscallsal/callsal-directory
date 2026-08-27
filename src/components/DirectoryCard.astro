@@ -1,0 +1,16 @@
+---
+import { categoryLabel, type DirectoryEntry } from '../lib/catalog';
+
+interface Props {
+  entry: DirectoryEntry;
+}
+
+const { entry } = Astro.props;
+const href = `/directory/${entry.slug}/`;
+---
+
+<a class="card" href={href}>
+  <span class="card-cat">{categoryLabel(entry.data.category)}</span>
+  <h3>{entry.data.title}</h3>
+  <p>{entry.data.tagline}</p>
+</a>

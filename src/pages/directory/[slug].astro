@@ -1,0 +1,64 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import { getDirectories, categoryLabel } from '../../lib/catalog';
+
+export async function getStaticPaths() {
+  const directories = await getDirectories();
+  return directories.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+const added = entry.data.dateAdded.toISOString().slice(0, 10);
+---
+
+<AppShell title={entry.data.title} description={entry.data.tagline}>
+  <header class="page-head">
+    <p class="page-kicker">
+      <a href={`/category/${entry.data.category}/`}>{categoryLabel(entry.data.category)}</a>
+    </p>
+    <h1 class="page-title">{entry.data.title}</h1>
+    <p class="page-tag">{entry.data.tagline}</p>
+  </header>
+
+  <article class="editorial">
+    <section>
+      <Content />
+    </section>
+
+    <section>
+      <h2>Who it is for</h2>
+      <p>{entry.data.whoItsFor}</p>
+    </section>
+
+    <section>
+      <h2>Standout</h2>
+      <ul>
+        {entry.data.standout.map((item) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </section>
+
+    <section>
+      <h2>Verdict</h2>
+      <p>{entry.data.verdict}</p>
+    </section>
+
+    <section>
+      <h2>Visit</h2>
+      <p>
+        <a class="visit" href={entry.data.website} rel="noopener noreferrer">
+          {entry.data.website.replace(/^https?:\/\//, '')}
+        </a>
+      </p>
+    </section>
+
+    {entry.data.status === 'seed' && (
+      <p class="seed-note">Seed listing. Added {added}.</p>
+    )}
+  </article>
+</AppShell>

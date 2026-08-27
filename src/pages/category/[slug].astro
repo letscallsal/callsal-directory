@@ -1,0 +1,42 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import DirectoryCard from '../../components/DirectoryCard.astro';
+import {
+  CATEGORY_META,
+  getDirectories,
+  byCategory,
+  categoryLabel,
+  categoryBlurb,
+  type CategorySlug,
+} from '../../lib/catalog';
+
+export function getStaticPaths() {
+  return CATEGORY_META.map((category) => ({
+    params: { slug: category.slug },
+  }));
+}
+
+const slug = Astro.params.slug as CategorySlug;
+const directories = await getDirectories();
+const entries = byCategory(directories, slug);
+const label = categoryLabel(slug);
+const blurb = categoryBlurb(slug);
+---
+
+<AppShell title={label} description={blurb}>
+  <header class="page-head">
+    <p class="page-kicker">Category</p>
+    <h1 class="page-title">{label}</h1>
+    <p class="page-tag">{blurb}</p>
+  </header>
+
+  {entries.length > 0 ? (
+    <div class="grid">
+      {entries.map((entry) => (
+        <DirectoryCard entry={entry} />
+      ))}
+    </div>
+  ) : (
+    <p class="empty">Nothing listed here yet. The index is open.</p>
+  )}
+</AppShell>

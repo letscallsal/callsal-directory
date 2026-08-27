@@ -1,0 +1,34 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+import Carousel from '../components/Carousel.astro';
+import {
+  getDirectories,
+  featured,
+  newest,
+  categoriesWithListings,
+  byCategory,
+} from '../lib/catalog';
+
+const directories = await getDirectories();
+const featuredRow = featured(directories);
+const newRow = newest(directories);
+const genreRows = categoriesWithListings(directories).map((category) => ({
+  ...category,
+  entries: byCategory(directories, category.slug),
+}));
+---
+
+<AppShell title="Directory" description="A directory of directories. A search tool for search tools.">
+  <div class="lede">
+    <h1>Directory</h1>
+    <p>A directory of directories. A search tool for search tools.</p>
+  </div>
+
+  <div class="rows">
+    <Carousel title="Featured" entries={featuredRow} />
+    <Carousel title="New" entries={newRow} />
+    {genreRows.map((row) => (
+      <Carousel title={row.label} entries={row.entries} href={`/category/${row.slug}/`} />
+    ))}
+  </div>
+</AppShell>
