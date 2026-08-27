@@ -8,9 +8,9 @@ interface Props {
   description?: string;
 }
 
-const { title, description = 'A directory of directories.' } = Astro.props;
+const { title, description = 'Tools and libraries for digital creatives.' } = Astro.props;
 const directories = await getDirectories();
-const pageTitle = title === 'Directory' ? 'Directory — a directory of directories' : `${title} — Directory`;
+const pageTitle = title === 'Directory' ? 'Directory — tools and libraries for digital creatives' : `${title} — Directory`;
 ---
 
 <!doctype html>

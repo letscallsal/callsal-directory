@@ -1,6 +1,6 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
-import { getDirectories, categoryLabel } from '../../lib/catalog';
+import { getDirectories, categoryLabel, pricingLabel } from '../../lib/catalog';
 
 export async function getStaticPaths() {
   const directories = await getDirectories();
@@ -19,6 +19,7 @@ const added = entry.data.dateAdded.toISOString().slice(0, 10);
   <header class="page-head">
     <p class="page-kicker">
       <a href={`/category/${entry.data.category}/`}>{categoryLabel(entry.data.category)}</a>
+      · {pricingLabel(entry.data.pricing)}
     </p>
     <h1 class="page-title">{entry.data.title}</h1>
     <p class="page-tag">{entry.data.tagline}</p>

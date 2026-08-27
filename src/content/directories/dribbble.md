@@ -1,21 +1,22 @@
 ---
 title: Dribbble
 slug: dribbble
-category: design
-tagline: The portfolio network for digital designers.
+category: inspiration
+tagline: A free-to-browse feed of shots from digital designers.
 website: https://dribbble.com
 affiliateUrl: ""
 featured: false
-whoItsFor: Designers showing work, and anyone hiring or commissioning visual craft.
+pricing: free
+whoItsFor: Digital creatives collecting visual direction — UI, illustration, motion, and branding.
 standout:
-  - Shot-based browsing that is still the default moodboard
-  - Designer profiles with hire and work links
-  - Jobs sitting next to the work
-verdict: The directory is the people, not the apps. Expect polished presentation over process. Good for finding who made a look; weak as a record of how a product actually works.
+  - Shot feed you can search and filter without paying
+  - Color, tag, and category browsing
+  - Pro is for posting portfolios and jobs, not required to browse
+verdict: Best as a moodboard of polished concepts. Weak as a record of how a live product actually works. Free to look; paid if you want the platform as a career page.
 status: seed
-dateAdded: 2026-08-20
+dateAdded: 2026-08-27
 ---
 
-Dribbble is a directory of designers dressed as a feed of shots. You browse the work, then the person, then whether they are available.
+Dribbble is a shot-based inspiration feed. You browse the work, then the person, then whether the look is useful.
 
-Use it to find who made something you keep saving. Do not use it as a product catalog.
+Use it to collect visual direction. Do not treat a shot as a finished product.

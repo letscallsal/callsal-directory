@@ -1,5 +1,5 @@
 ---
-import { categoryLabel, type DirectoryEntry } from '../lib/catalog';
+import { categoryLabel, pricingLabel, type DirectoryEntry } from '../lib/catalog';
 
 interface Props {
   entry: DirectoryEntry;
@@ -10,7 +10,7 @@ const href = `/directory/${entry.slug}/`;
 ---
 
 <a class="card" href={href}>
-  <span class="card-cat">{categoryLabel(entry.data.category)}</span>
+  <span class="card-cat">{categoryLabel(entry.data.category)} · {pricingLabel(entry.data.pricing)}</span>
   <h3>{entry.data.title}</h3>
   <p>{entry.data.tagline}</p>
 </a>

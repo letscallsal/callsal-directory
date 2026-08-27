@@ -1,19 +1,27 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 
 export const CATEGORY_META = [
-  { slug: 'ai', label: 'AI', blurb: 'Indexes of models, products, and jobs to be done.' },
-  { slug: 'software', label: 'Software', blurb: 'Where people compare and replace the tools they already use.' },
-  { slug: 'startups', label: 'Startups', blurb: 'Launch pads, founder communities, and product rolls.' },
-  { slug: 'design', label: 'Design', blurb: 'Portfolios, shots, and the people who made the work.' },
-  { slug: 'jobs', label: 'Jobs', blurb: 'Hiring boards that are themselves directories of companies.' },
-  { slug: 'learn', label: 'Learn', blurb: 'Course catalogs and reading lists, not single classes.' },
-  { slug: 'no-code', label: 'No-code', blurb: 'Builders and templates that skip a traditional stack.' },
-  { slug: 'marketing', label: 'Marketing', blurb: 'Directories of channels, creatives, and growth tools.' },
-  { slug: 'local', label: 'Local', blurb: 'Places and services, indexed by city rather than category.' },
-  { slug: 'people', label: 'People', blurb: 'Who-knows-who: talent, experts, and public profiles.' },
+  { slug: 'components', label: 'Components', blurb: 'Interface pieces you can drop into a product and make your own.' },
+  { slug: 'inspiration', label: 'Inspiration', blurb: 'Galleries and feeds of work worth studying before you start.' },
+  { slug: 'icons', label: 'Icons', blurb: 'Icon families that stay consistent across a whole interface.' },
+  { slug: 'fonts', label: 'Fonts', blurb: 'Type libraries you can actually license into a digital project.' },
+  { slug: 'illustrations', label: 'Illustrations', blurb: 'Scene art and character sets for empty states, heroes, and explainers.' },
+  { slug: 'photos', label: 'Photos', blurb: 'Photography libraries with a license you can use in client work.' },
+  { slug: 'ui-kits', label: 'UI kits', blurb: 'Themed component kits that give you a full look, not one widget.' },
+  { slug: 'tools', label: 'Tools', blurb: 'Software that digital creatives use to make the work.' },
+  { slug: 'templates', label: 'Templates', blurb: 'Starting files for sites, decks, and product surfaces.' },
+  { slug: '3d', label: '3D', blurb: 'Models and scenes you can download and use, not just admire.' },
 ] as const;
 
+export const PRICING_LABELS = {
+  free: 'Free',
+  'free-trial': 'Free trial',
+  freemium: 'Freemium',
+  paid: 'Paid',
+} as const;
+
 export type CategorySlug = (typeof CATEGORY_META)[number]['slug'];
+export type PricingSlug = keyof typeof PRICING_LABELS;
 export type DirectoryEntry = CollectionEntry<'directories'>;
 
 export function categoryLabel(slug: string): string {
@@ -22,6 +30,10 @@ export function categoryLabel(slug: string): string {
 
 export function categoryBlurb(slug: string): string {
   return CATEGORY_META.find((item) => item.slug === slug)?.blurb ?? '';
+}
+
+export function pricingLabel(slug: string): string {
+  return PRICING_LABELS[slug as PricingSlug] ?? slug;
 }
 
 export async function getDirectories(): Promise<DirectoryEntry[]> {

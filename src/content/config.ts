@@ -1,28 +1,28 @@
 import { defineCollection, z } from 'astro:content';
 
 const categories = [
-  'ai',
-  'software',
-  'startups',
-  'design',
-  'jobs',
-  'learn',
-  'no-code',
-  'marketing',
-  'local',
-  'people',
+  'components',
+  'inspiration',
+  'icons',
+  'fonts',
+  'illustrations',
+  'photos',
+  'ui-kits',
+  'tools',
+  'templates',
+  '3d',
 ] as const;
 
 const directories = defineCollection({
   type: 'content',
   schema: z.object({
     title: z.string(),
-    // slug is reserved by Astro; keep it in each .md frontmatter, not here
     category: z.enum(categories),
     tagline: z.string(),
     website: z.string().url(),
     affiliateUrl: z.string(),
     featured: z.boolean(),
+    pricing: z.enum(['free', 'free-trial', 'freemium', 'paid']),
     whoItsFor: z.string(),
     standout: z.array(z.string()),
     verdict: z.string(),
