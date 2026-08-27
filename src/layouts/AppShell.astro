@@ -60,19 +60,15 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       .boot-scrim {
         position: absolute; inset: 0;
         background: #fff;
-        transition: opacity 0.55s ease;
+        transition: opacity 0.32s cubic-bezier(0.4, 0, 1, 1);
       }
-      #boot-loader.is-ack .boot-scrim {
-        opacity: 0;
-        transition: opacity 0.4s ease;
-      }
+      #boot-loader.is-ack .boot-scrim { opacity: 0; }
       #boot-loader.is-ack .boot-pill {
-        animation: boot-strobe 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        animation: boot-leave 0.32s cubic-bezier(0.4, 0, 1, 1) forwards;
       }
-      @keyframes boot-strobe {
-        0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(204,255,0,0); opacity: 1; }
-        28% { transform: scale(1.05); filter: brightness(1.28); box-shadow: 0 0 22px rgba(204,255,0,0.55); opacity: 1; }
-        100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(204,255,0,0); opacity: 0; }
+      @keyframes boot-leave {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-8px); }
       }
       .boot-pill {
         position: relative;
@@ -91,7 +87,6 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         padding: 0.375rem 0.75rem 0.375rem 0.625rem;
         border-radius: 9999px;
         line-height: 1;
-        will-change: transform, opacity, filter;
       }
       .boot-pill-fill {
         position: absolute;
@@ -99,11 +94,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         height: 0%;
         background: #CCFF00;
         z-index: 0;
-        animation: boot-fill 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-      }
-      @keyframes boot-fill {
-        from { height: 0%; }
-        to { height: 88%; }
+        transition: height 0.42s cubic-bezier(0.23, 1, 0.32, 1);
       }
       .boot-pill-inner {
         position: relative;
@@ -114,7 +105,8 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       }
       .boot-pill svg { display: block; flex-shrink: 0; }
       @media (prefers-reduced-motion: reduce) {
-        .boot-pill-fill { height: 100% !important; animation: none; }
+        .boot-scrim { transition: none; }
+        .boot-pill-fill { height: 100% !important; transition: none; }
         #boot-loader.is-ack .boot-pill { animation: none; opacity: 0; }
       }
     </style>
@@ -186,18 +178,20 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       )}
 
       <div class="app" id="directory-stage">
-        <header class:list={['app-chrome', 'intro-ui', 'intro-trace', 'intro-trace-down', 'intro-d0']}>
-          <BrandPill />
-          <p class="est" data-est>
-            <span>EST</span>
-            <span class="est-year" data-est-year>MMXXVI</span>
-            <span>© CALL SAL .</span>
-          </p>
-          <div class="app-auth" data-auth-slot="app"></div>
-          <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
-            Index
-          </button>
-        </header>
+        <div class="chrome-slot" id="chrome-slot">
+          <header class:list={['app-chrome', 'intro-ui', 'intro-trace', 'intro-trace-down', 'intro-d0']} id="app-chrome">
+            <BrandPill />
+            <p class="est" data-est>
+              <span>EST</span>
+              <span class="est-year" data-est-year>MMXXVI</span>
+              <span>© CALL SAL .</span>
+            </p>
+            <div class="app-auth" data-auth-slot="app"></div>
+            <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
+              Index
+            </button>
+          </header>
+        </div>
 
         <div class="app-body">
           <Sidebar directories={directories} currentPath={Astro.url.pathname} />
@@ -206,7 +200,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
             <main data-main>
               <slot />
             </main>
-            <footer class="page-foot">
+            <footer class="page-foot intro-trace intro-trace-up intro-d2">
               <span class="est" data-est-foot>
                 <span>EST</span>
                 <span class="est-year" data-est-year-foot>MMXXVI</span>
@@ -245,47 +239,79 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       function finishBoot() {
         document.getElementById('boot-loader')?.remove();
       }
-      function ackAndFade() {
-        const loader = document.getElementById('boot-loader');
+      function setPillFill(pct) {
         const fill = document.getElementById('boot-pill-fill');
-        if (fill) {
-          fill.style.animation = 'none';
-          fill.style.height = '100%';
-        }
+        if (fill) fill.style.height = pct + '%';
+      }
+      function ackAndFade() {
+        setPillFill(100);
         window.dispatchEvent(new Event('callsal:boot-hidden'));
         window.dispatchEvent(new Event('callsal:ready'));
+        const loader = document.getElementById('boot-loader');
         if (!loader) return;
         if (reduceMotion) {
           finishBoot();
           return;
         }
         loader.classList.add('is-ack');
-        window.setTimeout(finishBoot, 420);
+        window.setTimeout(finishBoot, 320);
       }
       function startBootOut() {
         if (dismissed) return;
         dismissed = true;
         ackAndFade();
       }
-      function revealUiFallback() {
-        if (document.documentElement.classList.contains('intro-done')) return;
-        document.documentElement.classList.add('intro-done');
-        window.dispatchEvent(new Event('callsal:intro-complete'));
+      function waitOnce(name, already) {
+        return new Promise((resolve) => {
+          if (already()) {
+            resolve();
+            return;
+          }
+          window.addEventListener(name, () => resolve(), { once: true });
+        });
       }
-      function settleIntro() {
-        window.setTimeout(() => {
-          document.documentElement.classList.add('intro-settled');
-        }, reduceMotion ? 0 : 900);
+      function waitForCanvas() {
+        return new Promise((resolve) => {
+          if (document.querySelector('canvas.room-canvas')) {
+            resolve();
+            return;
+          }
+          const mo = new MutationObserver(() => {
+            if (document.querySelector('canvas.room-canvas')) {
+              mo.disconnect();
+              resolve();
+            }
+          });
+          mo.observe(document.documentElement, { childList: true, subtree: true });
+        });
       }
-      window.addEventListener('callsal:intro-complete', settleIntro, { once: true });
-      const fontsReady = document.fonts?.ready?.catch(() => undefined) ?? Promise.resolve();
-      const minPause = new Promise((resolve) => window.setTimeout(resolve, 700));
-      Promise.all([fontsReady, minPause]).then(startBootOut);
-      window.setTimeout(startBootOut, 2200);
-      window.setTimeout(revealUiFallback, 4500);
-      if (!withRoom) {
+      if (reduceMotion) {
         document.documentElement.classList.add('intro-done');
-        document.documentElement.classList.add('intro-settled');
+        startBootOut();
+      } else if (!withRoom) {
+        document.documentElement.classList.add('intro-done');
+        const fontsReady = document.fonts?.ready?.catch(() => undefined) ?? Promise.resolve();
+        fontsReady.then(() => {
+          setPillFill(100);
+          startBootOut();
+        });
+      } else {
+        const fontsReady = document.fonts?.ready?.catch(() => undefined) ?? Promise.resolve();
+        fontsReady.then(() => setPillFill(34));
+        const roomGate = waitForCanvas().then(() => {
+          setPillFill(67);
+          return waitOnce('callsal:room-ready', () =>
+            document.documentElement.hasAttribute('data-room-ready'),
+          );
+        }).then(() => setPillFill(100));
+        Promise.all([fontsReady, roomGate]).then(startBootOut);
+        window.addEventListener('callsal:boot-hidden', () => {
+          window.setTimeout(() => {
+            if (document.documentElement.classList.contains('intro-done')) return;
+            document.documentElement.classList.add('intro-done');
+            window.dispatchEvent(new Event('callsal:intro-complete'));
+          }, 2800);
+        }, { once: true });
       }
 
       const menu = document.querySelector('[data-menu]');
@@ -667,17 +693,78 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       if (withRoom) {
         const stage = document.getElementById('stage-scroll');
         const hero = document.getElementById('hero-stage');
+        const slot = document.getElementById('chrome-slot');
+        const chrome = document.getElementById('app-chrome');
+        const fadeTargets = hero
+          ? [...hero.querySelectorAll('.hero-landing, .hero-glass-header, .hero-glass-nav, .scroll-hint')]
+          : [];
+        let snapping = false;
+        let stuck = false;
+        let lastFade = -1;
+        const snapTo = (top) => {
+          snapping = true;
+          stage.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+          window.setTimeout(() => { snapping = false; }, 800);
+        };
+        const applyLandingFade = () => {
+          if (!hero || !stage) return;
+          const h = Math.max(1, hero.offsetHeight);
+          const t = Math.min(1, Math.max(0, stage.scrollTop / h));
+          let fade;
+          if (reduceMotion) {
+            fade = t > 0.35 ? 0 : 1;
+          } else {
+            const start = 0.04;
+            const end = 0.52;
+            fade = t <= start ? 1 : t >= end ? 0 : 1 - (t - start) / (end - start);
+          }
+          const opacity = Math.round(fade * 200) / 200;
+          if (opacity === lastFade) return;
+          lastFade = opacity;
+          if (opacity >= 1) {
+            for (const el of fadeTargets) el.style.removeProperty('opacity');
+            const canvas = document.querySelector('.room-canvas');
+            if (canvas) canvas.style.removeProperty('opacity');
+            hero.classList.remove('is-faded');
+            return;
+          }
+          for (const el of fadeTargets) el.style.opacity = String(opacity);
+          const canvas = document.querySelector('.room-canvas');
+          if (canvas) canvas.style.opacity = String(opacity);
+          hero.classList.toggle('is-faded', opacity < 0.06);
+        };
+        const applySticky = () => {
+          if (!slot || !chrome) return;
+          const top = slot.getBoundingClientRect().top;
+          const next = stuck ? top <= 1 : top <= 0;
+          if (next === stuck) return;
+          stuck = next;
+          chrome.classList.toggle('is-stuck', stuck);
+        };
+        const onStageScroll = () => {
+          applyLandingFade();
+          applySticky();
+        };
         if (stage && hero) {
-          const onStageScroll = () => {
-            const t = Math.min(1, Math.max(0, stage.scrollTop / Math.max(1, hero.offsetHeight)));
-            const fade = reduceMotion ? (t > 0.45 ? 0 : 1) : Math.max(0, 1 - t / 0.8);
-            const value = fade.toFixed(4);
-            hero.style.setProperty('--hero-fade', value);
-            document.documentElement.style.setProperty('--hero-fade', value);
-            hero.classList.toggle('is-faded', fade < 0.04);
-          };
           stage.addEventListener('scroll', onStageScroll, { passive: true });
           onStageScroll();
+          window.addEventListener('callsal:intro-complete', applyLandingFade);
+          window.addEventListener('wheel', (event) => {
+            const heroH = hero.offsetHeight;
+            const atHero = stage.scrollTop < heroH * 0.55;
+            const atDirTop = stage.scrollTop >= heroH * 0.55 && stage.scrollTop < heroH + 40;
+            if (snapping) {
+              event.preventDefault();
+              return;
+            }
+            if (atHero && event.deltaY > 12) {
+              event.preventDefault();
+              snapTo(heroH);
+            } else if (atDirTop && event.deltaY < -12) {
+              event.preventDefault();
+              snapTo(0);
+            }
+          }, { passive: false });
         }
       }
 
