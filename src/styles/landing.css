@@ -154,11 +154,17 @@
   .hero-glass-nav { display: flex; }
 }
 
-.hero-stage.is-leaving .hero-landing,
-.hero-stage.is-leaving .hero-glass-header,
-.hero-stage.is-leaving .hero-glass-nav,
-.hero-stage.is-leaving .scroll-hint {
-  opacity: 0;
+.hero-landing,
+.hero-glass-header,
+.hero-glass-nav,
+.hero-stage .scroll-hint {
+  opacity: var(--hero-fade, 1);
+}
+
+.hero-stage.is-faded .hero-landing,
+.hero-stage.is-faded .hero-glass-header,
+.hero-stage.is-faded .hero-glass-nav,
+.hero-stage.is-faded .scroll-hint {
   pointer-events: none;
 }
 
