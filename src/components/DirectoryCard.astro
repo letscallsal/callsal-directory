@@ -29,3 +29,43 @@ const href = `/directory/${entry.slug}/`;
     </svg>
   </button>
 </div>
+
+<style is:global>
+  .card-wrap {
+    flex: 0 0 min(19.5rem, 82vw);
+  }
+
+  .card-wrap .card {
+    justify-content: flex-start;
+    min-height: 0;
+    padding: 0 0 1.15rem;
+    overflow: hidden;
+  }
+
+  .card-preview {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    height: auto;
+    object-fit: cover;
+    object-position: top center;
+    background: #0a0a0a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .card-wrap .card-cat {
+    margin: 0.95rem 1.15rem 0;
+  }
+
+  .card-wrap .card h3 {
+    margin: 0.55rem 1.15rem 0.35rem;
+  }
+
+  .card-wrap .card p {
+    margin: 0 1.15rem;
+  }
+
+  .card-wrap .bookmark-btn {
+    background: rgba(0, 0, 0, 0.55);
+  }
+</style>
