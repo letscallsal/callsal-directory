@@ -192,21 +192,38 @@
 
 .shop-filters {
   margin: 0 0 2.1rem;
-  max-width: 46rem;
+  max-width: 28rem;
 }
 
 .shop-filters .page-kicker {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.7rem;
 }
 
-.filter-row + .filter-row,
-.filter-search {
-  margin-top: 0.85rem;
+.filter-accords {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.filter-accord {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.filter-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-summary::-webkit-details-marker {
+  display: none;
 }
 
 .filter-label {
-  display: block;
-  margin-bottom: 0.4rem;
+  margin: 0;
   color: var(--ink-faint);
   font-size: 0.68rem;
   font-weight: 600;
@@ -214,14 +231,38 @@
   text-transform: uppercase;
 }
 
+.filter-now {
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.filter-accord[open] .filter-now {
+  color: #CCFF00;
+}
+
 .filter-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  padding: 0 0 0.85rem;
+}
+
+.filter-search {
+  display: block;
+  margin-top: 0.85rem;
+}
+
+.filter-search .filter-label {
+  display: block;
+  margin-bottom: 0.35rem;
 }
 
 .filter-search input {
-  width: min(22rem, 100%);
+  width: 100%;
   padding: 0.55rem 0.15rem 0.5rem;
   border-bottom: 1px solid var(--line-strong);
   border-radius: 0;
