@@ -364,7 +364,7 @@
   border-radius: 0.85rem;
   color: #fff;
   font-family: var(--display);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -522,4 +522,29 @@ body.drawer-open .scrim {
     flex: 0 0 auto;
     white-space: nowrap;
   }
+}
+
+/* Keep type-in fields at 16px so iOS Safari does not zoom. Pinch-zoom stays on. */
+.auth-form input,
+.auth-form textarea,
+[data-guest-city] input,
+.city-select input,
+.filter-search input,
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="text"] {
+  font-size: 16px;
+}
+
+.auth-form input::placeholder,
+.auth-form textarea::placeholder,
+[data-guest-city] input::placeholder,
+.city-select input::placeholder,
+.filter-search input::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="search"]::placeholder,
+input[type="text"]::placeholder {
+  font-size: 16px;
 }
