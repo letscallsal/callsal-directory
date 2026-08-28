@@ -224,6 +224,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         updateSidebar(path);
         paintBookmarks();
         paintSaved();
+        paintLeadsPill(path);
         window.dispatchEvent(new Event('callsal:page-applied'));
       }
 
@@ -285,13 +286,22 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
 
       function userButtons() {
         const name = currentUser?.name || 'SAVED';
-        return `<a class="auth-text-btn" href="/leads/" data-leads-link>LEADS</a><span class="auth-user">${name}</span><button type="button" class="auth-logout" data-logout aria-label="Logout">×</button>`;
+        return `<span class="auth-user">${name}</span><button type="button" class="auth-logout" data-logout aria-label="Logout">×</button>`;
+      }
+
+      function paintLeadsPill(path) {
+        const on = normalize(path || location.pathname) === '/leads';
+        document.querySelectorAll('[data-leads-pill]').forEach((el) => {
+          if (on) el.setAttribute('aria-current', 'page');
+          else el.removeAttribute('aria-current');
+        });
       }
 
       function paintAuth() {
         document.querySelectorAll('[data-auth-slot]').forEach((slot) => {
           slot.innerHTML = currentUser ? userButtons() : guestButtons(slot.getAttribute('data-auth-slot'));
         });
+        paintLeadsPill(location.pathname);
       }
 
       function paintBookmarks() {
