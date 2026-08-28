@@ -3,6 +3,7 @@ import { getAuthUser, setCorsHeaders } from './lib/auth.js';
 import {
   PRICE,
   addShop,
+  isPipelineOwner,
   loadBoard,
   loadPlan,
   moveLead,
@@ -22,14 +23,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const user = await getAuthUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
+  const owner = isPipelineOwner(user);
   const plan = await loadPlan(user.id);
-  let board = await loadBoard(user.id);
+  let board = await loadBoard(user);
 
   if (req.method === 'GET') {
     return res.status(200).json({
       plan,
       leads: board.leads,
-      usage: usage(board, plan),
+      usage: usage(board, plan, owner),
     });
   }
 
@@ -44,14 +46,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       plan: nextPlan,
       leads: board.leads,
-      usage: usage(board, nextPlan),
+      usage: usage(board, nextPlan, owner),
       sandbox: true,
     });
   }
 
   if (action === 'add') {
     const slug = String(body.slug || '').trim().toLowerCase();
-    const result = await addShop(board, slug, plan);
+    const result = await addShop(board, slug, plan, owner);
     if (result.reason === 'missing') return res.status(404).json({ error: 'SHOP NOT FOUND' });
     if (result.reason === 'cap') {
       return res.status(402).json({
@@ -61,22 +63,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: `Free accounts can save 25 leads. Paid Directory is ${PRICE}.`,
         plan,
         leads: board.leads,
-        usage: usage(board, plan),
+        usage: usage(board, plan, owner),
       });
     }
     board = result.board;
-    await saveBoard(user.id, board);
+    await saveBoard(user, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
       added: result.added,
-      usage: usage(board, plan),
+      usage: usage(board, plan, owner),
     });
   }
 
   if (action === 'scan') {
     const city = String(body.city || 'milton').trim().toLowerCase();
-    const result = await scanCity(board, city, plan);
+    const result = await scanCity(board, city, plan, owner);
     if (result.reason === 'paid') {
       return res.status(402).json({
         error: 'PAID',
@@ -85,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: `Scan is on Paid Directory at ${PRICE}.`,
         plan,
         leads: board.leads,
-        usage: usage(board, plan),
+        usage: usage(board, plan, owner),
       });
     }
     if (result.reason === 'scan-wait') {
@@ -94,18 +96,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: 'Scan can run again after 8am.',
         plan,
         leads: board.leads,
-        usage: usage(board, plan),
+        usage: usage(board, plan, owner),
       });
     }
     board = result.board;
-    await saveBoard(user.id, board);
+    await saveBoard(user, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
       added: result.added,
       skipped: result.skipped,
       source: result.source,
-      usage: usage(board, plan),
+      usage: usage(board, plan, owner),
     });
   }
 
@@ -119,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: `Oracle is on Paid Directory at ${PRICE}.`,
         plan,
         leads: board.leads,
-        usage: usage(board, plan),
+        usage: usage(board, plan, owner),
       });
     }
     if (!gate.ok) {
@@ -128,28 +130,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: gate.message,
         plan,
         leads: board.leads,
-        usage: usage(board, plan),
+        usage: usage(board, plan, owner),
       });
     }
     const oracle = runOracle(board);
-    await saveBoard(user.id, board);
+    await saveBoard(user, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
       oracle,
-      usage: usage(board, plan),
+      usage: usage(board, plan, owner),
     });
   }
 
-  const slug = String(body.slug || '').trim().toLowerCase();
+  const slug = String(body.slug || '').trim();
   const rawStage = String(body.stage || '').trim();
   if (slug && rawStage) {
     board = moveLead(board, slug, normalizeStage(rawStage));
-    await saveBoard(user.id, board);
+    await saveBoard(user, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
-      usage: usage(board, plan),
+      usage: usage(board, plan, owner),
     });
   }
 
