@@ -1,19 +1,85 @@
-import { leadsKey, planKey } from './auth.js';
+import fs from 'fs';
+import path from 'path';
+import { leadsKey, planKey, type DirectoryUser } from './auth.js';
 import { getStorage } from './storage.js';
-import { listCityShops, seedShops, shopDedupeKey, typeLabel, type Shop } from './places.js';
+import { seedShops, shopDedupeKey, typeLabel, type Shop } from './places.js';
 
-export type Stage = 'new' | 'contacted' | 'replied' | 'booked';
+export type Stage =
+  | 'New'
+  | 'Contacted'
+  | 'Responded'
+  | 'Meeting Scheduled'
+  | 'Proposal Sent'
+  | 'Won';
 export type Plan = 'free' | 'paid';
 
-export const STAGES: Stage[] = ['new', 'contacted', 'replied', 'booked'];
+export const STAGES: Stage[] = [
+  'New',
+  'Contacted',
+  'Responded',
+  'Meeting Scheduled',
+  'Proposal Sent',
+  'Won',
+];
+
+export const STAGE_LABELS: Record<Stage, string> = {
+  New: 'NEW',
+  Contacted: 'CONTACTED',
+  Responded: 'RESPONDED',
+  'Meeting Scheduled': 'MEETING',
+  'Proposal Sent': 'PROPOSAL',
+  Won: 'WON',
+};
+
+const LEGACY_STAGE: Record<string, Stage> = {
+  new: 'New',
+  contacted: 'Contacted',
+  replied: 'Responded',
+  responded: 'Responded',
+  booked: 'Meeting Scheduled',
+  meeting: 'Meeting Scheduled',
+  'meeting scheduled': 'Meeting Scheduled',
+  proposal: 'Proposal Sent',
+  'proposal sent': 'Proposal Sent',
+  negotiation: 'Proposal Sent',
+  won: 'Won',
+};
+
+const CRM_LEADS_KEY = 'callsal:crm:leads';
+const HEAVY_FIELDS = ['research_data', 'ai_summary', 'cold_call_script', 'dm_script', 'email_script'] as const;
+
 export const FREE_CAP = 25;
 export const PAID_CAP = 1000;
 export const ORACLE_PER_DAY = 3;
 export const PRICE = '$999 a month';
 
-export interface Lead {
+export interface BoardUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
+export interface LeadLog {
+  at: string;
+  type: 'added' | 'stage' | 'note';
+  from?: string;
+  to?: string;
+  text?: string;
+}
+
+export interface StoredLead {
   slug: string;
   placeId?: string;
+  stage: Stage;
+  addedAt: string;
+  updatedAt: string;
+  oracleDraft?: string;
+  note?: string;
+  log?: LeadLog[];
+}
+
+export interface Lead extends StoredLead {
+  catalogSlug?: string;
   name: string;
   type: string;
   category: string;
@@ -35,16 +101,41 @@ export interface Lead {
     socials: boolean;
     photo: boolean;
   };
-  stage: Stage;
-  addedAt: string;
-  updatedAt: string;
-  oracleDraft?: string;
 }
 
 export interface BoardState {
   leads: Lead[];
   lastScanByCity?: Record<string, string>;
   oracleDays?: Record<string, number>;
+}
+
+interface StoredBoard {
+  leads: StoredLead[];
+  lastScanByCity?: Record<string, string>;
+  oracleDays?: Record<string, number>;
+}
+
+interface CrmLight {
+  id?: string;
+  company?: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  instagram?: string;
+  address?: string;
+  industry?: string;
+  notes?: string;
+  source?: string;
+  priority?: string;
+  stage?: string;
+  google_place_id?: string | null;
+  google_maps_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  log?: LeadLog[];
+  oracleDraft?: string;
+  [key: string]: unknown;
 }
 
 export interface OracleResult {
@@ -60,60 +151,124 @@ function emptyBoard(): BoardState {
   return { leads: [], lastScanByCity: {}, oracleDays: {} };
 }
 
-export async function loadPlan(userId: string): Promise<Plan> {
-  const storage = await getStorage();
-  const plan = await storage.get<Plan>(planKey(userId));
-  return plan === 'paid' ? 'paid' : 'free';
-}
-
-export async function setPlan(userId: string, plan: Plan): Promise<void> {
-  const storage = await getStorage();
-  await storage.set(planKey(userId), plan);
-}
-
-export async function loadBoard(userId: string): Promise<BoardState> {
-  const storage = await getStorage();
-  const board = await storage.get<BoardState>(leadsKey(userId));
-  if (!board || !Array.isArray(board.leads)) return emptyBoard();
+function emptyVerified() {
   return {
-    leads: board.leads,
-    lastScanByCity: board.lastScanByCity || {},
-    oracleDays: board.oracleDays || {},
+    phone: false,
+    website: false,
+    email: false,
+    address: false,
+    ownerName: false,
+    socials: false,
+    photo: false,
   };
 }
 
-export async function saveBoard(userId: string, board: BoardState): Promise<void> {
-  const storage = await getStorage();
-  await storage.set(leadsKey(userId), board);
+export function normalizeStage(value: string | undefined): Stage {
+  if (!value) return 'New';
+  if ((STAGES as string[]).includes(value)) return value as Stage;
+  return LEGACY_STAGE[value.trim().toLowerCase()] || 'New';
 }
 
-export function torontoDate(now = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Toronto',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+export function isPipelineOwner(user: BoardUser | DirectoryUser | string): boolean {
+  if (typeof user === 'string') return false;
+  const email = String(user.email || '').trim().toLowerCase();
+  const name = String(user.name || '').trim().toLowerCase();
+  const id = String(user.id || '').trim().toLowerCase();
+  const local = email.split('@')[0] || '';
+  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || 'letscallsal').trim().toLowerCase();
+  if (local === owner || id === owner || name === owner) return true;
+  if (name === 'salman' || name === 'salman chowdhury') return true;
+  return false;
 }
 
-export function capFor(plan: Plan): number {
-  return plan === 'paid' ? PAID_CAP : FREE_CAP;
+function userIdOf(user: BoardUser | string): string {
+  return typeof user === 'string' ? user : user.id;
 }
 
-export function leadKey(lead: Lead): string {
-  return shopDedupeKey(lead);
+function toTiny(lead: Lead | StoredLead): StoredLead {
+  const tiny: StoredLead = {
+    slug: lead.slug,
+    stage: normalizeStage(lead.stage),
+    addedAt: lead.addedAt,
+    updatedAt: lead.updatedAt,
+  };
+  if (lead.placeId) tiny.placeId = lead.placeId;
+  if (lead.oracleDraft) tiny.oracleDraft = lead.oracleDraft;
+  if (lead.note) tiny.note = lead.note;
+  if (Array.isArray(lead.log) && lead.log.length) tiny.log = lead.log;
+  return tiny;
 }
 
-export function hasLead(board: BoardState, shop: { placeId?: string; slug?: string; name: string; address?: string; city?: string }): boolean {
-  const key = shopDedupeKey(shop);
-  return board.leads.some((lead) => leadKey(lead) === key);
+let catalogCache: Shop[] | null = null;
+
+function readCityShards(): Shop[] {
+  const found: Shop[] = [];
+  const dirs = [
+    path.join(process.cwd(), 'src/data/cities'),
+    path.join(process.cwd(), '../src/data/cities'),
+  ];
+  for (const dir of dirs) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      for (const file of fs.readdirSync(dir)) {
+        if (!file.endsWith('.json')) continue;
+        const raw = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) as { shops?: Shop[] };
+        if (Array.isArray(raw.shops)) found.push(...raw.shops);
+      }
+    } catch {
+      // Catalog shards are optional on the function bundle. Seed still works.
+    }
+  }
+  return found;
 }
 
-export function shopToLead(shop: Shop, stage: Stage = 'new'): Lead {
-  const now = new Date().toISOString();
+export function catalogShops(): Shop[] {
+  if (catalogCache) return catalogCache;
+  const merged = new Map<string, Shop>();
+  const add = (shop: Shop) => {
+    const key = shopDedupeKey(shop);
+    if (!merged.has(key)) merged.set(key, shop);
+  };
+  for (const shop of seedShops()) add(shop);
+  for (const shop of readCityShards()) add(shop);
+  catalogCache = [...merged.values()];
+  return catalogCache;
+}
+
+export function findShop(slug: string): Shop | undefined {
+  const needle = String(slug || '').trim().toLowerCase();
+  if (!needle) return undefined;
+  return catalogShops().find((shop) => shop.slug.toLowerCase() === needle);
+}
+
+export function findShopByPlaceId(placeId?: string | null): Shop | undefined {
+  const needle = String(placeId || '').trim();
+  if (!needle) return undefined;
+  return catalogShops().find((shop) => shop.placeId === needle);
+}
+
+function cityFromAddress(address?: string): string {
+  if (!address) return '';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts[1];
+  return '';
+}
+
+function hydrateFromShop(record: StoredLead, shop?: Shop): Lead {
+  const stage = normalizeStage(record.stage);
+  if (!shop) {
+    return {
+      ...toTiny({ ...record, stage }),
+      name: record.slug,
+      type: '',
+      category: '',
+      city: '',
+      verified: emptyVerified(),
+    };
+  }
   return {
-    slug: shop.slug,
-    placeId: shop.placeId,
+    ...toTiny({ ...record, stage, placeId: record.placeId || shop.placeId }),
+    catalogSlug: shop.slug,
     name: shop.name,
     type: typeLabel(shop.category),
     category: shop.category,
@@ -127,23 +282,227 @@ export function shopToLead(shop: Shop, stage: Stage = 'new'): Lead {
     socials: shop.socials,
     photo: shop.verified.photo ? shop.photo : undefined,
     verified: { ...shop.verified, photo: Boolean(shop.verified.photo && shop.photo) },
-    stage,
-    addedAt: now,
-    updatedAt: now,
   };
 }
 
-export function findShop(slug: string): Shop | undefined {
-  return seedShops().find((shop) => shop.slug === slug);
+function hydrateStored(record: StoredLead): Lead {
+  const shop = findShop(record.slug) || findShopByPlaceId(record.placeId);
+  return hydrateFromShop(record, shop);
 }
 
-export async function addShop(board: BoardState, slug: string, plan: Plan): Promise<{ board: BoardState; added: boolean; reason?: string }> {
+function stripHeavy(raw: CrmLight): CrmLight {
+  const light = { ...raw };
+  for (const field of HEAVY_FIELDS) delete light[field];
+  return light;
+}
+
+function crmToLead(raw: CrmLight): Lead | null {
+  const light = stripHeavy(raw);
+  const crmStage = String(light.stage || '');
+  if (crmStage.trim().toLowerCase() === 'lost') return null;
+  const shop = findShopByPlaceId(light.google_place_id) || findShop(String(light.company || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+  const stage = normalizeStage(crmStage);
+  const addedAt = String(light.created_at || new Date().toISOString());
+  const updatedAt = String(light.updated_at || addedAt);
+  const log: LeadLog[] = Array.isArray(light.log) ? light.log : [];
+  const note = String(light.notes || '').trim();
+  if (note && !log.some((entry) => entry.type === 'note' && entry.text === note)) {
+    log.push({ at: updatedAt, type: 'note', text: note });
+  }
+  const record: StoredLead = {
+    slug: String(light.id || shop?.slug || 'lead'),
+    placeId: light.google_place_id || shop?.placeId || undefined,
+    stage,
+    addedAt,
+    updatedAt,
+    oracleDraft: light.oracleDraft,
+    note: note || undefined,
+    log,
+  };
+  const lead = hydrateFromShop(record, shop);
+  if (!shop) {
+    lead.name = String(light.company || record.slug);
+    lead.type = String(light.industry || '');
+    lead.city = cityFromAddress(String(light.address || ''));
+    lead.address = light.address ? String(light.address) : undefined;
+    lead.phone = light.phone ? String(light.phone) : undefined;
+    lead.website = light.website ? String(light.website) : undefined;
+    lead.email = light.email ? String(light.email) : undefined;
+    lead.ownerName = light.contact_name ? String(light.contact_name) : undefined;
+    lead.socials = light.instagram ? { instagram: String(light.instagram) } : undefined;
+    lead.verified = {
+      phone: Boolean(light.phone),
+      website: Boolean(light.website),
+      email: Boolean(light.email),
+      address: Boolean(light.address),
+      ownerName: Boolean(light.contact_name),
+      socials: Boolean(light.instagram),
+      photo: false,
+    };
+  }
+  return lead;
+}
+
+function newCrmId(): string {
+  return `lead_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function leadToCrmLight(lead: Lead, existing?: CrmLight): CrmLight {
+  const base = stripHeavy(existing || {});
+  const shop = findShop(lead.catalogSlug || lead.slug) || findShopByPlaceId(lead.placeId);
+  const now = lead.updatedAt || new Date().toISOString();
+  return {
+    ...base,
+    id: existing?.id || (lead.slug.startsWith('lead_') ? lead.slug : newCrmId()),
+    company: existing?.company || lead.name || shop?.name || lead.slug,
+    contact_name: existing?.contact_name || lead.ownerName || '',
+    email: existing?.email || lead.email || '',
+    phone: existing?.phone || lead.phone || '',
+    website: existing?.website || lead.website || '',
+    instagram: existing?.instagram || lead.socials?.instagram || '',
+    address: existing?.address || lead.address || '',
+    industry: existing?.industry || lead.type || '',
+    notes: existing?.notes || lead.note || '',
+    source: existing?.source || 'directory',
+    priority: existing?.priority || 'Cool',
+    stage: lead.stage,
+    google_place_id: existing?.google_place_id || lead.placeId || shop?.placeId || null,
+    created_at: existing?.created_at || lead.addedAt || now,
+    updated_at: now,
+    log: lead.log,
+    oracleDraft: lead.oracleDraft,
+  };
+}
+
+export async function loadPlan(userId: string): Promise<Plan> {
+  const storage = await getStorage();
+  const plan = await storage.get<Plan>(planKey(userId));
+  return plan === 'paid' ? 'paid' : 'free';
+}
+
+export async function setPlan(userId: string, plan: Plan): Promise<void> {
+  const storage = await getStorage();
+  await storage.set(planKey(userId), plan);
+}
+
+async function loadOwnerBoard(): Promise<BoardState> {
+  const storage = await getStorage();
+  const raw = (await storage.get<CrmLight[] | null>(CRM_LEADS_KEY)) || [];
+  const rows = Array.isArray(raw) ? raw : [];
+  const leads = rows.map(crmToLead).filter((lead): lead is Lead => Boolean(lead));
+  return { leads, lastScanByCity: {}, oracleDays: {} };
+}
+
+async function saveOwnerBoard(board: BoardState): Promise<void> {
+  const storage = await getStorage();
+  const existing = ((await storage.get<CrmLight[] | null>(CRM_LEADS_KEY)) || []) as CrmLight[];
+  const rows = Array.isArray(existing) ? existing.map(stripHeavy) : [];
+  const byId = new Map(rows.map((row) => [String(row.id || ''), row]));
+  for (const lead of board.leads) {
+    const current = byId.get(lead.slug);
+    if (current) {
+      current.stage = lead.stage;
+      current.updated_at = lead.updatedAt;
+      if (lead.log) current.log = lead.log;
+      if (lead.oracleDraft) current.oracleDraft = lead.oracleDraft;
+      if (lead.note) current.notes = lead.note;
+      if (lead.placeId && !current.google_place_id) current.google_place_id = lead.placeId;
+      continue;
+    }
+    const created = leadToCrmLight(lead);
+    rows.unshift(created);
+    byId.set(String(created.id || created.company), created);
+  }
+  await storage.set(CRM_LEADS_KEY, rows);
+}
+
+async function loadMemberBoard(userId: string): Promise<BoardState> {
+  const storage = await getStorage();
+  const board = await storage.get<StoredBoard | BoardState>(leadsKey(userId));
+  if (!board || !Array.isArray(board.leads)) return emptyBoard();
+  return {
+    leads: board.leads.map((lead) => hydrateStored(toTiny(lead as Lead))),
+    lastScanByCity: board.lastScanByCity || {},
+    oracleDays: board.oracleDays || {},
+  };
+}
+
+async function saveMemberBoard(userId: string, board: BoardState): Promise<void> {
+  const storage = await getStorage();
+  const stored: StoredBoard = {
+    leads: board.leads.map(toTiny),
+    lastScanByCity: board.lastScanByCity || {},
+    oracleDays: board.oracleDays || {},
+  };
+  await storage.set(leadsKey(userId), stored);
+}
+
+export async function loadBoard(user: BoardUser | string): Promise<BoardState> {
+  if (isPipelineOwner(user)) return loadOwnerBoard();
+  return loadMemberBoard(userIdOf(user));
+}
+
+export async function saveBoard(user: BoardUser | string, board: BoardState): Promise<void> {
+  if (isPipelineOwner(user)) {
+    await saveOwnerBoard(board);
+    return;
+  }
+  await saveMemberBoard(userIdOf(user), board);
+}
+
+export function torontoDate(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
+export function capFor(plan: Plan, owner = false): number {
+  if (owner) return Number.MAX_SAFE_INTEGER;
+  return plan === 'paid' ? PAID_CAP : FREE_CAP;
+}
+
+export function leadKey(lead: Lead | StoredLead): string {
+  return shopDedupeKey({
+    placeId: lead.placeId,
+    slug: (lead as Lead).catalogSlug || lead.slug,
+    name: (lead as Lead).name || lead.slug,
+    address: (lead as Lead).address,
+    city: (lead as Lead).city,
+  });
+}
+
+export function hasLead(board: BoardState, shop: { placeId?: string; slug?: string; name: string; address?: string; city?: string }): boolean {
+  const key = shopDedupeKey(shop);
+  return board.leads.some((lead) => leadKey(lead) === key || lead.slug === shop.slug || lead.catalogSlug === shop.slug);
+}
+
+function pushLog(lead: Lead, entry: LeadLog): Lead {
+  return { ...lead, log: [...(lead.log || []), entry] };
+}
+
+export function shopToLead(shop: Shop, stage: Stage = 'New'): Lead {
+  const now = new Date().toISOString();
+  return hydrateFromShop({
+    slug: shop.slug,
+    placeId: shop.placeId,
+    stage,
+    addedAt: now,
+    updatedAt: now,
+    log: [{ at: now, type: 'added', to: stage }],
+  }, shop);
+}
+
+export async function addShop(board: BoardState, slug: string, plan: Plan, owner = false): Promise<{ board: BoardState; added: boolean; reason?: string }> {
   if (hasLead(board, { slug, name: slug })) {
     return { board, added: false, reason: 'on-board' };
   }
   const shop = findShop(slug);
   if (!shop) return { board, added: false, reason: 'missing' };
-  if (board.leads.length >= capFor(plan)) {
+  if (hasLead(board, shop)) return { board, added: false, reason: 'on-board' };
+  if (board.leads.length >= capFor(plan, owner)) {
     return { board, added: false, reason: 'cap' };
   }
   board.leads.push(shopToLead(shop));
@@ -152,9 +511,13 @@ export async function addShop(board: BoardState, slug: string, plan: Plan): Prom
 
 export function moveLead(board: BoardState, slug: string, stage: Stage): BoardState {
   const now = new Date().toISOString();
-  board.leads = board.leads.map((lead) =>
-    lead.slug === slug ? { ...lead, stage, updatedAt: now } : lead,
-  );
+  const next = normalizeStage(stage);
+  board.leads = board.leads.map((lead) => {
+    if (lead.slug !== slug && lead.catalogSlug !== slug) return lead;
+    const from = normalizeStage(lead.stage);
+    if (from === next) return lead;
+    return pushLog({ ...lead, stage: next, updatedAt: now }, { at: now, type: 'stage', from, to: next });
+  });
   return board;
 }
 
@@ -163,7 +526,7 @@ function scannedToday(board: BoardState, city: string): boolean {
   return Boolean(stamp && torontoDate(new Date(stamp)) === torontoDate());
 }
 
-export async function scanCity(board: BoardState, city: string, plan: Plan): Promise<{
+export async function scanCity(board: BoardState, city: string, plan: Plan, owner = false): Promise<{
   board: BoardState;
   added: number;
   skipped: number;
@@ -175,11 +538,11 @@ export async function scanCity(board: BoardState, city: string, plan: Plan): Pro
   if (scannedToday(board, cityKey)) {
     return { board, added: 0, skipped: 0, reason: 'scan-wait', source: 'seed' };
   }
-  const result = await listCityShops(cityKey);
+  const shops = catalogShops().filter((shop) => shop.city.trim().toLowerCase() === cityKey);
   let added = 0;
   let skipped = 0;
-  for (const shop of result.shops) {
-    if (board.leads.length >= PAID_CAP) break;
+  for (const shop of shops) {
+    if (board.leads.length >= capFor(plan, owner)) break;
     if (hasLead(board, shop)) {
       skipped += 1;
       continue;
@@ -188,7 +551,7 @@ export async function scanCity(board: BoardState, city: string, plan: Plan): Pro
     added += 1;
   }
   board.lastScanByCity = { ...(board.lastScanByCity || {}), [cityKey]: new Date().toISOString() };
-  return { board, added, skipped, source: result.source };
+  return { board, added, skipped, source: 'seed' };
 }
 
 export function oracleAllowed(board: BoardState, plan: Plan): { ok: boolean; remaining: number; message?: string } {
@@ -204,10 +567,10 @@ export function oracleAllowed(board: BoardState, plan: Plan): { ok: boolean; rem
 export function runOracle(board: BoardState): OracleResult {
   const next =
     board.leads
-      .filter((lead) => lead.stage === 'new')
+      .filter((lead) => normalizeStage(lead.stage) === 'New')
       .sort((a, b) => a.addedAt.localeCompare(b.addedAt))[0] ||
     board.leads
-      .filter((lead) => lead.stage === 'contacted')
+      .filter((lead) => normalizeStage(lead.stage) === 'Contacted')
       .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))[0] ||
     null;
 
@@ -227,15 +590,20 @@ export function runOracle(board: BoardState): OracleResult {
   if (!next.verified.email || !next.email) flags.push('Email is missing.');
   if (!next.verified.website || !next.website) flags.push('Website is missing.');
 
+  const stage = normalizeStage(next.stage);
   let stageHint = 'Stay with this card until you reach out.';
-  if (next.stage === 'new' && (next.phone || next.email)) {
+  if (stage === 'New' && (next.phone || next.email)) {
     stageHint = 'Move to Contacted when you reach out.';
-  } else if (next.stage === 'contacted') {
-    stageHint = 'Move to Replied if they wrote back.';
-  } else if (next.stage === 'replied') {
-    stageHint = 'Move to Booked if you have a meeting.';
-  } else if (next.stage === 'booked') {
-    stageHint = 'This one is booked.';
+  } else if (stage === 'Contacted') {
+    stageHint = 'Move to Responded if they wrote back.';
+  } else if (stage === 'Responded') {
+    stageHint = 'Move to Meeting Scheduled if you have a meeting.';
+  } else if (stage === 'Meeting Scheduled') {
+    stageHint = 'Move to Proposal Sent when the proposal is ready.';
+  } else if (stage === 'Proposal Sent') {
+    stageHint = 'Move to Won if they say yes.';
+  } else if (stage === 'Won') {
+    stageHint = 'This one is won.';
   }
 
   const missingLine = flags.length
@@ -259,15 +627,15 @@ export function runOracle(board: BoardState): OracleResult {
   };
 }
 
-export function usage(board: BoardState, plan: Plan) {
+export function usage(board: BoardState, plan: Plan, owner = false) {
   const day = torontoDate();
-  const scanStamp = board.lastScanByCity?.milton;
+  const scanStamp = board.lastScanByCity?.milton || Object.values(board.lastScanByCity || {})[0];
   const scanned = Boolean(scanStamp && torontoDate(new Date(scanStamp)) === day);
   const oracleUsed = board.oracleDays?.[day] || 0;
   return {
     plan,
     leadCount: board.leads.length,
-    leadCap: capFor(plan),
+    leadCap: capFor(plan, owner),
     price: PRICE,
     scan: {
       allowed: plan === 'paid' && !scanned,
@@ -275,7 +643,7 @@ export function usage(board: BoardState, plan: Plan) {
         ? `Scan is on Paid Directory at ${PRICE}.`
         : scanned
           ? 'Scan can run again after 8am.'
-          : 'Scan can fill Milton shops that are not already on the board.',
+          : 'Scan can fill shops from the Directory index that are not already on the board.',
     },
     oracle: {
       remaining: plan === 'paid' ? Math.max(0, ORACLE_PER_DAY - oracleUsed) : 0,
