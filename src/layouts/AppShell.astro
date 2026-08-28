@@ -1,1 +1,296 @@
-PLACEHOLDER_APPSHELL
+---
+import '../styles/global.css';
+import '../styles/landing.css';
+import '../styles/leads.css';
+import Sidebar from '../components/Sidebar.astro';
+import BrandPill from '../components/BrandPill.astro';
+import DirectoryRoom from '../components/room/DirectoryRoom';
+import { getShops } from '../lib/shops';
+
+interface Props {
+  title: string;
+  description?: string;
+  withRoom?: boolean;
+}
+
+const { title, description = 'A local Google Business index you can turn into a lead board.', withRoom = false } = Astro.props;
+const shops = await getShops();
+const pageTitle = title === 'Directory' ? 'DIRECTORY — CALL SAL' : `${title} — DIRECTORY`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
+---
+
+<!doctype html>
+<html lang="en" class:list={[{ 'has-room': withRoom }]}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="application-name" content="CALL SAL Directory" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="canonical" href={canonical} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="CALL SAL Directory" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_CA" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <title>{pageTitle}</title>
+    <style is:inline>
+      html, body { background: #fff; margin: 0; }
+      #boot-loader {
+        position: fixed; inset: 0; z-index: 100000;
+        display: flex; align-items: center; justify-content: center;
+        pointer-events: none;
+      }
+      .boot-scrim {
+        position: absolute; inset: 0;
+        background: #fff;
+        transition: opacity 0.32s cubic-bezier(0.4, 0, 1, 1);
+      }
+      #boot-loader.is-ack .boot-scrim { opacity: 0; }
+      #boot-loader.is-ack .boot-pill {
+        animation: boot-leave 0.32s cubic-bezier(0.4, 0, 1, 1) forwards;
+      }
+      @keyframes boot-leave {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-8px); }
+      }
+      .boot-pill {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        overflow: hidden;
+        background: #f3f3f3;
+        color: #000;
+        font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: -0.025em;
+        text-transform: uppercase;
+        padding: 0.375rem 0.75rem 0.375rem 0.625rem;
+        border-radius: 9999px;
+        line-height: 1;
+      }
+      .boot-pill-fill {
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        height: 0%;
+        background: #CCFF00;
+        z-index: 0;
+        animation: boot-fill-rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      @keyframes boot-fill-rise {
+        from { height: 0%; }
+        to { height: 100%; }
+      }
+      .boot-pill-fill.is-strobe {
+        height: 100%;
+        animation: boot-fill-strobe 0.72s ease-in-out;
+      }
+      @keyframes boot-fill-strobe {
+        0% { filter: brightness(1); }
+        20% { filter: brightness(1.22); }
+        40% { filter: brightness(1); }
+        62% { filter: brightness(1.16); }
+        100% { filter: brightness(1); }
+      }
+      html.has-room:not(.intro-ready) .room-canvas {
+        visibility: hidden;
+        opacity: 0;
+      }
+      .boot-pill-inner {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .boot-pill svg { display: block; flex-shrink: 0; }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-scrim { transition: none; }
+        .boot-pill-fill {
+          height: 100% !important;
+          animation: none !important;
+          filter: none;
+        }
+        #boot-loader.is-ack .boot-pill { animation: none; opacity: 0; }
+      }
+    </style>
+  </head>
+  <body class="noise-overlay">
+    <div id="boot-loader" aria-hidden="true">
+      <div class="boot-scrim"></div>
+      <div class="boot-pill" id="boot-pill">
+        <span class="boot-pill-fill" id="boot-pill-fill"></span>
+        <span class="boot-pill-inner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none"></circle>
+            <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle>
+            <circle cx="5" cy="18" r="1.4" fill="currentColor" stroke="none"></circle>
+            <path d="M10 6h10"></path>
+            <path d="M10 12h10"></path>
+            <path d="M10 18h10"></path>
+          </svg>
+          <span>DIRECTORY</span>
+        </span>
+      </div>
+    </div>
+
+    <svg style="position:absolute;width:0;height:0;pointer-events:none" aria-hidden="true">
+      <defs>
+        <filter id="glass-displacement">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" result="noise"/>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+    </svg>
+
+    {withRoom && <DirectoryRoom client:load />}
+
+    <div class="stage-scroll sleek-scroll" id="stage-scroll">
+      {withRoom && (
+        <section class="hero-stage" id="hero-stage" aria-label="Directory landing">
+          <header class="hero-glass-header intro-ui intro-trace intro-trace-down intro-d0">
+            <BrandPill mark="callsal" />
+            <p class="est" data-est-hero>
+              <span>EST</span>
+              <span class="est-year" data-est-year-hero>MMXXVI</span>
+              <span>© CALL SAL .</span>
+            </p>
+          </header>
+
+          <div class="hero-landing intro-ui">
+            <p class="hero-kicker intro-trace intro-d2">
+              <span class="hero-kicker-mark" aria-hidden="true"></span>
+              <span class="hero-kicker-text">FOR AGENCIES AND FREELANCERS</span>
+            </p>
+            <h1 class="hero-title intro-trace intro-d3">THE<br />DIRECTORY</h1>
+            <p class="hero-sub intro-trace intro-d4"><span class="hero-sub-hl">A local Google Business index you can turn into a lead board.</span></p>
+            <div class="hero-ctas intro-trace intro-d5">
+              <button type="button" class="btn-primary hover-lift" data-browse>BROWSE</button>
+              <button type="button" class="btn-glass hover-lift" data-join>JOIN</button>
+            </div>
+          </div>
+
+          <button type="button" class="scroll-hint intro-ui intro-trace intro-trace-up intro-d6" data-browse>
+            <span>Scroll the index</span>
+            <div class="scroll-mouse" aria-hidden="true"><div class="scroll-dot"></div></div>
+          </button>
+
+          <aside class="hero-glass-nav intro-ui intro-trace intro-trace-up intro-d1">
+            <p class="est" data-est-nav>
+              <span>EST</span>
+              <span class="est-year" data-est-year-nav>MMXXVI</span>
+              <span>© CALL SAL .</span>
+            </p>
+            <div class="hero-nav-auth" data-auth-slot="hero"></div>
+          </aside>
+        </section>
+      )}
+
+      <div class="app" id="directory-stage">
+        <div class="chrome-slot" id="chrome-slot">
+          <header class:list={['app-chrome', 'intro-ui', 'intro-trace', 'intro-trace-down', 'intro-d0']} id="app-chrome">
+            <BrandPill />
+            <p class="est" data-est>
+              <span>EST</span>
+              <span class="est-year" data-est-year>MMXXVI</span>
+              <span>© CALL SAL .</span>
+            </p>
+            <div class="app-auth" data-auth-slot="app"></div>
+            <button type="button" class="menu-btn" data-menu aria-controls="sidebar" aria-expanded="false">
+              INDEX
+            </button>
+          </header>
+        </div>
+
+        <div class="app-body">
+          <Sidebar shops={shops} currentPath={Astro.url.pathname} />
+          <div class="scrim" data-scrim hidden></div>
+          <div class="viewport sleek-scroll" data-viewport>
+            <main data-main>
+              <slot />
+            </main>
+            <footer class="page-foot intro-trace intro-trace-up intro-d2">
+              <span class="est" data-est-foot>
+                <span>EST</span>
+                <span class="est-year" data-est-year-foot>MMXXVI</span>
+                <span>© CALL SAL .</span>
+              </span>
+              <span>© 2026 CALLSAL</span>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-modal" id="auth-modal" hidden>
+      <div class="auth-scrim" data-auth-close></div>
+      <div class="auth-panel glass-strong" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <div class="auth-head">
+          <h2 id="auth-title" data-auth-title>JOIN</h2>
+          <button type="button" class="auth-close" data-auth-close aria-label="Close">×</button>
+        </div>
+        <div class="auth-body">
+          <p class="auth-error" data-auth-error hidden></p>
+          <form class="auth-form" data-auth-form>
+            <input required type="email" name="email" placeholder="EMAIL ADDRESS" autocomplete="email" />
+            <input required type="password" name="password" placeholder="PASSWORD" autocomplete="current-password" minlength="8" />
+            <button type="submit" class="btn-primary" data-auth-submit>CREATE ACCOUNT</button>
+          </form>
+          <button type="button" class="auth-switch" data-auth-switch>ALREADY HAVE AN ACCOUNT? LOG IN</button>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="auth-modal" id="premium-modal" hidden>
+      <div class="auth-scrim" data-premium-close></div>
+      <div class="auth-panel glass-strong" role="dialog" aria-modal="true" aria-labelledby="premium-title">
+        <div class="auth-head">
+          <h2 id="premium-title">PAID DIRECTORY</h2>
+          <button type="button" class="auth-close" data-premium-close aria-label="Close">×</button>
+        </div>
+        <div class="auth-body">
+          <p class="page-tag" data-premium-copy>Paid Directory is $999 a month. Scan fills the city board and Oracle drafts the next step. This form does not take payment.</p>
+          <button type="button" class="btn-primary" data-sandbox-upgrade>USE THE PAID BOARD IN SANDBOX</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-modal" id="shop-info-modal" hidden>
+      <div class="auth-scrim" data-shop-info-close></div>
+      <div class="auth-panel glass-strong" role="dialog" aria-modal="true" aria-labelledby="shop-info-title">
+        <div class="auth-head">
+          <h2 id="shop-info-title" data-shop-info-title></h2>
+          <button type="button" class="auth-close" data-shop-info-close aria-label="Close">×</button>
+        </div>
+        <div class="auth-body shop-info-body" data-shop-info-body></div>
+      </div>
+    </div>
+    <script src="/directory-leads.js" defer></script>
+
+    <script define:vars={{ withRoom }}>
+      window.__DIRECTORY_WITH_ROOM = withRoom;
+    </script>
+    <script src="/directory-shell.js" defer></script>
+  </body>
+</html>
