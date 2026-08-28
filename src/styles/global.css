@@ -635,6 +635,13 @@ main {
   gap: 0.9rem;
 }
 
+.card-wrap[hidden],
+.row[hidden],
+[data-shop-row][hidden],
+[data-shop-grid][hidden] {
+  display: none !important;
+}
+
 .page-kicker {
   margin: 0 0 0.55rem;
   color: var(--lime);

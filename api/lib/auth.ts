@@ -2,9 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const COOKIE_NAME = 'directory_auth';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-
-export const FREE_TEST_EMAIL = 'letscallsal+free@gmail.com';
-export const FREE_TEST_PASSWORD = 'callsal1';
+export const MIN_PASSWORD_LENGTH = 6;
 
 export interface DirectoryUser {
   id: string;
@@ -24,6 +22,11 @@ function jwtSecret(): string {
     console.warn('JWT_SECRET missing; signing with directory fallback');
   }
   return 'callsal-directory-fallback-do-not-ship-as-prod-secret';
+}
+
+export function matchesSetupKey(value: string): boolean {
+  const key = String(value || '');
+  return key.length > 0 && key === jwtSecret();
 }
 
 export function publicUser(user: StoredUser | DirectoryUser): DirectoryUser {
@@ -125,27 +128,18 @@ export async function saveUser(user: StoredUser): Promise<void> {
   await storage.set(userIdKey(user.id), user);
 }
 
-export function isFreeTestLogin(email: string, password: string): boolean {
-  return email.trim().toLowerCase() === FREE_TEST_EMAIL && password === FREE_TEST_PASSWORD;
+export async function setUserPassword(user: StoredUser, password: string): Promise<StoredUser> {
+  const next = { ...user, passwordHash: await hashPassword(password) };
+  await saveUser(next);
+  return next;
 }
 
-export async function upsertFreeTestUser(): Promise<StoredUser> {
-  const existing = await loadUserByEmail(FREE_TEST_EMAIL);
-  const passwordHash = await hashPassword(FREE_TEST_PASSWORD);
-  const user: StoredUser = existing
-    ? { ...existing, passwordHash, name: existing.name || 'Sal' }
-    : {
-        id: crypto.randomUUID(),
-        email: FREE_TEST_EMAIL,
-        name: 'Sal',
-        passwordHash,
-        createdAt: new Date().toISOString(),
-      };
-  await saveUser(user);
+export async function ensureFreePlan(userId: string): Promise<void> {
   const { getStorage } = await import('./storage.js');
   const storage = await getStorage();
-  await storage.set(planKey(user.id), 'free');
-  return user;
+  const plan = await storage.get<string>(planKey(userId));
+  if (plan === 'paid') return;
+  await storage.set(planKey(userId), 'free');
 }
 
 const allowedOrigins = [
@@ -169,6 +163,6 @@ export function setCorsHeaders(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-directory-setup');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 }

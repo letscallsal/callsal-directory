@@ -171,14 +171,12 @@ export function normalizeStage(value: string | undefined): Stage {
 
 export function isPipelineOwner(user: BoardUser | DirectoryUser | string): boolean {
   if (typeof user === 'string') return false;
+  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || '').trim().toLowerCase();
+  if (!owner) return false;
   const email = String(user.email || '').trim().toLowerCase();
-  const name = String(user.name || '').trim().toLowerCase();
   const id = String(user.id || '').trim().toLowerCase();
   const local = email.split('@')[0] || '';
-  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || 'letscallsal').trim().toLowerCase();
-  if (local === owner || id === owner || name === owner) return true;
-  if (name === 'salman' || name === 'salman chowdhury') return true;
-  return false;
+  return email === owner || id === owner || local === owner;
 }
 
 function userIdOf(user: BoardUser | string): string {

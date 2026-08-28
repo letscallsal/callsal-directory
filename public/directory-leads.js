@@ -277,6 +277,23 @@
     }
   }
 
+  function syncGuestCity(city) {
+    const want = (city || '').toLowerCase();
+    document.querySelectorAll('[data-city-pick]').forEach((el) => {
+      const val = (el.getAttribute('data-city-pick') || '').toLowerCase();
+      el.classList.toggle('is-on', val === want);
+    });
+    const input = document.querySelector('[data-city-input]');
+    if (input && document.activeElement !== input) {
+      const on = document.querySelector('[data-filter-city].is-on');
+      input.value = city && on ? String(on.textContent || '').trim() : '';
+    }
+    try {
+      if (city) sessionStorage.setItem('directory:guest-city', city);
+      else sessionStorage.removeItem('directory:guest-city');
+    } catch (err) { /* private mode */ }
+  }
+
   function closeOtherAccords(openOne) {
     document.querySelectorAll('[data-filter-accord]').forEach((el) => {
       if (el !== openOne) el.removeAttribute('open');
@@ -308,6 +325,12 @@
       const visible = [...row.querySelectorAll('[data-card-slug]')].some((card) => !card.hidden);
       row.hidden = !visible;
     });
+    document.querySelectorAll('[data-shop-grid]').forEach((grid) => {
+      const hasCards = grid.querySelector('[data-card-slug]');
+      if (!hasCards) return;
+      const visible = [...grid.querySelectorAll('[data-card-slug]')].some((card) => !card.hidden);
+      grid.hidden = !visible;
+    });
     const count = document.querySelector('[data-filter-count]');
     if (count) {
       const active = Boolean(city || niche || needs.length || q);
@@ -315,43 +338,56 @@
       count.textContent = shown === 1 ? '1 shop' : shown + ' shops';
     }
     paintFilterNow();
+    syncGuestCity(city);
   }
 
+  window.__dirApplyShopFilters = applyShopFilters;
+
   function bindShopFilters() {
-    const bar = document.querySelector('[data-shop-filters]');
-    if (!bar || bar.getAttribute('data-bound') === '1') return;
-    bar.setAttribute('data-bound', '1');
-    bar.querySelectorAll('[data-filter-accord]').forEach((accord) => {
-      accord.addEventListener('toggle', () => {
-        if (accord.open) closeOtherAccords(accord);
-      });
-    });
-    bar.addEventListener('click', (event) => {
-      const cityBtn = event.target && event.target.closest ? event.target.closest('[data-filter-city]') : null;
+    if (window.__dirShopFilterBound) {
+      applyShopFilters();
+      return;
+    }
+    window.__dirShopFilterBound = true;
+    document.addEventListener('toggle', (event) => {
+      const accord = event.target;
+      if (!accord || !accord.closest || !accord.closest('[data-filter-accord]')) return;
+      if (accord.open) closeOtherAccords(accord);
+    }, true);
+    document.addEventListener('click', (event) => {
+      const hit = event.target && event.target.closest ? event.target : null;
+      const bar = hit ? hit.closest('[data-shop-filters]') : null;
+      if (!bar) return;
+      const cityBtn = hit.closest('[data-filter-city]');
       if (cityBtn) {
         bar.querySelectorAll('[data-filter-city]').forEach((btn) => btn.classList.toggle('is-on', btn === cityBtn));
         applyShopFilters();
         const wrap = cityBtn.closest('[data-filter-accord]');
         if (wrap) wrap.removeAttribute('open');
+        window.dispatchEvent(new Event('callsal:close-directory'));
         return;
       }
-      const nicheBtn = event.target && event.target.closest ? event.target.closest('[data-filter-niche]') : null;
+      const nicheBtn = hit.closest('[data-filter-niche]');
       if (nicheBtn) {
         bar.querySelectorAll('[data-filter-niche]').forEach((btn) => btn.classList.toggle('is-on', btn === nicheBtn));
         applyShopFilters();
         const wrap = nicheBtn.closest('[data-filter-accord]');
         if (wrap) wrap.removeAttribute('open');
+        window.dispatchEvent(new Event('callsal:close-directory'));
         return;
       }
-      const hasBtn = event.target && event.target.closest ? event.target.closest('[data-filter-has]') : null;
+      const hasBtn = hit.closest('[data-filter-has]');
       if (hasBtn) {
         hasBtn.classList.toggle('is-on');
         hasBtn.setAttribute('aria-pressed', hasBtn.classList.contains('is-on') ? 'true' : 'false');
         applyShopFilters();
       }
     });
-    const input = bar.querySelector('[data-filter-q]');
-    if (input) input.addEventListener('input', applyShopFilters);
+    document.addEventListener('input', (event) => {
+      if (event.target && event.target.closest && event.target.closest('[data-filter-q]')) {
+        applyShopFilters();
+      }
+    });
     applyShopFilters();
   }
 

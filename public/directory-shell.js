@@ -279,6 +279,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       }
 
       window.addEventListener('callsal:intro-complete', () => setOpen(false));
+      window.addEventListener('callsal:close-directory', () => setOpen(false));
 
       menu?.addEventListener('click', () => {
         void openDirectoryMenu();

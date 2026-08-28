@@ -1,12 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   createToken,
-  isFreeTestLogin,
   loadUserByEmail,
   publicUser,
   setAuthCookie,
   setCorsHeaders,
-  upsertFreeTestUser,
   verifyPassword,
 } from '../lib/auth.js';
 
@@ -22,15 +20,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!email || !password) return res.status(400).json({ error: 'EMAIL AND PASSWORD REQUIRED' });
 
-    const user = isFreeTestLogin(email, password)
-      ? await upsertFreeTestUser()
-      : await loadUserByEmail(email);
+    const user = await loadUserByEmail(email);
     if (!user) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
 
-    if (!isFreeTestLogin(email, password)) {
-      const ok = await verifyPassword(password, user.passwordHash);
-      if (!ok) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
-    }
+    const ok = await verifyPassword(password, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
 
     const pub = publicUser(user);
     const token = await createToken(pub);

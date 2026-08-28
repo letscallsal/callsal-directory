@@ -102,15 +102,15 @@
     return null;
   }
 
-  function syncMenu(city) {
+  function setSidebarCity(city) {
     var want = (city || '').toLowerCase();
-    var now = document.querySelector('[data-filter-now="city"]');
-    if (now) now.textContent = city || 'All cities';
-    var match = document.querySelector('[data-filter-city="' + want + '"]');
-    if (match) match.click();
+    document.querySelectorAll('[data-filter-city]').forEach(function (btn) {
+      var val = (btn.getAttribute('data-filter-city') || '').toLowerCase();
+      btn.classList.toggle('is-on', val === want);
+    });
   }
 
-  function applyCity(city, persist) {
+  function applyCityCards(city) {
     var chosen = (city || '').trim();
     document.querySelectorAll('[data-card-slug]').forEach(function (card) {
       if (!chosen) {
@@ -126,17 +126,26 @@
       });
       row.hidden = !visible;
     });
+  }
+
+  function applyCity(city, persist) {
+    var chosen = (city || '').trim();
+    var input = inputEl();
+    if (input) input.value = chosen;
+    markActive(chosen);
+    setMiss(false);
+    setSidebarCity(chosen);
+    if (typeof window.__dirApplyShopFilters === 'function') {
+      window.__dirApplyShopFilters();
+    } else {
+      applyCityCards(chosen);
+    }
     if (persist !== false) {
       try {
         if (chosen) sessionStorage.setItem(KEY, chosen);
         else sessionStorage.removeItem(KEY);
       } catch (err) { /* private mode */ }
     }
-    var input = inputEl();
-    if (input) input.value = chosen;
-    markActive(chosen);
-    setMiss(false);
-    syncMenu(chosen);
   }
 
   function tryApplyFromBar() {
@@ -196,8 +205,7 @@
       var input = inputEl();
       if (input) input.value = city;
       filterSuggestions(city);
-      markActive(city);
-      setMiss(false);
+      applyCity(city);
       return;
     }
     if (event.target && event.target.closest && event.target.closest('[data-city-apply]')) {
