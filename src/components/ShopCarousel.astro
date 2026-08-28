@@ -12,7 +12,7 @@ const { title, shops, href } = Astro.props;
 ---
 
 {shops.length > 0 && (
-  <section class="row" data-carousel>
+  <section class="row" data-carousel data-shop-row>
     <div class="row-head">
       {href ? (
         <h2><a href={href}>{title}</a></h2>

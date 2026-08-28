@@ -148,3 +148,95 @@
     grid-template-columns: repeat(2, minmax(14rem, 1fr));
   }
 }
+
+
+.add-lead-btn {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 2;
+  width: 2.15rem;
+  height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #CCFF00;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(204, 255, 0, 0.4);
+}
+
+.add-lead-btn svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.add-lead-btn .add-lead-check {
+  display: none;
+}
+
+.add-lead-btn.is-on {
+  color: #111;
+  background: #CCFF00;
+  border-color: #CCFF00;
+}
+
+.add-lead-btn.is-on .add-lead-plus {
+  display: none;
+}
+
+.add-lead-btn.is-on .add-lead-check {
+  display: block;
+}
+
+.shop-filters {
+  margin: 0 0 2.1rem;
+  max-width: 46rem;
+}
+
+.shop-filters .page-kicker {
+  margin-bottom: 0.85rem;
+}
+
+.filter-row + .filter-row,
+.filter-search {
+  margin-top: 0.85rem;
+}
+
+.filter-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.filter-search input {
+  width: min(22rem, 100%);
+  padding: 0.55rem 0.15rem 0.5rem;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filter-count {
+  margin: 0.85rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.filter-count[hidden] {
+  display: none;
+}

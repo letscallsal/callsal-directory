@@ -36,10 +36,93 @@
     document.querySelectorAll('[data-add-lead]').forEach((btn) => {
       const slug = btn.getAttribute('data-add-lead') || '';
       const on = leadSlugs.has(slug);
+      const card = btn.closest('[data-card-slug]');
+      const name = card && card.getAttribute('data-shop-name') ? card.getAttribute('data-shop-name') : 'this shop';
       btn.classList.toggle('is-on', on);
-      btn.textContent = on ? 'ON BOARD' : 'ADD TO LEADS';
-      btn.disabled = on;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? name + ' is on your board' : 'Add ' + name + ' to leads');
     });
+  }
+
+  function selectedCity() {
+    const on = document.querySelector('[data-filter-city].is-on');
+    return on ? (on.getAttribute('data-filter-city') || '') : '';
+  }
+
+  function selectedNiche() {
+    const on = document.querySelector('[data-filter-niche].is-on');
+    return on ? (on.getAttribute('data-filter-niche') || '') : '';
+  }
+
+  function selectedHas() {
+    return [...document.querySelectorAll('[data-filter-has].is-on')].map((btn) => btn.getAttribute('data-filter-has') || '');
+  }
+
+  function searchQuery() {
+    const input = document.querySelector('[data-filter-q]');
+    return input ? String(input.value || '').trim().toLowerCase() : '';
+  }
+
+  function applyShopFilters() {
+    const bar = document.querySelector('[data-shop-filters]');
+    if (!bar) return;
+    const city = selectedCity();
+    const niche = selectedNiche();
+    const needs = selectedHas();
+    const q = searchQuery();
+    const cards = [...document.querySelectorAll('[data-card-slug]')];
+    let shown = 0;
+    cards.forEach((card) => {
+      const okCity = !city || (card.getAttribute('data-shop-city') || '') === city;
+      const okNiche = !niche || (card.getAttribute('data-shop-type') || '') === niche;
+      const okEmail = needs.indexOf('email') === -1 || card.getAttribute('data-has-email') === '1';
+      const okPhone = needs.indexOf('phone') === -1 || card.getAttribute('data-has-phone') === '1';
+      const okSite = needs.indexOf('website') === -1 || card.getAttribute('data-has-website') === '1';
+      const name = (card.getAttribute('data-shop-name') || '').toLowerCase();
+      const okSearch = !q || name.indexOf(q) !== -1;
+      const show = okCity && okNiche && okEmail && okPhone && okSite && okSearch;
+      card.hidden = !show;
+      if (show) shown += 1;
+    });
+    document.querySelectorAll('[data-shop-row]').forEach((row) => {
+      const visible = [...row.querySelectorAll('[data-card-slug]')].some((card) => !card.hidden);
+      row.hidden = !visible;
+    });
+    const count = document.querySelector('[data-filter-count]');
+    if (count) {
+      const active = Boolean(city || niche || needs.length || q);
+      count.hidden = !active;
+      count.textContent = shown === 1 ? '1 shop' : shown + ' shops';
+    }
+  }
+
+  function bindShopFilters() {
+    const bar = document.querySelector('[data-shop-filters]');
+    if (!bar || bar.getAttribute('data-bound') === '1') return;
+    bar.setAttribute('data-bound', '1');
+    bar.addEventListener('click', (event) => {
+      const cityBtn = event.target && event.target.closest ? event.target.closest('[data-filter-city]') : null;
+      if (cityBtn) {
+        bar.querySelectorAll('[data-filter-city]').forEach((btn) => btn.classList.toggle('is-on', btn === cityBtn));
+        applyShopFilters();
+        return;
+      }
+      const nicheBtn = event.target && event.target.closest ? event.target.closest('[data-filter-niche]') : null;
+      if (nicheBtn) {
+        bar.querySelectorAll('[data-filter-niche]').forEach((btn) => btn.classList.toggle('is-on', btn === nicheBtn));
+        applyShopFilters();
+        return;
+      }
+      const hasBtn = event.target && event.target.closest ? event.target.closest('[data-filter-has]') : null;
+      if (hasBtn) {
+        hasBtn.classList.toggle('is-on');
+        hasBtn.setAttribute('aria-pressed', hasBtn.classList.contains('is-on') ? 'true' : 'false');
+        applyShopFilters();
+      }
+    });
+    const input = bar.querySelector('[data-filter-q]');
+    if (input) input.addEventListener('input', applyShopFilters);
+    applyShopFilters();
   }
 
   function fieldMark(ok) {
@@ -181,6 +264,7 @@
     }
     paintAddLeads();
     paintLeadsBoard();
+    bindShopFilters();
   }
 
   document.addEventListener('click', (event) => {

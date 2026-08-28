@@ -1,6 +1,7 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
 import ShopCard from '../../components/ShopCard.astro';
+import ShopFilters from '../../components/ShopFilters.astro';
 import { TYPE_META, getShops, byType, typeLabel, type TypeSlug } from '../../lib/shops';
 
 export function getStaticPaths() {
@@ -10,8 +11,10 @@ export function getStaticPaths() {
 }
 
 const slug = Astro.params.slug as TypeSlug;
-const shops = byType(await getShops(), slug);
+const all = await getShops();
+const shops = byType(all, slug);
 const label = typeLabel(slug);
+const cities = [...new Set(shops.map((shop) => shop.city))].sort((a, b) => a.localeCompare(b));
 ---
 
 <AppShell title={label} description={`Published ${label.toLowerCase()} shops in Milton.`}>
@@ -21,8 +24,10 @@ const label = typeLabel(slug);
     <p class="page-tag">Published {label.toLowerCase()} shops in Milton.</p>
   </header>
 
+  <ShopFilters cities={cities} showNiche={false} />
+
   {shops.length > 0 ? (
-    <div class="grid">
+    <div class="grid" data-shop-grid>
       {shops.map((shop) => (
         <ShopCard shop={shop} />
       ))}
