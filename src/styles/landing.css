@@ -211,6 +211,10 @@
   min-height: 13.5rem;
 }
 
+.card-wrap[data-shop-type] .card {
+  cursor: pointer;
+}
+
 .bookmark-btn {
   position: absolute;
   top: 0.7rem;
@@ -390,4 +394,79 @@ html.has-room:not(.intro-done) .hero-glass-nav,
 html.has-room:not(.intro-done) .scroll-hint {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Right-side chrome: JOIN / LOGIN (text) then INDEX (lime pill). */
+.app-chrome .app-auth {
+  margin-left: auto;
+}
+
+.menu-btn[data-menu] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 0.75rem;
+  background: #CCFF00;
+  color: #000;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  line-height: 1;
+}
+
+.menu-btn[data-menu]:hover {
+  color: #000;
+  filter: brightness(1.08);
+}
+
+/* INDEX opens the filter menu at every width. */
+.sidebar {
+  position: fixed;
+  top: var(--chrome);
+  left: 0;
+  bottom: 0;
+  display: none;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(-105%, 0, 0);
+  transition: none;
+  box-shadow: none;
+}
+
+body.drawer-open .sidebar {
+  display: flex;
+  transform: translate3d(0, 0, 0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.has-room:not(.intro-settled) .sidebar {
+  display: none !important;
+  transform: translate3d(-105%, 0, 0) !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: none !important;
+}
+
+.scrim {
+  display: block;
+  position: fixed;
+  top: var(--chrome);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 15;
+}
+
+body.drawer-open .scrim {
+  opacity: 1;
+  pointer-events: auto;
 }
