@@ -1,6 +1,17 @@
 import seed from '../data/milton-leads.json';
 
-export type ShopCategory = 'dental' | 'salon' | 'food' | 'barber' | 'legal' | 'other';
+export type ShopCategory =
+  | 'dental'
+  | 'salon'
+  | 'food'
+  | 'barber'
+  | 'legal'
+  | 'accounting'
+  | 'auto'
+  | 'fitness'
+  | 'wellness'
+  | 'trades'
+  | 'other';
 
 export interface ShopVerified {
   phone: boolean;
@@ -36,6 +47,11 @@ export const TYPE_META = [
   { slug: 'dental', label: 'Dental' },
   { slug: 'legal', label: 'Legal' },
   { slug: 'salon', label: 'Salon' },
+  { slug: 'accounting', label: 'Accounting' },
+  { slug: 'auto', label: 'Auto' },
+  { slug: 'fitness', label: 'Fitness' },
+  { slug: 'wellness', label: 'Wellness' },
+  { slug: 'trades', label: 'Trades' },
   { slug: 'other', label: 'Local' },
 ] as const;
 
@@ -81,20 +97,37 @@ export function typeLabel(slug: string): string {
   return TYPE_META.find((item) => item.slug === slug)?.label ?? 'Local';
 }
 
+export function shopDedupeKey(shop: {
+  placeId?: string;
+  slug?: string;
+  name: string;
+  address?: string;
+  city?: string;
+}): string {
+  if (shop.placeId) return `place:${shop.placeId}`;
+  return `loc:${nameStreetKey(shop)}`;
+}
+
 export async function getShops(): Promise<Shop[]> {
   const merged = new Map<string, Shop>();
 
-  const add = (shop: Shop, overwrite: boolean) => {
-    const key = nameStreetKey(shop);
-    if (!overwrite && merged.has(key)) return;
-    merged.set(key, shop);
+  const score = (s: Shop) =>
+    (s.placeId ? 8 : 0) +
+    (s.website ? 4 : 0) +
+    (s.phone ? 2 : 0) +
+    (s.category && s.category !== 'other' ? 1 : 0);
+
+  const add = (shop: Shop) => {
+    const key = shopDedupeKey(shop);
+    const prev = merged.get(key);
+    if (!prev || score(shop) > score(prev)) merged.set(key, shop);
   };
 
   for (const mod of Object.values(cityModules)) {
-    for (const shop of cityShops(mod)) add(shop, false);
+    for (const shop of cityShops(mod)) add(shop);
   }
 
-  for (const shop of seed.shops as Shop[]) add(shop, true);
+  for (const shop of seed.shops as Shop[]) add(shop);
 
   return [...merged.values()];
 }
@@ -112,14 +145,6 @@ export function featuredShops(shops: Shop[]): Shop[] {
 
 export function typesWithShops(shops: Shop[]) {
   return TYPE_META.filter((item) => shops.some((shop) => shop.category === item.slug));
-}
-
-export function shopDedupeKey(shop: { placeId?: string; slug?: string; name: string; address?: string; city?: string }): string {
-  if (shop.placeId) return `place:${shop.placeId}`;
-  if (shop.slug) return `slug:${shop.slug}`;
-  const street = (shop.address || '').split(',')[0] || '';
-  const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `loc:${norm(shop.name)}|${norm(street)}|${norm(shop.city || '')}`;
 }
 
 export function isBotWallCapture(url: string): boolean {
