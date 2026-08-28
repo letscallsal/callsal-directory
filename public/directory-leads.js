@@ -63,6 +63,30 @@
     return input ? String(input.value || '').trim().toLowerCase() : '';
   }
 
+  function paintFilterNow() {
+    const bar = document.querySelector('[data-shop-filters]');
+    if (!bar) return;
+    const cityBtn = bar.querySelector('[data-filter-city].is-on');
+    const nicheBtn = bar.querySelector('[data-filter-niche].is-on');
+    const hasOn = [...bar.querySelectorAll('[data-filter-has].is-on')];
+    const cityNow = bar.querySelector('[data-filter-now="city"]');
+    const nicheNow = bar.querySelector('[data-filter-now="niche"]');
+    const readyNow = bar.querySelector('[data-filter-now="ready"]');
+    if (cityNow) cityNow.textContent = cityBtn && cityBtn.textContent ? cityBtn.textContent.trim() : 'All cities';
+    if (nicheNow) nicheNow.textContent = nicheBtn && nicheBtn.textContent ? nicheBtn.textContent.trim() : 'All niches';
+    if (readyNow) {
+      readyNow.textContent = hasOn.length
+        ? hasOn.map((btn) => (btn.textContent || '').trim()).join(' · ')
+        : 'Any';
+    }
+  }
+
+  function closeOtherAccords(openOne) {
+    document.querySelectorAll('[data-filter-accord]').forEach((el) => {
+      if (el !== openOne) el.removeAttribute('open');
+    });
+  }
+
   function applyShopFilters() {
     const bar = document.querySelector('[data-shop-filters]');
     if (!bar) return;
@@ -94,23 +118,33 @@
       count.hidden = !active;
       count.textContent = shown === 1 ? '1 shop' : shown + ' shops';
     }
+    paintFilterNow();
   }
 
   function bindShopFilters() {
     const bar = document.querySelector('[data-shop-filters]');
     if (!bar || bar.getAttribute('data-bound') === '1') return;
     bar.setAttribute('data-bound', '1');
+    bar.querySelectorAll('[data-filter-accord]').forEach((accord) => {
+      accord.addEventListener('toggle', () => {
+        if (accord.open) closeOtherAccords(accord);
+      });
+    });
     bar.addEventListener('click', (event) => {
       const cityBtn = event.target && event.target.closest ? event.target.closest('[data-filter-city]') : null;
       if (cityBtn) {
         bar.querySelectorAll('[data-filter-city]').forEach((btn) => btn.classList.toggle('is-on', btn === cityBtn));
         applyShopFilters();
+        const wrap = cityBtn.closest('[data-filter-accord]');
+        if (wrap) wrap.removeAttribute('open');
         return;
       }
       const nicheBtn = event.target && event.target.closest ? event.target.closest('[data-filter-niche]') : null;
       if (nicheBtn) {
         bar.querySelectorAll('[data-filter-niche]').forEach((btn) => btn.classList.toggle('is-on', btn === nicheBtn));
         applyShopFilters();
+        const wrap = nicheBtn.closest('[data-filter-accord]');
+        if (wrap) wrap.removeAttribute('open');
         return;
       }
       const hasBtn = event.target && event.target.closest ? event.target.closest('[data-filter-has]') : null;
