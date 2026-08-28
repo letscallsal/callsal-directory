@@ -32,12 +32,100 @@
     if (modal) modal.hidden = true;
   }
 
+  function closeShopInfo() {
+    const modal = document.getElementById('shop-info-modal');
+    if (modal) modal.hidden = true;
+  }
+
+  function safeHref(url) {
+    const v = String(url || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    return 'https://' + v.replace(/^\/+/, '');
+  }
+
+  function shopInfoFields(data) {
+    const rows = [];
+    if (data.address) rows.push('<li><span>Address</span> <span>' + esc(data.address) + '</span></li>');
+    if (data.phone) rows.push('<li><span>Phone</span> <span>' + esc(data.phone) + '</span></li>');
+    if (data.website) {
+      rows.push('<li><span>Website</span> <span><a href="' + esc(safeHref(data.website)) + '" target="_blank" rel="noopener noreferrer">' + esc(data.website) + '</a></span></li>');
+    }
+    if (data.email) rows.push('<li><span>Email</span> <span>' + esc(data.email) + '</span></li>');
+    if (data.owner) rows.push('<li><span>Owner</span> <span>' + esc(data.owner) + '</span></li>');
+    if (data.ig) rows.push('<li><span>Instagram</span> <span>' + esc(data.ig) + '</span></li>');
+    return rows.length ? '<ul class="shop-info-fields">' + rows.join('') + '</ul>' : '';
+  }
+
+  function openShopInfo(data) {
+    const modal = document.getElementById('shop-info-modal');
+    const title = document.querySelector('[data-shop-info-title]');
+    const body = document.querySelector('[data-shop-info-body]');
+    if (!modal || !body) return;
+    const name = data.name || 'Shop';
+    if (title) title.textContent = name;
+    const photo = data.photo
+      ? '<img class="card-preview shop-info-photo" src="' + esc(data.photo) + '" alt="' + esc(name) + ' listing photo" width="640" height="400" />'
+      : '<div class="card-preview card-preview-missing shop-info-photo" aria-label="Photo missing"><span>Photo missing</span></div>';
+    const meta = [data.typeLabel, data.city].filter(Boolean).join(' · ');
+    const slug = data.slug || '';
+    body.innerHTML = '<div class="shop-info-media">' + photo
+      + '<button type="button" class="add-lead-btn" data-add-lead="' + esc(slug) + '" aria-label="Add ' + esc(name) + ' to leads" aria-pressed="false">'
+      + '<svg class="add-lead-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">'
+      + '<path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
+      + '<svg class="add-lead-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      + '<path d="m6 12 4 4 8-8"></path></svg></button></div>'
+      + (meta ? '<p class="shop-info-meta">' + esc(meta) + '</p>' : '')
+      + shopInfoFields(data);
+    modal.hidden = false;
+    paintAddLeads();
+  }
+
+  function openShopInfoFromCard(card) {
+    openShopInfo({
+      slug: card.getAttribute('data-card-slug') || '',
+      name: card.getAttribute('data-shop-name') || '',
+      typeLabel: card.getAttribute('data-shop-type-label') || '',
+      city: card.getAttribute('data-shop-city') || '',
+      address: card.getAttribute('data-shop-address') || '',
+      phone: card.getAttribute('data-shop-phone') || '',
+      website: card.getAttribute('data-shop-website') || '',
+      email: card.getAttribute('data-shop-email') || '',
+      owner: card.getAttribute('data-shop-owner') || '',
+      ig: card.getAttribute('data-shop-ig') || '',
+      photo: card.getAttribute('data-shop-photo') || '',
+    });
+  }
+
+  function openShopInfoFromLead(el) {
+    const slug = el.getAttribute('data-lead-slug') || '';
+    const lead = (lastLeads.leads || []).find((item) => item.slug === slug);
+    if (!lead) return;
+    const v = lead.verified || {};
+    openShopInfo({
+      slug: lead.slug,
+      name: lead.name || '',
+      typeLabel: lead.type || '',
+      city: lead.city || '',
+      address: v.address && lead.address ? lead.address : '',
+      phone: v.phone && lead.phone ? lead.phone : '',
+      website: v.website && lead.website ? lead.website : '',
+      email: v.email && lead.email ? lead.email : '',
+      owner: v.ownerName && lead.ownerName ? lead.ownerName : '',
+      ig: v.socials && lead.socials && lead.socials.instagram ? lead.socials.instagram : '',
+      photo: v.photo && lead.photo ? lead.photo : '',
+    });
+  }
+
   function paintAddLeads() {
     document.querySelectorAll('[data-add-lead]').forEach((btn) => {
       const slug = btn.getAttribute('data-add-lead') || '';
       const on = leadSlugs.has(slug);
       const card = btn.closest('[data-card-slug]');
-      const name = card && card.getAttribute('data-shop-name') ? card.getAttribute('data-shop-name') : 'this shop';
+      const infoTitle = document.querySelector('#shop-info-modal [data-shop-info-title]');
+      const name = card && card.getAttribute('data-shop-name')
+        ? card.getAttribute('data-shop-name')
+        : (btn.closest('#shop-info-modal') && infoTitle && infoTitle.textContent ? infoTitle.textContent : 'this shop');
       btn.classList.toggle('is-on', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.setAttribute('aria-label', on ? name + ' is on your board' : 'Add ' + name + ' to leads');
@@ -94,10 +182,10 @@
     const niche = selectedNiche();
     const needs = selectedHas();
     const q = searchQuery();
-    const cards = [...document.querySelectorAll('[data-card-slug]')];
+    const cards = [...document.querySelectorAll('[data-card-slug][data-shop-type]')];
     let shown = 0;
     cards.forEach((card) => {
-      const okCity = !city || (card.getAttribute('data-shop-city') || '') === city;
+      const okCity = !city || (card.getAttribute('data-shop-city') || '').toLowerCase() === city;
       const okNiche = !niche || (card.getAttribute('data-shop-type') || '') === niche;
       const okEmail = needs.indexOf('email') === -1 || card.getAttribute('data-has-email') === '1';
       const okPhone = needs.indexOf('phone') === -1 || card.getAttribute('data-has-phone') === '1';
@@ -303,6 +391,10 @@
 
   document.addEventListener('click', (event) => {
     const target = event.target;
+    if (target && target.closest && target.closest('[data-shop-info-close]')) {
+      closeShopInfo();
+      return;
+    }
     if (target && target.closest && target.closest('[data-premium-close]')) {
       closePremium();
       return;
@@ -355,10 +447,26 @@
       const box = target.closest('[data-oracle-panel], .lead-card');
       const draft = box && box.querySelector('.oracle-draft') ? box.querySelector('.oracle-draft').textContent : '';
       if (draft && navigator.clipboard) void navigator.clipboard.writeText(draft);
+      return;
+    }
+    const shopWrap = target && target.closest ? target.closest('[data-card-slug][data-shop-type]') : null;
+    if (shopWrap) {
+      event.preventDefault();
+      openShopInfoFromCard(shopWrap);
+      return;
+    }
+    const leadCard = target && target.closest ? target.closest('.lead-card') : null;
+    if (leadCard) {
+      event.preventDefault();
+      openShopInfoFromLead(leadCard);
     }
   });
 
   window.addEventListener('callsal:boot-hidden', refreshLeads);
+  window.addEventListener('callsal:page-applied', () => {
+    applyShopFilters();
+    paintAddLeads();
+  });
   void refreshLeads();
   window.setTimeout(refreshLeads, 800);
 })();
