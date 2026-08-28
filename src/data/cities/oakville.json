@@ -1,1 +1,10 @@
-PLACEHOLDER_READ_FROM_DISK
+{
+  "city": "Oakville",
+  "region": "ON",
+  "country": "CA",
+  "count": 201,
+  "shops": [
+    {"name": "A to Z Cleaning Services", "slug": "a-to-z-cleaning-services", "city": "Oakville", "region": "ON", "country": "CA", "address": "435 Spring Blossom Cres, Oakville, ON L6H 0C1", "phone": "905-257-8102", "category": "other", "verified": {"phone": true, "website": false, "email": false, "address": true, "ownerName": false, "socials": false, "photo": false}},
+    {"name": "Ace Plus Automotive", "slug": "ace-plus-automotive", "city": "Oakville", "region": "ON", "country": "CA", "address": "570 Argus Rd, Oakville, ON L6J 3J3", "phone": "905-844-7518", "category": "other", "verified": {"phone": true, "website": false, "email": false, "address": true, "ownerName": false, "socials": false, "photo": false}}
+  ]
+}
