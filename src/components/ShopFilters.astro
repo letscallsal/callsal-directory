@@ -11,33 +11,44 @@ const { cities, showNiche = true } = Astro.props;
 
 <div class="shop-filters" data-shop-filters>
   <p class="page-kicker">Filter the index</p>
-  <div class="filter-row">
-    <span class="filter-label">City</span>
-    <div class="filter-pills" data-filter-group="city">
-      <button type="button" class="soft-pill is-on" data-filter-city="">All cities</button>
-      {cities.map((city) => (
-        <button type="button" class="soft-pill" data-filter-city={city.toLowerCase()}>{city}</button>
-      ))}
-    </div>
-  </div>
-  {showNiche && (
-    <div class="filter-row">
-      <span class="filter-label">Niche</span>
-      <div class="filter-pills" data-filter-group="niche">
-        <button type="button" class="soft-pill is-on" data-filter-niche="">All niches</button>
-        {TYPE_META.map((item) => (
-          <button type="button" class="soft-pill" data-filter-niche={item.slug}>{item.label}</button>
+  <div class="filter-accords">
+    <details class="filter-accord" data-filter-accord="city">
+      <summary class="filter-summary">
+        <span class="filter-label">City</span>
+        <span class="filter-now" data-filter-now="city">All cities</span>
+      </summary>
+      <div class="filter-pills" data-filter-group="city">
+        <button type="button" class="soft-pill is-on" data-filter-city="">All cities</button>
+        {cities.map((city) => (
+          <button type="button" class="soft-pill" data-filter-city={city.toLowerCase()}>{city}</button>
         ))}
       </div>
-    </div>
-  )}
-  <div class="filter-row">
-    <span class="filter-label">Published</span>
-    <div class="filter-pills" data-filter-group="ready">
-      <button type="button" class="soft-pill" data-filter-has="email" aria-pressed="false">Has email</button>
-      <button type="button" class="soft-pill" data-filter-has="phone" aria-pressed="false">Has phone</button>
-      <button type="button" class="soft-pill" data-filter-has="website" aria-pressed="false">Has website</button>
-    </div>
+    </details>
+    {showNiche && (
+      <details class="filter-accord" data-filter-accord="niche">
+        <summary class="filter-summary">
+          <span class="filter-label">Niche</span>
+          <span class="filter-now" data-filter-now="niche">All niches</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="niche">
+          <button type="button" class="soft-pill is-on" data-filter-niche="">All niches</button>
+          {TYPE_META.map((item) => (
+            <button type="button" class="soft-pill" data-filter-niche={item.slug}>{item.label}</button>
+          ))}
+        </div>
+      </details>
+    )}
+    <details class="filter-accord" data-filter-accord="ready">
+      <summary class="filter-summary">
+        <span class="filter-label">Published</span>
+        <span class="filter-now" data-filter-now="ready">Any</span>
+      </summary>
+      <div class="filter-pills" data-filter-group="ready">
+        <button type="button" class="soft-pill" data-filter-has="email" aria-pressed="false">Has email</button>
+        <button type="button" class="soft-pill" data-filter-has="phone" aria-pressed="false">Has phone</button>
+        <button type="button" class="soft-pill" data-filter-has="website" aria-pressed="false">Has website</button>
+      </div>
+    </details>
   </div>
   <label class="filter-search">
     <span class="filter-label">Search</span>
