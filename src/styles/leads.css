@@ -1,0 +1,150 @@
+/* Lead board — Directory chrome, not a CRM reskin */
+.soft-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.soft-pill.is-on,
+.soft-pill:hover {
+  background: #CCFF00;
+  color: #000;
+  border-color: #CCFF00;
+}
+
+.leads-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.leads-usage {
+  margin: 0;
+  color: #c0c0c0;
+  max-width: 28rem;
+}
+
+.leads-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.oracle-panel {
+  margin: 0 0 1.5rem;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.oracle-panel ul {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oracle-draft {
+  margin: 0.75rem 0 0.5rem;
+  color: #fff;
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(14rem, 1fr));
+  gap: 0.9rem;
+  overflow-x: auto;
+}
+
+.kanban-col {
+  min-width: 14rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.kanban-col h2 {
+  margin: 0 0 0.75rem;
+  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lead-card {
+  margin: 0 0 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.lead-card h3 {
+  margin: 0;
+  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.05rem;
+}
+
+.lead-type {
+  margin: 0.25rem 0 0.7rem;
+  color: #8a8a8a;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lead-fields {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lead-fields li {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  color: #c0c0c0;
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.field-mark {
+  color: #8a8a8a;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field-mark.is-on {
+  color: #000;
+  background: #CCFF00;
+  padding: 0.1rem 0.35rem;
+  border-radius: 9999px;
+}
+
+.lead-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 980px) {
+  .kanban {
+    grid-template-columns: repeat(2, minmax(14rem, 1fr));
+  }
+}
