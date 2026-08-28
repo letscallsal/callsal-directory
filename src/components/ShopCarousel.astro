@@ -1,0 +1,54 @@
+---
+import type { Shop } from '../lib/shops';
+import ShopCard from './ShopCard.astro';
+
+interface Props {
+  title: string;
+  shops: Shop[];
+  href?: string;
+}
+
+const { title, shops, href } = Astro.props;
+---
+
+{shops.length > 0 && (
+  <section class="row" data-carousel>
+    <div class="row-head">
+      {href ? (
+        <h2><a href={href}>{title}</a></h2>
+      ) : (
+        <h2>{title}</h2>
+      )}
+      {shops.length > 1 && (
+        <div class="row-nav">
+          <button type="button" data-prev aria-label={`Previous ${title}`}>‹</button>
+          <button type="button" data-next aria-label={`Next ${title}`}>›</button>
+        </div>
+      )}
+    </div>
+    <div class="track sleek-scroll" data-track>
+      {shops.map((shop) => (
+        <ShopCard shop={shop} />
+      ))}
+    </div>
+  </section>
+)}
+
+<script>
+  if (!(window as Window & { __dirCarouselBound?: boolean }).__dirCarouselBound) {
+    (window as Window & { __dirCarouselBound?: boolean }).__dirCarouselBound = true;
+
+    document.addEventListener('click', (event) => {
+      const target = event.target as Element | null;
+      const btn = target?.closest?.('[data-prev], [data-next]');
+      if (!btn) return;
+      const row = btn.closest('[data-carousel]');
+      const track = row?.querySelector('[data-track]');
+      if (!track) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const step = Math.max((track as HTMLElement).clientWidth * 0.72, 220);
+      const left = btn.hasAttribute('data-prev') ? -step : step;
+      track.scrollBy({ left, behavior: reduce ? 'auto' : 'smooth' });
+    });
+  }
+</script>

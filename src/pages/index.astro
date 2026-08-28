@@ -1,35 +1,27 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
-import Carousel from '../components/Carousel.astro';
-import {
-  getDirectories,
-  featured,
-  newest,
-  categoriesWithListings,
-  byCategory,
-} from '../lib/catalog';
+import ShopCarousel from '../components/ShopCarousel.astro';
+import { getShops, featuredShops, typesWithShops, byType } from '../lib/shops';
 
-const directories = await getDirectories();
-const featuredRow = featured(directories);
-const newRow = newest(directories);
-const genreRows = categoriesWithListings(directories).map((category) => ({
-  ...category,
-  entries: byCategory(directories, category.slug),
+const shops = await getShops();
+const featuredRow = featuredShops(shops);
+const typeRows = typesWithShops(shops).map((item) => ({
+  ...item,
+  shops: byType(shops, item.slug),
 }));
 ---
 
-<AppShell title="Directory" description="Libraries, kits, and free-first tools. Save the ones you use." withRoom>
+<AppShell title="Directory" description="A local Google Business index you can turn into a lead board." withRoom>
   <div class="lede intro-hold intro-trace intro-d3">
-    <p class="page-kicker">FOR DIGITAL CREATIVES</p>
+    <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
     <h1>THE INDEX</h1>
-    <p>Libraries, kits, and free-first tools. Save the ones you use.</p>
+    <p>A local Google Business index you can turn into a lead board.</p>
   </div>
 
   <div class="rows intro-hold intro-d5">
-    <Carousel title="Featured" entries={featuredRow} />
-    <Carousel title="New" entries={newRow} />
-    {genreRows.map((row) => (
-      <Carousel title={row.label} entries={row.entries} href={`/category/${row.slug}/`} />
+    <ShopCarousel title="Featured" shops={featuredRow} />
+    {typeRows.map((row) => (
+      <ShopCarousel title={row.label} shops={row.shops} href={`/type/${row.slug}/`} />
     ))}
   </div>
 </AppShell>

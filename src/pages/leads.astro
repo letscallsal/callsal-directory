@@ -1,0 +1,45 @@
+---
+import AppShell from '../layouts/AppShell.astro';
+---
+
+<AppShell title="Leads" description="A lead board for shops you add from the Milton index.">
+  <header class="page-head">
+    <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
+    <h1 class="page-title">Leads</h1>
+    <p class="page-tag">Add shops from the index. Paid Directory can scan a city and ask Oracle what to work next.</p>
+  </header>
+
+  <p class="empty" data-leads-guest hidden>Join to open your lead board.</p>
+
+  <div class="leads-app" data-leads-app hidden>
+    <div class="leads-toolbar">
+      <p class="leads-usage" data-leads-usage></p>
+      <div class="leads-actions">
+        <button type="button" class="soft-pill" data-scan-leads>SCAN LEADS</button>
+        <button type="button" class="soft-pill" data-ask-oracle>ORACLE</button>
+      </div>
+    </div>
+
+    <aside class="oracle-panel" data-oracle-panel hidden></aside>
+    <p class="empty" data-leads-empty hidden>Your board is empty. Open the index and add a shop.</p>
+
+    <div class="kanban" data-leads-board>
+      <section class="kanban-col" data-col="new">
+        <h2>New</h2>
+        <div data-col-cards="new"></div>
+      </section>
+      <section class="kanban-col" data-col="contacted">
+        <h2>Contacted</h2>
+        <div data-col-cards="contacted"></div>
+      </section>
+      <section class="kanban-col" data-col="replied">
+        <h2>Replied</h2>
+        <div data-col-cards="replied"></div>
+      </section>
+      <section class="kanban-col" data-col="booked">
+        <h2>Booked</h2>
+        <div data-col-cards="booked"></div>
+      </section>
+    </div>
+  </div>
+</AppShell>

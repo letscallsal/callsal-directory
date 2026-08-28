@@ -1,0 +1,33 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+import ShopCard from '../../components/ShopCard.astro';
+import { TYPE_META, getShops, byType, typeLabel, type TypeSlug } from '../../lib/shops';
+
+export function getStaticPaths() {
+  return TYPE_META.map((item) => ({
+    params: { slug: item.slug },
+  }));
+}
+
+const slug = Astro.params.slug as TypeSlug;
+const shops = byType(await getShops(), slug);
+const label = typeLabel(slug);
+---
+
+<AppShell title={label} description={`Published ${label.toLowerCase()} shops in Milton.`}>
+  <header class="page-head">
+    <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
+    <h1 class="page-title">{label}</h1>
+    <p class="page-tag">Published {label.toLowerCase()} shops in Milton.</p>
+  </header>
+
+  {shops.length > 0 ? (
+    <div class="grid">
+      {shops.map((shop) => (
+        <ShopCard shop={shop} />
+      ))}
+    </div>
+  ) : (
+    <p class="empty">Nothing listed here yet.</p>
+  )}
+</AppShell>

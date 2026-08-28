@@ -1,22 +1,20 @@
 ---
-import { CATEGORY_META, type DirectoryEntry } from '../lib/catalog';
+import { TYPE_META, type Shop } from '../lib/shops';
 
 interface Props {
-  directories: DirectoryEntry[];
+  shops: Shop[];
   currentPath: string;
 }
 
-const { directories, currentPath } = Astro.props;
-const currentCategory = currentPath.match(/^\/category\/([^/]+)/)?.[1] ?? '';
-const currentListing = currentPath.match(/^\/directory\/([^/]+)/)?.[1] ?? '';
+const { shops, currentPath } = Astro.props;
+const currentType = currentPath.match(/^\/type\/([^/]+)/)?.[1] ?? '';
 const isSaved = currentPath.replace(/\/$/, '') === '/saved';
+const isLeads = currentPath.replace(/\/$/, '') === '/leads';
 
-const grouped = CATEGORY_META.map((category) => ({
-  ...category,
-  listings: directories
-    .filter((entry) => entry.data.category === category.slug)
-    .sort((a, b) => a.data.title.localeCompare(b.data.title)),
-}));
+const grouped = TYPE_META.map((item) => ({
+  ...item,
+  count: shops.filter((shop) => shop.category === item.slug).length,
+})).filter((item) => item.count > 0);
 ---
 
 <aside class="sidebar" id="sidebar" data-sidebar>
@@ -25,69 +23,38 @@ const grouped = CATEGORY_META.map((category) => ({
     <input
       id="directory-search"
       type="search"
-      placeholder="Filter categories and names"
+      placeholder="Filter shop types"
       autocomplete="off"
       data-search
     />
   </div>
 
-  <nav class="sidebar-index sleek-scroll" aria-label="Categories" data-index>
+  <nav class="sidebar-index sleek-scroll" aria-label="Index" data-index>
+    <a class="sidebar-saved" href="/leads/" data-leads-link aria-current={isLeads ? 'page' : undefined}>Leads</a>
     <a class="sidebar-saved" href="/saved/" data-saved-link aria-current={isSaved ? 'page' : undefined}>Saved</a>
-    {grouped.map((category) => {
-      const open =
-        category.slug === currentCategory ||
-        category.listings.some((entry) => entry.slug === currentListing);
-      return (
-        <details
-          class:list={['cat', { 'is-active': category.slug === currentCategory }]}
-          data-category={category.slug}
-          data-label={category.label}
-          open={open}
-        >
-          <summary>
-            <a href={`/category/${category.slug}/`} data-cat-link>
-              {category.label}
-            </a>
-          </summary>
-          {category.listings.map((entry) => (
-            <a
-              class="listing"
-              href={`/directory/${entry.slug}/`}
-              data-listing
-              data-name={entry.data.title}
-              aria-current={entry.slug === currentListing ? 'page' : undefined}
-            >
-              {entry.data.title}
-            </a>
-          ))}
-        </details>
-      );
-    })}
+    {grouped.map((item) => (
+      <a
+        class="sidebar-saved"
+        href={`/type/${item.slug}/`}
+        data-type={item.slug}
+        data-label={item.label}
+        aria-current={item.slug === currentType ? 'page' : undefined}
+      >
+        {item.label}
+      </a>
+    ))}
   </nav>
 </aside>
 
 <script>
   const search = document.querySelector('[data-search]') as HTMLInputElement | null;
-  const cats = document.querySelectorAll('[data-category]');
+  const types = document.querySelectorAll('[data-type]');
 
   function filterIndex(query: string) {
     const q = query.trim().toLowerCase();
-
-    for (const cat of cats) {
-      const label = ((cat as HTMLElement).dataset.label ?? '').toLowerCase();
-      const listings = cat.querySelectorAll('[data-listing]');
-      let visibleListings = 0;
-
-      for (const listing of listings) {
-        const name = ((listing as HTMLElement).dataset.name ?? '').toLowerCase();
-        const match = !q || name.includes(q) || label.includes(q);
-        (listing as HTMLElement).hidden = !match;
-        if (match) visibleListings += 1;
-      }
-
-      const catMatch = !q || label.includes(q) || visibleListings > 0;
-      (cat as HTMLElement).hidden = !catMatch;
-      if (q && catMatch) (cat as HTMLDetailsElement).open = true;
+    for (const item of types) {
+      const label = ((item as HTMLElement).dataset.label ?? '').toLowerCase();
+      (item as HTMLElement).hidden = Boolean(q) && !label.includes(q);
     }
   }
 
