@@ -80,7 +80,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           startBootOut();
           return;
         }
-        await waitAnim(fill, 'boot-fill-rise', 1450);
+        await waitAnim(fill, 'boot-fill-rise', 1500);
         if (withRoom) await waitForCanvas(3200);
         startBootOut();
       }

@@ -94,13 +94,12 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         inset: 0;
         background: #CCFF00;
         z-index: 0;
-        transform: scaleY(0);
-        transform-origin: bottom center;
-        animation: boot-fill-rise 1.2s 0.12s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        clip-path: inset(100% 0 0 0);
+        animation: boot-fill-rise 0.85s 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
       }
       @keyframes boot-fill-rise {
-        from { transform: scaleY(0); }
-        to { transform: scaleY(1); }
+        from { clip-path: inset(100% 0 0 0); }
+        to { clip-path: inset(0 0 0 0); }
       }
 
       html.has-room:not(.intro-ready) .room-canvas {
@@ -118,7 +117,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       @media (prefers-reduced-motion: reduce) {
         .boot-scrim { transition: none; }
         .boot-pill-fill {
-          transform: scaleY(1) !important;
+          clip-path: inset(0 0 0 0) !important;
           animation: none !important;
           filter: none;
         }
