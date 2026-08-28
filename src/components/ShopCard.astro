@@ -8,17 +8,32 @@ interface Props {
 const { shop } = Astro.props;
 const type = typeLabel(shop.category);
 const hasPhoto = Boolean(shop.verified.photo && shop.photo);
+const address = shop.verified.address && shop.address ? shop.address : undefined;
+const phone = shop.verified.phone && shop.phone ? shop.phone : undefined;
+const website = shop.verified.website && shop.website ? shop.website : undefined;
+const email = shop.verified.email && shop.email ? shop.email : undefined;
+const owner = shop.verified.ownerName && shop.ownerName ? shop.ownerName : undefined;
+const ig = shop.verified.socials && shop.socials?.instagram ? shop.socials.instagram : undefined;
+const photo = hasPhoto ? shop.photo : undefined;
 ---
 
 <div
   class="card-wrap"
   data-card-slug={shop.slug}
   data-shop-name={shop.name}
-  data-shop-city={shop.city.toLowerCase()}
+  data-shop-city={shop.city}
   data-shop-type={shop.category}
+  data-shop-type-label={type}
   data-has-email={shop.verified.email ? '1' : '0'}
   data-has-phone={shop.verified.phone ? '1' : '0'}
   data-has-website={shop.verified.website ? '1' : '0'}
+  data-shop-address={address}
+  data-shop-phone={phone}
+  data-shop-website={website}
+  data-shop-email={email}
+  data-shop-owner={owner}
+  data-shop-ig={ig}
+  data-shop-photo={photo}
 >
   <div class="card hover-lift">
     {hasPhoto ? (
@@ -66,6 +81,10 @@ const hasPhoto = Boolean(shop.verified.photo && shop.photo);
     min-height: 0;
     padding: 0 0 1.15rem;
     overflow: hidden;
+  }
+
+  .card-wrap[data-shop-type] .card {
+    cursor: pointer;
   }
 
   .card-preview {
