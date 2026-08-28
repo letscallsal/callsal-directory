@@ -52,6 +52,8 @@ const FEATURED_SLUGS = [
   'shine-my-nails',
 ];
 
+const BOT_WALL = /cloudflare|cf-browser-verification|challenge-platform|just a moment|attention required|captcha/i;
+
 type CitySeed = { shops?: Shop[] };
 
 const cityModules = import.meta.glob('../data/cities/*.json', { eager: true }) as Record<
@@ -118,4 +120,28 @@ export function shopDedupeKey(shop: { placeId?: string; slug?: string; name: str
   const street = (shop.address || '').split(',')[0] || '';
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
   return `loc:${norm(shop.name)}|${norm(street)}|${norm(shop.city || '')}`;
+}
+
+export function isBotWallCapture(url: string): boolean {
+  return BOT_WALL.test(url);
+}
+
+export function storedHomepagePreview(shop: Shop): string | undefined {
+  if (!shop.verified.photo || !shop.photo) return undefined;
+  if (isBotWallCapture(shop.photo)) return undefined;
+  return shop.photo;
+}
+
+export function listingPhotoSrc(shop: Shop): string | undefined {
+  if (shop.placeId) return `/api/photo?placeId=${encodeURIComponent(shop.placeId)}`;
+  const name = shop.name?.trim();
+  if (!name) return undefined;
+  const params = new URLSearchParams({ name });
+  const address = shop.address?.trim() || [shop.city, shop.region].filter(Boolean).join(', ');
+  if (address) params.set('address', address);
+  return `/api/photo?${params.toString()}`;
+}
+
+export function cardPhotoSrc(shop: Shop): string | undefined {
+  return listingPhotoSrc(shop) || storedHomepagePreview(shop);
 }

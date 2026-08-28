@@ -1,5 +1,5 @@
 ---
-import { typeLabel, type Shop } from '../lib/shops';
+import { typeLabel, type Shop, listingPhotoSrc, storedHomepagePreview } from '../lib/shops';
 
 interface Props {
   shop: Shop;
@@ -7,14 +7,16 @@ interface Props {
 
 const { shop } = Astro.props;
 const type = typeLabel(shop.category);
-const hasPhoto = Boolean(shop.verified.photo && shop.photo);
+const googlePhoto = listingPhotoSrc(shop);
+const homepagePhoto = storedHomepagePreview(shop);
+const photo = googlePhoto || homepagePhoto;
+const fallback = googlePhoto && homepagePhoto ? homepagePhoto : undefined;
 const address = shop.verified.address && shop.address ? shop.address : undefined;
 const phone = shop.verified.phone && shop.phone ? shop.phone : undefined;
 const website = shop.verified.website && shop.website ? shop.website : undefined;
 const email = shop.verified.email && shop.email ? shop.email : undefined;
 const owner = shop.verified.ownerName && shop.ownerName ? shop.ownerName : undefined;
 const ig = shop.verified.socials && shop.socials?.instagram ? shop.socials.instagram : undefined;
-const photo = hasPhoto ? shop.photo : undefined;
 ---
 
 <div
@@ -34,12 +36,14 @@ const photo = hasPhoto ? shop.photo : undefined;
   data-shop-owner={owner}
   data-shop-ig={ig}
   data-shop-photo={photo}
+  data-shop-place-id={shop.placeId}
 >
   <div class="card hover-lift">
-    {hasPhoto ? (
+    {photo ? (
       <img
         class="card-preview"
-        src={shop.photo}
+        src={photo}
+        data-photo-fallback={fallback}
         alt={`${shop.name} listing photo`}
         width="640"
         height="400"
@@ -70,6 +74,33 @@ const photo = hasPhoto ? shop.photo : undefined;
     </svg>
   </button>
 </div>
+
+<script>
+  if (!(window as Window & { __dirShopPhotoBound?: boolean }).__dirShopPhotoBound) {
+    (window as Window & { __dirShopPhotoBound?: boolean }).__dirShopPhotoBound = true;
+    document.addEventListener(
+      'error',
+      (event) => {
+        const img = event.target;
+        if (!(img instanceof HTMLImageElement) || !img.classList.contains('card-preview')) return;
+        if (!img.closest('[data-shop-type], .shop-info-media')) return;
+        const next = img.getAttribute('data-photo-fallback');
+        if (next) {
+          img.removeAttribute('data-photo-fallback');
+          img.src = next;
+          return;
+        }
+        const missing = document.createElement('div');
+        missing.className = img.className.replace(/\bcard-preview\b/, 'card-preview card-preview-missing').trim();
+        if (!missing.classList.contains('card-preview-missing')) missing.classList.add('card-preview-missing');
+        missing.setAttribute('aria-label', 'Photo missing');
+        missing.innerHTML = '<span>Photo missing</span>';
+        img.replaceWith(missing);
+      },
+      true,
+    );
+  }
+</script>
 
 <style is:global>
   .card-wrap {

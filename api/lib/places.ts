@@ -49,6 +49,12 @@ export function typeLabel(slug: string): string {
   return TYPE_LABELS[slug] || 'Local';
 }
 
+export function placesApiKey(): string | undefined {
+  const key = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_API_KEY;
+  const trimmed = key?.trim();
+  return trimmed || undefined;
+}
+
 export function seedShops(): Shop[] {
   return (seed.shops as Shop[]).slice();
 }
@@ -68,7 +74,7 @@ export function shopDedupeKey(shop: {
 }
 
 export async function listCityShops(city = 'milton'): Promise<PlacesResult> {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
+  const key = placesApiKey();
   if (key) {
     try {
       const shops = await searchGooglePlaces(city, key);
@@ -87,7 +93,7 @@ async function searchGooglePlaces(city: string, key: string): Promise<Shop[]> {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': key,
       'X-Goog-FieldMask':
-        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types',
+        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.photos',
     },
     body: JSON.stringify({ textQuery: `local businesses in ${city} ON`, pageSize: 20 }),
   });
@@ -100,6 +106,7 @@ async function searchGooglePlaces(city: string, key: string): Promise<Shop[]> {
       nationalPhoneNumber?: string;
       websiteUri?: string;
       types?: string[];
+      photos?: Array<{ name?: string }>;
     }>;
   };
   return (data.places || [])
@@ -114,6 +121,7 @@ function mapPlace(place: {
   nationalPhoneNumber?: string;
   websiteUri?: string;
   types?: string[];
+  photos?: Array<{ name?: string }>;
 }): Shop | null {
   const name = place.displayName?.text?.trim();
   if (!name) return null;
@@ -132,6 +140,7 @@ function mapPlace(place: {
     phone: place.nationalPhoneNumber,
     website: place.websiteUri,
     placeId: place.id,
+    photo: place.id ? `/api/photo?placeId=${encodeURIComponent(place.id)}` : undefined,
     category: categoryFromTypes(place.types || []),
     verified: {
       phone: Boolean(place.nationalPhoneNumber),
@@ -140,7 +149,7 @@ function mapPlace(place: {
       address: Boolean(place.formattedAddress),
       ownerName: false,
       socials: false,
-      photo: false,
+      photo: Boolean(place.id && place.photos?.length),
     },
   };
 }
