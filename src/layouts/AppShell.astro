@@ -252,6 +252,17 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         </div>
       </div>
     </div>
+
+    <div class="auth-modal" id="shop-info-modal" hidden>
+      <div class="auth-scrim" data-shop-info-close></div>
+      <div class="auth-panel glass-strong" role="dialog" aria-modal="true" aria-labelledby="shop-info-title">
+        <div class="auth-head">
+          <h2 id="shop-info-title" data-shop-info-title></h2>
+          <button type="button" class="auth-close" data-shop-info-close aria-label="Close">×</button>
+        </div>
+        <div class="auth-body shop-info-body" data-shop-info-body></div>
+      </div>
+    </div>
     <script src="/directory-leads.js" defer></script>
 
     <script define:vars={{ withRoom }}>
