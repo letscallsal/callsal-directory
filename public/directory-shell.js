@@ -116,8 +116,17 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         setOpen(!document.body.classList.contains('drawer-open'));
       });
       scrim?.addEventListener('click', () => setOpen(false));
+      function closeShopInfo() {
+        const modal = document.getElementById('shop-info-modal');
+        if (modal) modal.hidden = true;
+      }
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
+          const shopInfo = document.getElementById('shop-info-modal');
+          if (shopInfo && !shopInfo.hidden) {
+            closeShopInfo();
+            return;
+          }
           setOpen(false);
           closeAuth();
         }
@@ -206,6 +215,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         updateSidebar(path);
         paintBookmarks();
         paintSaved();
+        window.dispatchEvent(new Event('callsal:page-applied'));
       }
 
       async function go(path, push) {
@@ -260,9 +270,8 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       const authSubmit = document.querySelector('[data-auth-submit]');
       const authSwitch = document.querySelector('[data-auth-switch]');
 
-      function guestButtons(tone) {
-        const joinClass = tone === 'hero' ? 'btn-primary' : 'btn-primary';
-        return `<button type="button" class="auth-text-btn" data-login>LOGIN</button><button type="button" class="${joinClass}" data-join>JOIN</button>`;
+      function guestButtons() {
+        return `<button type="button" class="auth-text-btn" data-join>JOIN</button><button type="button" class="auth-text-btn" data-login>LOGIN</button>`;
       }
 
       function userButtons() {
