@@ -52,12 +52,49 @@ const FEATURED_SLUGS = [
   'shine-my-nails',
 ];
 
+type CitySeed = { shops?: Shop[] };
+
+const cityModules = import.meta.glob('../data/cities/*.json', { eager: true }) as Record<
+  string,
+  CitySeed | { default: CitySeed }
+>;
+
+function cityShops(mod: CitySeed | { default: CitySeed }): Shop[] {
+  if ('default' in mod && mod.default && Array.isArray(mod.default.shops)) {
+    return mod.default.shops;
+  }
+  if ('shops' in mod && Array.isArray(mod.shops)) {
+    return mod.shops;
+  }
+  return [];
+}
+
+function nameStreetKey(shop: { name: string; address?: string }): string {
+  const street = (shop.address || '').split(',')[0] || '';
+  const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  return `${norm(shop.name)}|${norm(street)}`;
+}
+
 export function typeLabel(slug: string): string {
   return TYPE_META.find((item) => item.slug === slug)?.label ?? 'Local';
 }
 
 export async function getShops(): Promise<Shop[]> {
-  return (seed.shops as Shop[]).slice();
+  const merged = new Map<string, Shop>();
+
+  const add = (shop: Shop, overwrite: boolean) => {
+    const key = nameStreetKey(shop);
+    if (!overwrite && merged.has(key)) return;
+    merged.set(key, shop);
+  };
+
+  for (const mod of Object.values(cityModules)) {
+    for (const shop of cityShops(mod)) add(shop, false);
+  }
+
+  for (const shop of seed.shops as Shop[]) add(shop, true);
+
+  return [...merged.values()];
 }
 
 export function byType(shops: Shop[], slug: string): Shop[] {
