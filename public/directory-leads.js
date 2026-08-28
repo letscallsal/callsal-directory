@@ -1,7 +1,63 @@
 (function () {
+  const STAGES = ['New', 'Contacted', 'Responded', 'Meeting Scheduled', 'Proposal Sent', 'Won'];
+  const STAGE_LABELS = {
+    New: 'NEW',
+    Contacted: 'CONTACTED',
+    Responded: 'RESPONDED',
+    'Meeting Scheduled': 'MEETING',
+    'Proposal Sent': 'PROPOSAL',
+    Won: 'WON',
+  };
+  const LEGACY_STAGE = {
+    new: 'New',
+    contacted: 'Contacted',
+    replied: 'Responded',
+    responded: 'Responded',
+    booked: 'Meeting Scheduled',
+    meeting: 'Meeting Scheduled',
+    'meeting scheduled': 'Meeting Scheduled',
+    proposal: 'Proposal Sent',
+    'proposal sent': 'Proposal Sent',
+    won: 'Won',
+  };
+
   let currentUser = null;
   let leadSlugs = new Set();
   let lastLeads = { plan: 'free', leads: [], usage: null, oracle: null };
+  let draggedSlug = null;
+  let didDrag = false;
+
+  function isLeadsPath() {
+    try {
+      const p = location.pathname.replace(/\/$/, '') || '/';
+      return p === '/leads';
+    } catch {
+      return false;
+    }
+  }
+
+  function setLeadsMenu(open) {
+    document.body.classList.toggle('leads-drawer-open', open);
+    document.querySelectorAll('[data-leads-pill]').forEach((el) => {
+      el.setAttribute('aria-expanded', String(open));
+    });
+    if (open) {
+      document.body.classList.remove('drawer-open');
+      const menu = document.querySelector('[data-menu]');
+      if (menu) {
+        menu.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-label', 'DIRECTORY');
+      }
+    }
+    const scrim = document.querySelector('[data-scrim]');
+    const dirOpen = document.body.classList.contains('drawer-open');
+    if (scrim) scrim.hidden = !open && !dirOpen;
+  }
+
+  function toggleLeadsMenu() {
+    setLeadsMenu(!document.body.classList.contains('leads-drawer-open'));
+  }
+
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -11,6 +67,12 @@
       '"': '&quot;',
       "'": '&#39;',
     }[ch]));
+  }
+
+  function normalizeStage(value) {
+    const raw = String(value || '').trim();
+    if (STAGES.indexOf(raw) !== -1) return raw;
+    return LEGACY_STAGE[raw.toLowerCase()] || 'New';
   }
 
   function openAuth(mode) {
@@ -57,7 +119,50 @@
     return rows.length ? '<ul class="shop-info-fields">' + rows.join('') + '</ul>' : '';
   }
 
-  function openShopInfo(data) {
+  function formatLogTime(iso) {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString('en-CA', {
+        timeZone: 'America/Toronto',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
+  }
+
+  function renderLog(log) {
+    const items = (log || []).slice().reverse();
+    if (!items.length) return '<p class="shop-info-meta">No activity yet.</p>';
+    return '<p class="shop-info-meta">Timeline</p><ul class="lead-log">' + items.map((item) => {
+      const when = formatLogTime(item.at);
+      let line = '';
+      if (item.type === 'added') line = 'Added · ' + (STAGE_LABELS[normalizeStage(item.to)] || 'NEW');
+      else if (item.type === 'stage') {
+        line = (STAGE_LABELS[normalizeStage(item.from)] || '') + ' → ' + (STAGE_LABELS[normalizeStage(item.to)] || '');
+      } else {
+        line = String(item.type || '');
+      }
+      return '<li><span>' + esc(when) + '</span> <span>' + esc(line) + '</span></li>';
+    }).join('') + '</ul>';
+  }
+
+  function renderBoardDrawer(lead) {
+    const stage = normalizeStage(lead.stage);
+    const stages = STAGES.map((key) => {
+      const on = stage === key ? ' is-on' : '';
+      return '<button type="button" class="soft-pill' + on + '" data-stage="' + esc(key) + '" data-lead-slug="' + esc(lead.slug) + '">' + esc(STAGE_LABELS[key]) + '</button>';
+    }).join('');
+    const draft = lead.oracleDraft
+      ? '<p class="oracle-draft">' + esc(lead.oracleDraft) + '</p><button type="button" class="soft-pill" data-copy-draft>Copy draft</button>'
+      : '';
+    return '<div class="lead-stages" style="margin:0 1.25rem 1rem">' + stages + '</div>' + draft + renderLog(lead.log);
+  }
+
+  function openShopInfo(data, lead) {
     const modal = document.getElementById('shop-info-modal');
     const title = document.querySelector('[data-shop-info-title]');
     const body = document.querySelector('[data-shop-info-body]');
@@ -69,14 +174,17 @@
       : '<div class="card-preview card-preview-missing shop-info-photo" aria-label="Photo missing"><span>Photo missing</span></div>';
     const meta = [data.typeLabel, data.city].filter(Boolean).join(' · ');
     const slug = data.slug || '';
-    body.innerHTML = '<div class="shop-info-media">' + photo
-      + '<button type="button" class="add-lead-btn" data-add-lead="' + esc(slug) + '" aria-label="Add ' + esc(name) + ' to leads" aria-pressed="false">'
+    const addBtn = lead ? '' : (
+      '<button type="button" class="add-lead-btn" data-add-lead="' + esc(slug) + '" aria-label="Add ' + esc(name) + ' to leads" aria-pressed="false">'
       + '<svg class="add-lead-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">'
       + '<path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
       + '<svg class="add-lead-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-      + '<path d="m6 12 4 4 8-8"></path></svg></button></div>'
+      + '<path d="m6 12 4 4 8-8"></path></svg></button>'
+    );
+    body.innerHTML = '<div class="shop-info-media">' + photo + addBtn + '</div>'
       + (meta ? '<p class="shop-info-meta">' + esc(meta) + '</p>' : '')
-      + shopInfoFields(data);
+      + shopInfoFields(data)
+      + (lead ? renderBoardDrawer(lead) : '');
     modal.hidden = false;
     paintAddLeads();
   }
@@ -114,7 +222,7 @@
       owner: v.ownerName && lead.ownerName ? lead.ownerName : '',
       ig: v.socials && lead.socials && lead.socials.instagram ? lead.socials.instagram : '',
       photo: v.photo && lead.photo ? lead.photo : '',
-    });
+    }, lead);
   }
 
   function paintAddLeads() {
@@ -247,45 +355,146 @@
     applyShopFilters();
   }
 
-  function fieldMark(ok) {
-    return ok
-      ? '<span class="field-mark is-on">verified</span>'
-      : '<span class="field-mark">missing</span>';
+  function boardCity() {
+    const on = document.querySelector('[data-leads-filter-city].is-on');
+    return on ? (on.getAttribute('data-leads-filter-city') || '') : '';
   }
 
-  function leadField(label, value, ok) {
-    const shown = ok && value ? esc(value) : 'Not published';
-    return `<li><span>${label}</span> <span>${shown}</span> ${fieldMark(Boolean(ok && value))}</li>`;
+  function boardNiche() {
+    const on = document.querySelector('[data-leads-filter-niche].is-on');
+    return on ? (on.getAttribute('data-leads-filter-niche') || '') : '';
+  }
+
+  function boardHas() {
+    return [...document.querySelectorAll('[data-leads-filter-has].is-on')].map((btn) => btn.getAttribute('data-leads-filter-has') || '');
+  }
+
+  function boardQuery() {
+    const input = document.querySelector('[data-leads-filter-q]');
+    return input ? String(input.value || '').trim().toLowerCase() : '';
+  }
+
+  function paintBoardFilterNow() {
+    const bar = document.querySelector('[data-leads-filters]');
+    if (!bar) return;
+    const cityBtn = bar.querySelector('[data-leads-filter-city].is-on');
+    const nicheBtn = bar.querySelector('[data-leads-filter-niche].is-on');
+    const hasOn = [...bar.querySelectorAll('[data-leads-filter-has].is-on')];
+    const cityNow = bar.querySelector('[data-leads-filter-now="city"]');
+    const nicheNow = bar.querySelector('[data-leads-filter-now="niche"]');
+    const readyNow = bar.querySelector('[data-leads-filter-now="ready"]');
+    if (cityNow) cityNow.textContent = cityBtn && cityBtn.textContent ? cityBtn.textContent.trim() : 'All cities';
+    if (nicheNow) nicheNow.textContent = nicheBtn && nicheBtn.textContent ? nicheBtn.textContent.trim() : 'All niches';
+    if (readyNow) {
+      readyNow.textContent = hasOn.length
+        ? hasOn.map((btn) => (btn.textContent || '').trim()).join(' · ')
+        : 'Any';
+    }
+  }
+
+  function applyBoardFilters() {
+    const bar = document.querySelector('[data-leads-filters]');
+    if (!bar) return;
+    const city = boardCity();
+    const niche = boardNiche();
+    const needs = boardHas();
+    const q = boardQuery();
+    const cards = [...document.querySelectorAll('[data-leads-board] [data-lead-slug]')];
+    let shown = 0;
+    cards.forEach((card) => {
+      const okCity = !city || (card.getAttribute('data-lead-city') || '').toLowerCase() === city;
+      const okNiche = !niche || (card.getAttribute('data-lead-niche') || '') === niche;
+      const okEmail = needs.indexOf('email') === -1 || card.getAttribute('data-has-email') === '1';
+      const okPhone = needs.indexOf('phone') === -1 || card.getAttribute('data-has-phone') === '1';
+      const okSite = needs.indexOf('website') === -1 || card.getAttribute('data-has-website') === '1';
+      const name = (card.getAttribute('data-lead-name') || '').toLowerCase();
+      const okSearch = !q || name.indexOf(q) !== -1;
+      const show = okCity && okNiche && okEmail && okPhone && okSite && okSearch;
+      card.hidden = !show;
+      if (show) shown += 1;
+    });
+    const count = document.querySelector('[data-leads-filter-count]');
+    if (count) {
+      const active = Boolean(city || niche || needs.length || q);
+      count.hidden = !active;
+      count.textContent = shown === 1 ? '1 shop' : shown + ' shops';
+    }
+    paintBoardFilterNow();
+  }
+
+  function bindBoardFilters() {
+    const bar = document.querySelector('[data-leads-filters]');
+    if (!bar || bar.getAttribute('data-bound') === '1') return;
+    bar.setAttribute('data-bound', '1');
+    bar.querySelectorAll('[data-leads-filter-accord]').forEach((accord) => {
+      accord.addEventListener('toggle', () => {
+        if (!accord.open) return;
+        bar.querySelectorAll('[data-leads-filter-accord]').forEach((el) => {
+          if (el !== accord) el.removeAttribute('open');
+        });
+      });
+    });
+    bar.addEventListener('click', (event) => {
+      const cityBtn = event.target && event.target.closest ? event.target.closest('[data-leads-filter-city]') : null;
+      if (cityBtn) {
+        bar.querySelectorAll('[data-leads-filter-city]').forEach((btn) => btn.classList.toggle('is-on', btn === cityBtn));
+        applyBoardFilters();
+        const wrap = cityBtn.closest('[data-leads-filter-accord]');
+        if (wrap) wrap.removeAttribute('open');
+        return;
+      }
+      const nicheBtn = event.target && event.target.closest ? event.target.closest('[data-leads-filter-niche]') : null;
+      if (nicheBtn) {
+        bar.querySelectorAll('[data-leads-filter-niche]').forEach((btn) => btn.classList.toggle('is-on', btn === nicheBtn));
+        applyBoardFilters();
+        const wrap = nicheBtn.closest('[data-leads-filter-accord]');
+        if (wrap) wrap.removeAttribute('open');
+        return;
+      }
+      const hasBtn = event.target && event.target.closest ? event.target.closest('[data-leads-filter-has]') : null;
+      if (hasBtn) {
+        hasBtn.classList.toggle('is-on');
+        hasBtn.setAttribute('aria-pressed', hasBtn.classList.contains('is-on') ? 'true' : 'false');
+        applyBoardFilters();
+      }
+    });
+    const input = bar.querySelector('[data-leads-filter-q]');
+    if (input) input.addEventListener('input', applyBoardFilters);
+    applyBoardFilters();
   }
 
   function renderLeadCard(lead) {
-    const owner = lead.verified && lead.verified.ownerName && lead.ownerName
-      ? leadField('Owner', lead.ownerName, true)
-      : leadField('Owner', '', false);
-    const social = lead.verified && lead.verified.socials && lead.socials && lead.socials.instagram
-      ? leadField('Social', lead.socials.instagram, true)
-      : leadField('Social', '', false);
-    const draft = lead.oracleDraft
-      ? `<p class="oracle-draft">${esc(lead.oracleDraft)}</p><button type="button" class="soft-pill" data-copy-draft>Copy draft</button>`
-      : '';
-    const stages = ['new', 'contacted', 'replied', 'booked'].map((stage) => {
-      const on = lead.stage === stage ? ' is-on' : '';
-      return `<button type="button" class="soft-pill${on}" data-stage="${stage}" data-lead-slug="${esc(lead.slug)}">${stage}</button>`;
-    }).join('');
-    return `<article class="lead-card" data-lead-slug="${esc(lead.slug)}">
-      <h3>${esc(lead.name)}</h3>
-      <p class="lead-type">${esc(lead.type)} · ${esc(lead.city)}</p>
-      <ul class="lead-fields">
-        ${leadField('Phone', lead.phone, lead.verified && lead.verified.phone)}
-        ${leadField('Website', lead.website, lead.verified && lead.verified.website)}
-        ${leadField('Email', lead.email, lead.verified && lead.verified.email)}
-        ${leadField('Address', lead.address, lead.verified && lead.verified.address)}
-        ${owner}
-        ${social}
-      </ul>
-      <div class="lead-stages">${stages}</div>
-      ${draft}
-    </article>`;
+    const stage = normalizeStage(lead.stage);
+    const v = lead.verified || {};
+    return '<article class="lead-card" draggable="true" data-lead-slug="' + esc(lead.slug) + '"'
+      + ' data-lead-name="' + esc(lead.name || '') + '"'
+      + ' data-lead-city="' + esc((lead.city || '').toLowerCase()) + '"'
+      + ' data-lead-niche="' + esc(lead.category || '') + '"'
+      + ' data-has-email="' + (v.email && lead.email ? '1' : '0') + '"'
+      + ' data-has-phone="' + (v.phone && lead.phone ? '1' : '0') + '"'
+      + ' data-has-website="' + (v.website && lead.website ? '1' : '0') + '"'
+      + ' data-lead-stage="' + esc(stage) + '">'
+      + '<h3>' + esc(lead.name) + '</h3>'
+      + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
+      + '</article>';
+  }
+
+  function bindDrag(col) {
+    col.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      col.classList.add('is-drop');
+    });
+    col.addEventListener('dragleave', () => {
+      col.classList.remove('is-drop');
+    });
+    col.addEventListener('drop', (event) => {
+      event.preventDefault();
+      col.classList.remove('is-drop');
+      const stage = col.getAttribute('data-col');
+      const slug = draggedSlug || (event.dataTransfer && event.dataTransfer.getData('text/plain'));
+      draggedSlug = null;
+      if (slug && stage) void postLeads({ slug, stage });
+    });
   }
 
   function paintLeadsBoard() {
@@ -303,17 +512,23 @@
     const usageEl = document.querySelector('[data-leads-usage]');
     if (usageEl && usage) {
       usageEl.textContent = lastLeads.plan === 'paid'
-        ? `Paid sandbox. ${usage.leadCount} of ${usage.leadCap} leads.`
-        : `Free account. ${usage.leadCount} of 25 leads.`;
+        ? 'Paid sandbox. ' + usage.leadCount + ' of ' + usage.leadCap + ' leads.'
+        : 'Free account. ' + usage.leadCount + ' of 25 leads.';
     }
-    const empty = document.querySelector('[data-leads-empty]');
     const leads = lastLeads.leads || [];
-    if (empty) empty.hidden = leads.length > 0;
-    ['new', 'contacted', 'replied', 'booked'].forEach((stage) => {
+    STAGES.forEach((stage) => {
       const col = document.querySelector('[data-col-cards="' + stage + '"]');
-      if (!col) return;
-      col.innerHTML = leads.filter((lead) => lead.stage === stage).map(renderLeadCard).join('');
+      const wrap = document.querySelector('[data-col="' + stage + '"]');
+      const count = document.querySelector('[data-col-count="' + stage + '"]');
+      const items = leads.filter((lead) => normalizeStage(lead.stage) === stage);
+      if (col) col.innerHTML = items.map(renderLeadCard).join('');
+      if (count) count.textContent = String(items.length);
+      if (wrap && wrap.getAttribute('data-drop-bound') !== '1') {
+        wrap.setAttribute('data-drop-bound', '1');
+        bindDrag(wrap);
+      }
     });
+    applyBoardFilters();
     const panel = document.querySelector('[data-oracle-panel]');
     if (panel) {
       const oracle = lastLeads.oracle;
@@ -322,13 +537,13 @@
         panel.innerHTML = '';
       } else {
         panel.hidden = false;
-        const flags = (oracle.flags || []).map((flag) => `<li>${esc(flag)}</li>`).join('');
-        panel.innerHTML = `<p class="page-kicker">ORACLE</p>
-          <p>${esc(oracle.note || '')}</p>
-          <p>${esc(oracle.stageHint || '')}</p>
-          ${flags ? `<ul>${flags}</ul>` : ''}
-          ${oracle.draft ? `<p class="oracle-draft">${esc(oracle.draft)}</p><button type="button" class="soft-pill" data-copy-draft>Copy draft</button>` : ''}
-          <p class="seed-note">Oracle does not send email, post, or call.</p>`;
+        const flags = (oracle.flags || []).map((flag) => '<li>' + esc(flag) + '</li>').join('');
+        panel.innerHTML = '<p class="page-kicker">ORACLE</p>'
+          + '<p>' + esc(oracle.note || '') + '</p>'
+          + '<p>' + esc(oracle.stageHint || '') + '</p>'
+          + (flags ? '<ul>' + flags + '</ul>' : '')
+          + (oracle.draft ? '<p class="oracle-draft">' + esc(oracle.draft) + '</p><button type="button" class="soft-pill" data-copy-draft>Copy draft</button>' : '')
+          + '<p class="seed-note">Oracle does not send email, post, or call.</p>';
       }
     }
   }
@@ -340,7 +555,7 @@
       usage: data.usage || null,
       oracle: data.oracle || lastLeads.oracle || null,
     };
-    leadSlugs = new Set((lastLeads.leads || []).map((lead) => lead.slug));
+    leadSlugs = new Set((lastLeads.leads || []).flatMap((lead) => [lead.slug, lead.catalogSlug].filter(Boolean)));
     paintAddLeads();
     paintLeadsBoard();
   }
@@ -365,6 +580,17 @@
     return data;
   }
 
+  async function maybePaidUpgrade() {
+    try {
+      if (sessionStorage.getItem('directory:leads-pick') !== 'paid') return;
+      sessionStorage.removeItem('directory:leads-pick');
+      if (lastLeads.plan === 'paid') return;
+      await postLeads({ action: 'sandbox-upgrade' });
+    } catch {
+      /* keep free board */
+    }
+  }
+
   async function refreshLeads() {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
@@ -383,14 +609,43 @@
       } catch {
         leadSlugs = new Set();
       }
+      await maybePaidUpgrade();
     }
     paintAddLeads();
     paintLeadsBoard();
     bindShopFilters();
+    bindBoardFilters();
   }
+
+  document.addEventListener('dragstart', (event) => {
+    const card = event.target && event.target.closest ? event.target.closest('[data-leads-board] [data-lead-slug]') : null;
+    if (!card) return;
+    draggedSlug = card.getAttribute('data-lead-slug') || '';
+    didDrag = true;
+    card.classList.add('is-drag');
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('text/plain', draggedSlug);
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  });
+
+  document.addEventListener('dragend', (event) => {
+    const card = event.target && event.target.closest ? event.target.closest('.lead-card') : null;
+    if (card) card.classList.remove('is-drag');
+    document.querySelectorAll('.kanban-col.is-drop').forEach((col) => col.classList.remove('is-drop'));
+    window.setTimeout(() => { didDrag = false; }, 40);
+  });
 
   document.addEventListener('click', (event) => {
     const target = event.target;
+    const pick = target && target.closest ? target.closest('[data-leads-pick]') : null;
+    if (pick) {
+      event.preventDefault();
+      const choice = pick.getAttribute('data-leads-pick') || 'free';
+      try { sessionStorage.setItem('directory:leads-pick', choice); } catch { /* ignore */ }
+      openAuth('register');
+      return;
+    }
     if (target && target.closest && target.closest('[data-shop-info-close]')) {
       closeShopInfo();
       return;
@@ -444,7 +699,7 @@
     }
     if (target && target.closest && target.closest('[data-copy-draft]')) {
       event.preventDefault();
-      const box = target.closest('[data-oracle-panel], .lead-card');
+      const box = target.closest('[data-oracle-panel], #shop-info-modal, .lead-card');
       const draft = box && box.querySelector('.oracle-draft') ? box.querySelector('.oracle-draft').textContent : '';
       if (draft && navigator.clipboard) void navigator.clipboard.writeText(draft);
       return;
@@ -455,17 +710,47 @@
       openShopInfoFromCard(shopWrap);
       return;
     }
-    const leadCard = target && target.closest ? target.closest('.lead-card') : null;
+    const leadCard = target && target.closest ? target.closest('[data-leads-board] .lead-card') : null;
     if (leadCard) {
       event.preventDefault();
+      if (didDrag) return;
       openShopInfoFromLead(leadCard);
     }
   });
+
+
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    const pill = target && target.closest ? target.closest('[data-leads-pill]') : null;
+    if (pill && isLeadsPath()) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (currentUser) toggleLeadsMenu();
+      else setLeadsMenu(false);
+      return;
+    }
+    if (target && target.closest && target.closest('[data-menu]')) {
+      setLeadsMenu(false);
+    }
+    if (target && target.closest && target.closest('[data-scrim]')) {
+      setLeadsMenu(false);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!document.body.classList.contains('leads-drawer-open')) return;
+    setLeadsMenu(false);
+    event.stopPropagation();
+  }, true);
 
   window.addEventListener('callsal:boot-hidden', refreshLeads);
   window.addEventListener('callsal:page-applied', () => {
     applyShopFilters();
     paintAddLeads();
+    paintLeadsBoard();
+    bindBoardFilters();
+    if (!isLeadsPath()) setLeadsMenu(false);
   });
   void refreshLeads();
   window.setTimeout(refreshLeads, 800);
