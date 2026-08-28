@@ -1121,3 +1121,19 @@ html.is-app .app-chrome {
   top: 0;
   z-index: 40;
 }
+
+/* Guest leads: pin past the 3D room, scroll the sale page in the pane. */
+html.has-room.is-leads:not(.is-app) .stage-scroll {
+  overflow: hidden;
+}
+html.has-room.is-leads:not(.is-app) .app {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+html.has-room.is-leads:not(.is-app) .viewport {
+  overflow: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
