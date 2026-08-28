@@ -444,3 +444,120 @@ body.leads-drawer-open .scrim {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* Guest onboarding — board preview and plan plates */
+.leads-sale {
+  max-width: none;
+}
+
+.leads-sale .page-head {
+  max-width: 40rem;
+}
+
+.kanban-preview {
+  pointer-events: none;
+  margin: 0 0 2.4rem;
+  grid-template-columns: repeat(6, minmax(14rem, 1fr));
+}
+
+.kanban-preview .kanban-col {
+  min-height: 12rem;
+}
+
+.preview-hint {
+  margin: 0;
+  color: #8a8a8a;
+  font-size: 0.78rem;
+}
+
+.leads-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 0 0 2.4rem;
+}
+
+.leads-step {
+  padding: 1.15rem 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.leads-step-num {
+  margin: 0 0 0.55rem;
+  color: #CCFF00;
+  font-family: Syne, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.leads-step h2 {
+  margin: 0 0 0.45rem;
+  font-family: Syne, sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.leads-step p {
+  margin: 0;
+  color: #c0c0c0;
+  font-size: 0.98rem;
+}
+
+.leads-plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.leads-plan {
+  padding: 1.35rem 1.35rem 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+
+.leads-plan.is-paid {
+  border-color: #CCFF00;
+}
+
+.leads-plan .page-kicker {
+  margin-bottom: 0.45rem;
+}
+
+.leads-plan h2 {
+  margin: 0 0 0.55rem;
+  font-family: Syne, sans-serif;
+  font-size: 1.65rem;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.leads-plan p {
+  margin: 0 0 1.1rem;
+  color: #c0c0c0;
+  flex: 1;
+}
+
+.leads-plan .btn-primary,
+.leads-plan .btn-glass {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+@media (max-width: 860px) {
+  .leads-steps,
+  .leads-plans {
+    grid-template-columns: 1fr;
+  }
+
+  .kanban-preview {
+    grid-template-columns: repeat(6, minmax(11rem, 1fr));
+  }
+}
