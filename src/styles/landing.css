@@ -396,12 +396,12 @@ html.has-room:not(.intro-done) .scroll-hint {
   pointer-events: none;
 }
 
-/* Right-side chrome: JOIN / LOGIN (text) then INDEX (lime pill). */
+/* Right-side chrome: JOIN / LOGIN (text) then LEADS (lime pill). */
 .app-chrome .app-auth {
   margin-left: auto;
 }
 
-.menu-btn[data-menu] {
+.leads-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -417,12 +417,12 @@ html.has-room:not(.intro-done) .scroll-hint {
   line-height: 1;
 }
 
-.menu-btn[data-menu]:hover {
+.leads-pill:hover {
   color: #000;
   filter: brightness(1.08);
 }
 
-/* INDEX opens the filter menu at every width. */
+/* DIRECTORY opens the filter menu at every width. */
 .sidebar {
   position: fixed;
   top: var(--chrome);
@@ -471,7 +471,7 @@ body.drawer-open .scrim {
   pointer-events: auto;
 }
 
-/* Phone sticky chrome: DIRECTORY + JOIN + LOGIN + INDEX must fit 390px with air. */
+/* Phone sticky chrome: DIRECTORY + JOIN + LOGIN + LEADS must fit 390px with air. */
 @media (max-width: 480px) {
   .app-chrome {
     gap: 0.3rem;
@@ -505,7 +505,7 @@ body.drawer-open .scrim {
     letter-spacing: 0.08em;
     white-space: nowrap;
   }
-  .app-chrome .menu-btn[data-menu] {
+  .app-chrome .leads-pill {
     padding: 0.3rem 0.5rem;
     font-size: 12px;
     flex: 0 0 auto;
