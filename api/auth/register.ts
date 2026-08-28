@@ -11,9 +11,11 @@ import {
   setAuthCookie,
   setCorsHeaders,
   setUserPassword,
+  userFromCredentials,
   verifyPassword,
 } from '../lib/auth.js';
 import type { StoredUser } from '../lib/auth.js';
+import { isPersistentStorage } from '../lib/storage.js';
 
 function validEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -24,12 +26,10 @@ function setupKeyFrom(req: VercelRequest): string {
   return Array.isArray(header) ? header[0] || '' : String(header || '');
 }
 
-async function signIn(res: VercelResponse, user: StoredUser, origin: string, status: number) {
-  await ensureFreePlan(user.id);
-  const pub = publicUser(user);
-  const token = await createToken(pub);
+async function signIn(res: VercelResponse, user: { id: string; email: string; name: string }, origin: string, status: number) {
+  const token = await createToken(user, { plan: 'free' });
   setAuthCookie(res, token, origin);
-  return res.status(status).json({ success: true, user: pub });
+  return res.status(status).json({ success: true, user: publicUser(user) });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -47,6 +47,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: `PASSWORD MUST BE AT LEAST ${MIN_PASSWORD_LENGTH} CHARACTERS` });
     }
 
+    if (!isPersistentStorage()) {
+      return signIn(res, userFromCredentials(email, password), origin, 201);
+    }
+
     const existing = await loadUserByEmail(email);
     if (existing) {
       const reset = matchesSetupKey(setupKeyFrom(req));
@@ -54,7 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(409).json({ error: 'EMAIL ALREADY REGISTERED' });
       }
       const user = reset ? await setUserPassword(existing, password) : existing;
-      return signIn(res, user, origin, 200);
+      await ensureFreePlan(user.id);
+      return signIn(res, publicUser(user), origin, 200);
     }
 
     const user: StoredUser = {
@@ -65,7 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       createdAt: new Date().toISOString(),
     };
     await saveUser(user);
-    return signIn(res, user, origin, 201);
+    await ensureFreePlan(user.id);
+    return signIn(res, publicUser(user), origin, 201);
   } catch (err) {
     console.error('Register error:', err);
     return res.status(500).json({ error: 'REGISTRATION FAILED. TRY AGAIN.' });

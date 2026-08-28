@@ -1,12 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   createToken,
+  getAuthSession,
   loadUserByEmail,
   publicUser,
   setAuthCookie,
   setCorsHeaders,
+  userFromCredentials,
   verifyPassword,
 } from '../lib/auth.js';
+import { isPersistentStorage } from '../lib/storage.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(req, res);
@@ -20,16 +23,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!email || !password) return res.status(400).json({ error: 'EMAIL AND PASSWORD REQUIRED' });
 
-    const user = await loadUserByEmail(email);
-    if (!user) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
+    if (!isPersistentStorage()) {
+      const user = userFromCredentials(email, password);
+      const existing = await getAuthSession(req);
+      const extra = existing && existing.id === user.id
+        ? { plan: existing.plan === 'paid' ? 'paid' as const : 'free' as const, board: existing.board }
+        : { plan: 'free' as const };
+      const token = await createToken(user, extra);
+      setAuthCookie(res, token, origin);
+      return res.status(200).json({ success: true, user });
+    }
 
-    const ok = await verifyPassword(password, user.passwordHash);
+    const stored = await loadUserByEmail(email);
+    if (!stored) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
+
+    const ok = await verifyPassword(password, stored.passwordHash);
     if (!ok) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
 
-    const pub = publicUser(user);
-    const token = await createToken(pub);
+    const user = publicUser(stored);
+    const token = await createToken(user);
     setAuthCookie(res, token, origin);
-    return res.status(200).json({ success: true, user: pub });
+    return res.status(200).json({ success: true, user });
   } catch (err) {
     console.error('Login error:', err);
     return res.status(500).json({ error: 'LOGIN FAILED. TRY AGAIN.' });

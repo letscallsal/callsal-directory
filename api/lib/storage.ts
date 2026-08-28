@@ -58,9 +58,16 @@ function isRedisConfigured(): boolean {
   );
 }
 
+export function isPersistentStorage(): boolean {
+  return isRedisConfigured();
+}
+
 export async function getStorage(): Promise<StorageInterface> {
   if (isRedisConfigured()) {
     return getRedisStorage();
+  }
+  if (process.env.VERCEL === '1') {
+    console.warn('KV/Upstash missing; accounts persist in the signed session cookie');
   }
   return memoryStorage;
 }

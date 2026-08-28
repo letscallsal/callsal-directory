@@ -414,15 +414,27 @@ async function saveOwnerBoard(board: BoardState): Promise<void> {
   await storage.set(CRM_LEADS_KEY, rows);
 }
 
-async function loadMemberBoard(userId: string): Promise<BoardState> {
-  const storage = await getStorage();
-  const board = await storage.get<StoredBoard | BoardState>(leadsKey(userId));
-  if (!board || !Array.isArray(board.leads)) return emptyBoard();
+export function hydrateBoard(stored: StoredBoard | BoardState | null | undefined): BoardState {
+  if (!stored || !Array.isArray(stored.leads)) return emptyBoard();
   return {
-    leads: board.leads.map((lead) => hydrateStored(toTiny(lead as Lead))),
+    leads: stored.leads.map((lead) => hydrateStored(toTiny(lead as Lead))),
+    lastScanByCity: stored.lastScanByCity || {},
+    oracleDays: stored.oracleDays || {},
+  };
+}
+
+export function storedBoardOf(board: BoardState): StoredBoard {
+  return {
+    leads: board.leads.map(toTiny),
     lastScanByCity: board.lastScanByCity || {},
     oracleDays: board.oracleDays || {},
   };
+}
+
+async function loadMemberBoard(userId: string): Promise<BoardState> {
+  const storage = await getStorage();
+  const board = await storage.get<StoredBoard | BoardState>(leadsKey(userId));
+  return hydrateBoard(board);
 }
 
 async function saveMemberBoard(userId: string, board: BoardState): Promise<void> {

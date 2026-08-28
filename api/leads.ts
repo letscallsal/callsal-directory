@@ -1,8 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthUser, setCorsHeaders } from './lib/auth.js';
+import {
+  createToken,
+  getAuthSession,
+  setAuthCookie,
+  setCorsHeaders,
+  type AuthSession,
+} from './lib/auth.js';
 import {
   PRICE,
   addShop,
+  hydrateBoard,
   isPipelineOwner,
   loadBoard,
   loadPlan,
@@ -13,19 +20,31 @@ import {
   saveBoard,
   scanCity,
   setPlan,
+  storedBoardOf,
   usage,
+  type BoardState,
+  type Plan,
 } from './lib/board.js';
+import { isPersistentStorage } from './lib/storage.js';
+
+async function writeSession(req: VercelRequest, res: VercelResponse, session: AuthSession, plan: Plan, board: BoardState) {
+  if (isPersistentStorage()) return;
+  const token = await createToken(session, { plan, board: storedBoardOf(board) });
+  setAuthCookie(res, token, req.headers.origin || '');
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const user = await getAuthUser(req);
-  if (!user) return res.status(401).json({ error: 'Not authenticated' });
+  const session = await getAuthSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
+  const user = { id: session.id, email: session.email, name: session.name };
 
   const owner = isPipelineOwner(user);
-  const plan = await loadPlan(user.id);
-  let board = await loadBoard(user);
+  const persist = isPersistentStorage();
+  let plan: Plan = persist ? await loadPlan(user.id) : (session.plan === 'paid' ? 'paid' : 'free');
+  let board = persist ? await loadBoard(user) : hydrateBoard(session.board);
 
   if (req.method === 'GET') {
     return res.status(200).json({
@@ -41,12 +60,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = String(body.action || '').trim();
 
   if (action === 'sandbox-upgrade') {
-    await setPlan(user.id, 'paid');
-    const nextPlan = await loadPlan(user.id);
+    plan = 'paid';
+    if (persist) await setPlan(user.id, 'paid');
+    await writeSession(req, res, session, plan, board);
     return res.status(200).json({
-      plan: nextPlan,
+      plan,
       leads: board.leads,
-      usage: usage(board, nextPlan, owner),
+      usage: usage(board, plan, owner),
       sandbox: true,
     });
   }
@@ -67,7 +87,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     board = result.board;
-    await saveBoard(user, board);
+    if (persist) await saveBoard(user, board);
+    await writeSession(req, res, session, plan, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
@@ -100,7 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     board = result.board;
-    await saveBoard(user, board);
+    if (persist) await saveBoard(user, board);
+    await writeSession(req, res, session, plan, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
@@ -134,7 +156,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
     const oracle = runOracle(board);
-    await saveBoard(user, board);
+    if (persist) await saveBoard(user, board);
+    await writeSession(req, res, session, plan, board);
     return res.status(200).json({
       plan,
       leads: board.leads,
@@ -147,7 +170,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawStage = String(body.stage || '').trim();
   if (slug && rawStage) {
     board = moveLead(board, slug, normalizeStage(rawStage));
-    await saveBoard(user, board);
+    if (persist) await saveBoard(user, board);
+    await writeSession(req, res, session, plan, board);
     return res.status(200).json({
       plan,
       leads: board.leads,

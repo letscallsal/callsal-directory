@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createHmac } from 'crypto';
 
 export const COOKIE_NAME = 'directory_auth';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -15,6 +16,26 @@ export interface StoredUser extends DirectoryUser {
   createdAt: string;
 }
 
+export interface SessionBoard {
+  leads: Array<{
+    slug: string;
+    placeId?: string;
+    stage: string;
+    addedAt: string;
+    updatedAt: string;
+    oracleDraft?: string;
+    note?: string;
+    log?: Array<{ at: string; type: string; from?: string; to?: string; text?: string }>;
+  }>;
+  lastScanByCity?: Record<string, string>;
+  oracleDays?: Record<string, number>;
+}
+
+export interface AuthSession extends DirectoryUser {
+  plan?: 'free' | 'paid';
+  board?: SessionBoard;
+}
+
 function jwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (secret) return secret;
@@ -27,6 +48,15 @@ function jwtSecret(): string {
 export function matchesSetupKey(value: string): boolean {
   const key = String(value || '');
   return key.length > 0 && key === jwtSecret();
+}
+
+export function userFromCredentials(email: string, password: string): DirectoryUser {
+  const normalized = email.trim().toLowerCase();
+  const id = createHmac('sha256', jwtSecret())
+    .update(`directory:v1:${normalized}:${password}`)
+    .digest('hex')
+    .slice(0, 32);
+  return { id, email: normalized, name: normalized.split('@')[0] };
 }
 
 export function publicUser(user: StoredUser | DirectoryUser): DirectoryUser {
@@ -43,22 +73,40 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compareSync(password, hash);
 }
 
-export async function createToken(user: DirectoryUser): Promise<string> {
+export async function createToken(user: DirectoryUser, extra?: { plan?: 'free' | 'paid'; board?: SessionBoard }): Promise<string> {
   const jwt = (await import('jsonwebtoken')).default;
-  return jwt.sign(
-    { sub: user.id, email: user.email, name: user.name },
-    jwtSecret(),
-    { expiresIn: '7d' },
-  );
+  const payload: Record<string, unknown> = { sub: user.id, email: user.email, name: user.name };
+  if (extra?.plan) payload.pl = extra.plan;
+  if (extra?.board) payload.bd = extra.board;
+  return jwt.sign(payload, jwtSecret(), { expiresIn: '7d' });
 }
 
 export async function verifyToken(token: string): Promise<DirectoryUser | null> {
+  const session = await verifySession(token);
+  if (!session) return null;
+  return { id: session.id, email: session.email, name: session.name };
+}
+
+export async function verifySession(token: string): Promise<AuthSession | null> {
   try {
     const jwt = (await import('jsonwebtoken')).default;
     const decoded = jwt.verify(token, jwtSecret());
     if (typeof decoded === 'string') return null;
-    const payload = decoded as { sub: string; email: string; name: string };
-    return { id: payload.sub, email: payload.email, name: payload.name };
+    const payload = decoded as {
+      sub: string;
+      email: string;
+      name: string;
+      pl?: 'free' | 'paid';
+      bd?: SessionBoard;
+    };
+    if (!payload.sub || !payload.email) return null;
+    return {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      plan: payload.pl,
+      board: payload.bd,
+    };
   } catch {
     return null;
   }
@@ -72,9 +120,15 @@ export function getTokenFromRequest(req: VercelRequest): string | null {
 }
 
 export async function getAuthUser(req: VercelRequest): Promise<DirectoryUser | null> {
+  const session = await getAuthSession(req);
+  if (!session) return null;
+  return { id: session.id, email: session.email, name: session.name };
+}
+
+export async function getAuthSession(req: VercelRequest): Promise<AuthSession | null> {
   const token = getTokenFromRequest(req);
   if (!token) return null;
-  return verifyToken(token);
+  return verifySession(token);
 }
 
 function cookieDomain(origin: string): string {
