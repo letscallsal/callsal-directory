@@ -46,7 +46,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           return;
         }
         loader.classList.add('is-ack');
-        window.setTimeout(finishBoot, 320);
+        window.setTimeout(finishBoot, 560);
       }
       function startBootOut() {
         if (dismissed) return;
@@ -80,9 +80,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           startBootOut();
           return;
         }
-        await waitAnim(fill, 'boot-fill-rise', 1130);
-        if (fill) fill.classList.add('is-strobe');
-        await waitAnim(fill, 'boot-fill-strobe', 800);
+        await waitAnim(fill, 'boot-fill-rise', 1450);
         if (withRoom) await waitForCanvas(3200);
         startBootOut();
       }

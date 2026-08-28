@@ -65,11 +65,11 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       }
       #boot-loader.is-ack .boot-scrim { opacity: 0; }
       #boot-loader.is-ack .boot-pill {
-        animation: boot-leave 0.32s cubic-bezier(0.4, 0, 1, 1) forwards;
+        animation: boot-leave 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
       @keyframes boot-leave {
         from { opacity: 1; transform: translateY(0); }
-        to { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 0; transform: translateY(-10px); }
       }
       .boot-pill {
         position: relative;
@@ -91,27 +91,18 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       }
       .boot-pill-fill {
         position: absolute;
-        left: 0; right: 0; bottom: 0;
-        height: 0%;
+        inset: 0;
         background: #CCFF00;
         z-index: 0;
-        animation: boot-fill-rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        transform: scaleY(0);
+        transform-origin: bottom center;
+        animation: boot-fill-rise 1.2s 0.12s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
       @keyframes boot-fill-rise {
-        from { height: 0%; }
-        to { height: 100%; }
+        from { transform: scaleY(0); }
+        to { transform: scaleY(1); }
       }
-      .boot-pill-fill.is-strobe {
-        height: 100%;
-        animation: boot-fill-strobe 0.72s ease-in-out;
-      }
-      @keyframes boot-fill-strobe {
-        0% { filter: brightness(1); }
-        20% { filter: brightness(1.22); }
-        40% { filter: brightness(1); }
-        62% { filter: brightness(1.16); }
-        100% { filter: brightness(1); }
-      }
+
       html.has-room:not(.intro-ready) .room-canvas {
         visibility: hidden;
         opacity: 0;
@@ -127,7 +118,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       @media (prefers-reduced-motion: reduce) {
         .boot-scrim { transition: none; }
         .boot-pill-fill {
-          height: 100% !important;
+          transform: scaleY(1) !important;
           animation: none !important;
           filter: none;
         }
