@@ -110,9 +110,9 @@
 }
 
 .hero-ctas .btn-glass {
-  color: #000;
-  background: #f3f3f3;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #111111;
+  background: #FFFFFF;
+  border: 1.5px solid #111111;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
