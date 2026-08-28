@@ -103,6 +103,14 @@ export function bookmarksKey(userId: string): string {
   return `directory:bookmarks:${userId}`;
 }
 
+export function leadsKey(userId: string): string {
+  return `directory:leads:${userId}`;
+}
+
+export function planKey(userId: string): string {
+  return `directory:plan:${userId}`;
+}
+
 export async function loadUserByEmail(email: string): Promise<StoredUser | null> {
   const { getStorage } = await import('./storage.js');
   const storage = await getStorage();

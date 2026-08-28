@@ -1,0 +1,114 @@
+---
+import { typeLabel, type Shop } from '../lib/shops';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+const type = typeLabel(shop.category);
+const hasPhoto = Boolean(shop.verified.photo && shop.photo);
+---
+
+<div class="card-wrap" data-card-slug={shop.slug}>
+  <div class="card hover-lift">
+    {hasPhoto ? (
+      <img
+        class="card-preview"
+        src={shop.photo}
+        alt={`${shop.name} listing photo`}
+        width="640"
+        height="400"
+        loading="lazy"
+      />
+    ) : (
+      <div class="card-preview card-preview-missing" aria-label="Photo missing">
+        <span>Photo missing</span>
+      </div>
+    )}
+    <span class="card-cat">{type} · {shop.city}</span>
+    <h3>{shop.name}</h3>
+    <p>{shop.city}, {shop.region}</p>
+    <button type="button" class="add-lead-btn" data-add-lead={shop.slug}>
+      ADD TO LEADS
+    </button>
+  </div>
+  <button type="button" class="bookmark-btn" data-bookmark={shop.slug} aria-label={`Save ${shop.name}`}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+    </svg>
+  </button>
+</div>
+
+<style is:global>
+  .card-wrap {
+    flex: 0 0 min(19.5rem, 82vw);
+  }
+
+  .card-wrap .card {
+    justify-content: flex-start;
+    min-height: 0;
+    padding: 0 0 1.15rem;
+    overflow: hidden;
+  }
+
+  .card-preview {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    height: auto;
+    object-fit: cover;
+    object-position: top center;
+    background: #0a0a0a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .card-preview-missing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a8a8a;
+    font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .card-wrap .card-cat {
+    margin: 0.95rem 1.15rem 0;
+  }
+
+  .card-wrap .card h3 {
+    margin: 0.55rem 1.15rem 0.35rem;
+  }
+
+  .card-wrap .card p {
+    margin: 0 1.15rem;
+  }
+
+  .add-lead-btn {
+    display: inline-flex;
+    margin: 0.85rem 1.15rem 0;
+    padding: 0.4rem 0.7rem;
+    border-radius: 9999px;
+    background: #CCFF00;
+    color: #000;
+    font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .add-lead-btn.is-on,
+  .add-lead-btn:disabled {
+    background: rgba(255, 255, 255, 0.08);
+    color: #c0c0c0;
+    cursor: default;
+  }
+
+  .card-wrap .bookmark-btn {
+    background: rgba(0, 0, 0, 0.55);
+  }
+</style>
