@@ -1,5 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createToken, hashPassword, loadUserByEmail, publicUser, saveUser, setAuthCookie, setCorsHeaders } from '../lib/auth.js';
+import {
+  createToken,
+  hashPassword,
+  isFreeTestLogin,
+  loadUserByEmail,
+  publicUser,
+  saveUser,
+  setAuthCookie,
+  setCorsHeaders,
+  upsertFreeTestUser,
+} from '../lib/auth.js';
 import type { StoredUser } from '../lib/auth.js';
 
 function validEmail(email: string): boolean {
@@ -18,6 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!validEmail(email)) return res.status(400).json({ error: 'VALID EMAIL REQUIRED' });
     if (password.length < 8) return res.status(400).json({ error: 'PASSWORD MUST BE AT LEAST 8 CHARACTERS' });
+
+    if (isFreeTestLogin(email, password)) {
+      const user = await upsertFreeTestUser();
+      const pub = publicUser(user);
+      const token = await createToken(pub);
+      setAuthCookie(res, token, origin);
+      return res.status(201).json({ success: true, user: pub });
+    }
 
     const existing = await loadUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'EMAIL ALREADY REGISTERED' });

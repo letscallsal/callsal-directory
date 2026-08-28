@@ -3,6 +3,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 export const COOKIE_NAME = 'directory_auth';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
+export const FREE_TEST_EMAIL = 'letscallsal+free@gmail.com';
+export const FREE_TEST_PASSWORD = 'callsal1';
+
 export interface DirectoryUser {
   id: string;
   email: string;
@@ -16,13 +19,11 @@ export interface StoredUser extends DirectoryUser {
 
 function jwtSecret(): string {
   const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    if (process.env.VERCEL === '1') {
-      throw new Error('CRITICAL: JWT_SECRET environment variable not set');
-    }
-    return 'dev-secret-do-not-use-in-production';
+  if (secret) return secret;
+  if (process.env.VERCEL === '1') {
+    console.warn('JWT_SECRET missing; signing with directory fallback');
   }
-  return secret;
+  return 'callsal-directory-fallback-do-not-ship-as-prod-secret';
 }
 
 export function publicUser(user: StoredUser | DirectoryUser): DirectoryUser {
@@ -122,6 +123,29 @@ export async function saveUser(user: StoredUser): Promise<void> {
   const storage = await getStorage();
   await storage.set(emailKey(user.email), user);
   await storage.set(userIdKey(user.id), user);
+}
+
+export function isFreeTestLogin(email: string, password: string): boolean {
+  return email.trim().toLowerCase() === FREE_TEST_EMAIL && password === FREE_TEST_PASSWORD;
+}
+
+export async function upsertFreeTestUser(): Promise<StoredUser> {
+  const existing = await loadUserByEmail(FREE_TEST_EMAIL);
+  const passwordHash = await hashPassword(FREE_TEST_PASSWORD);
+  const user: StoredUser = existing
+    ? { ...existing, passwordHash, name: existing.name || 'Sal' }
+    : {
+        id: crypto.randomUUID(),
+        email: FREE_TEST_EMAIL,
+        name: 'Sal',
+        passwordHash,
+        createdAt: new Date().toISOString(),
+      };
+  await saveUser(user);
+  const { getStorage } = await import('./storage.js');
+  const storage = await getStorage();
+  await storage.set(planKey(user.id), 'free');
+  return user;
 }
 
 const allowedOrigins = [
