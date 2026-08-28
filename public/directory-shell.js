@@ -373,12 +373,28 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         return payload;
       }
 
+      function anchorGuestLeads() {
+        if (currentUser) return;
+        if (viewport) viewport.scrollTop = 0;
+        const stage = document.getElementById('stage-scroll');
+        if (stage && hasHeroStage()) {
+          stage.scrollTop = stickThreshold();
+        }
+        window.scrollTo(0, 0);
+        if (main) main.scrollTop = 0;
+      }
+
       function apply(payload, path) {
         if (!main || !viewport) return;
         main.innerHTML = payload.html;
         document.title = payload.title;
         const key = normalize(path);
-        viewport.scrollTop = scrollMap.get(key) ?? 0;
+        if (key === '/leads' && !currentUser) {
+          scrollMap.delete('/leads');
+          anchorGuestLeads();
+        } else {
+          viewport.scrollTop = scrollMap.get(key) ?? 0;
+        }
         updateSidebar(path);
         paintBookmarks();
         paintSaved();
@@ -392,6 +408,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         const nextUrl = new URL(path, location.origin);
         if (normalize(nextUrl.pathname) === '/leads') {
           await ensureStickyThen(() => {});
+          if (!currentUser) scrollMap.delete('/leads');
         }
         const token = ++navToken;
         scrollMap.set(normalize(location.pathname), viewport.scrollTop);
@@ -425,6 +442,10 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         }
 
         setOpen(false);
+        if (!currentUser && normalize(nextUrl.pathname) === '/leads') {
+          anchorGuestLeads();
+          requestAnimationFrame(anchorGuestLeads);
+        }
       }
 
       function snapToDirectory() {
