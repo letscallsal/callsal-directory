@@ -1,6 +1,31 @@
 const withRoom = window.__DIRECTORY_WITH_ROOM;
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+      let currentUser = null;
+
+      function applyAppMode(on) {
+        const root = document.documentElement;
+        if (on) {
+          root.classList.add('is-app', 'intro-ready', 'intro-done', 'intro-settled');
+          document.body.classList.remove('drawer-open');
+          return;
+        }
+        root.classList.remove('is-app');
+      }
+
+      const authMePromise = fetch('/api/auth/me', { credentials: 'include' })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          currentUser = res.ok && data.user ? data.user : null;
+          applyAppMode(Boolean(currentUser));
+          return currentUser;
+        })
+        .catch(() => {
+          currentUser = null;
+          applyAppMode(false);
+          return null;
+        });
+
       let dismissed = false;
       function finishBoot() {
         document.getElementById('boot-loader')?.remove();
@@ -81,7 +106,17 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           return;
         }
         await waitAnim(fill, 'boot-fill-rise', 1500);
-        if (withRoom) await waitForCanvas(3200);
+        try {
+          await Promise.race([
+            authMePromise,
+            new Promise((resolve) => window.setTimeout(resolve, 800)),
+          ]);
+        } catch {
+          /* guest path if auth is slow or fails */
+        }
+        if (withRoom && !document.documentElement.classList.contains('is-app')) {
+          await waitForCanvas(3200);
+        }
         startBootOut();
       }
       if (reduceMotion) {
@@ -117,6 +152,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       let chromeBusy = false;
 
       function hasHeroStage() {
+        if (document.documentElement.classList.contains('is-app')) return false;
         return Boolean(document.getElementById('hero-stage'));
       }
 
@@ -398,7 +434,6 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         stage.scrollTo({ top: hero.offsetHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
       }
 
-      let currentUser = null;
       let bookmarks = new Set();
       let authMode = 'register';
       const authModal = document.getElementById('auth-modal');
@@ -499,6 +534,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         } catch {
           currentUser = null;
         }
+        applyAppMode(Boolean(currentUser));
         bookmarks = new Set();
         if (currentUser) {
           try {
@@ -556,6 +592,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).finally(() => {
             currentUser = null;
             bookmarks = new Set();
+            applyAppMode(false);
             paintAuth();
             paintBookmarks();
             paintSaved();
@@ -616,6 +653,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
             return;
           }
           currentUser = data.user;
+          applyAppMode(true);
           closeAuth();
           form.reset();
           await refreshAuth();
@@ -643,6 +681,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         let lastFade = -1;
         const applyLandingFade = () => {
           if (!hero || !stage) return;
+          if (document.documentElement.classList.contains('is-app')) return;
           if (!document.documentElement.classList.contains('intro-done')) return;
           const h = Math.max(1, hero.offsetHeight);
           const t = Math.min(1, Math.max(0, stage.scrollTop / h));
@@ -684,3 +723,6 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       paintAuth();
       if (isLeadsView()) syncChromeLock();
       void refreshAuth();
+      authMePromise.then(() => {
+        paintAuth();
+      });
