@@ -113,16 +113,138 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       const viewport = document.querySelector('[data-viewport]');
       const main = document.querySelector('[data-main]');
 
+      let stuck = false;
+      let chromeBusy = false;
+
+      function hasHeroStage() {
+        return Boolean(document.getElementById('hero-stage'));
+      }
+
+      function stickThreshold() {
+        const hero = document.getElementById('hero-stage');
+        return hero ? hero.offsetHeight : 0;
+      }
+
+      function isPastStickPoint() {
+        const slot = document.getElementById('chrome-slot');
+        if (!slot || !hasHeroStage()) return true;
+        const top = slot.getBoundingClientRect().top;
+        return stuck ? top <= 1 : top <= 0;
+      }
+
+      function isLeadsView() {
+        return normalize(location.pathname) === '/leads';
+      }
+
+      function shouldLockChrome() {
+        return document.body.classList.contains('drawer-open') || isLeadsView();
+      }
+
+      function clampStageToStick() {
+        const stage = document.getElementById('stage-scroll');
+        if (!stage || !hasHeroStage()) return;
+        const min = stickThreshold();
+        if (stage.scrollTop < min) stage.scrollTop = min;
+      }
+
+      function applySticky() {
+        const slot = document.getElementById('chrome-slot');
+        const chrome = document.getElementById('app-chrome');
+        if (!slot || !chrome || !hasHeroStage()) return;
+        if (shouldLockChrome()) {
+          clampStageToStick();
+          if (!stuck) {
+            stuck = true;
+            chrome.classList.add('is-stuck');
+          }
+          return;
+        }
+        const top = slot.getBoundingClientRect().top;
+        const next = stuck ? top <= 1 : top <= 0;
+        if (next === stuck) return;
+        stuck = next;
+        chrome.classList.toggle('is-stuck', stuck);
+      }
+
+      function syncChromeLock() {
+        const stage = document.getElementById('stage-scroll');
+        const lock = shouldLockChrome();
+        if (stage && hasHeroStage()) {
+          stage.style.overflow = lock ? 'hidden' : '';
+        }
+        if (lock && hasHeroStage()) {
+          clampStageToStick();
+          applySticky();
+        }
+      }
+
+      function waitForStickPoint(stage) {
+        return new Promise((resolve) => {
+          if (isPastStickPoint()) {
+            resolve();
+            return;
+          }
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            stage.removeEventListener('scroll', onScroll);
+            window.clearTimeout(failSafe);
+            resolve();
+          };
+          const onScroll = () => {
+            if (isPastStickPoint() || stage.scrollTop >= stickThreshold() - 1) finish();
+          };
+          const failSafe = window.setTimeout(finish, 900);
+          stage.addEventListener('scroll', onScroll, { passive: true });
+          onScroll();
+        });
+      }
+
+      async function ensureStickyThen(fn) {
+        if (isPastStickPoint()) {
+          applySticky();
+          await fn();
+          return;
+        }
+        const stage = document.getElementById('stage-scroll');
+        snapToDirectory();
+        if (stage && !reduceMotion) await waitForStickPoint(stage);
+        applySticky();
+        await fn();
+      }
+
+      function syncDirectoryMark(open) {
+        if (!menu) return;
+        menu.setAttribute('aria-expanded', String(open));
+        menu.setAttribute('aria-label', open ? 'Close' : 'DIRECTORY');
+      }
+
       function setOpen(open) {
         document.body.classList.toggle('drawer-open', open);
-        menu?.setAttribute('aria-expanded', String(open));
+        syncDirectoryMark(open);
         if (scrim) scrim.hidden = !open;
+        syncChromeLock();
+      }
+
+      async function openDirectoryMenu() {
+        if (document.body.classList.contains('drawer-open')) {
+          setOpen(false);
+          return;
+        }
+        if (chromeBusy) return;
+        chromeBusy = true;
+        try {
+          await ensureStickyThen(() => setOpen(true));
+        } finally {
+          chromeBusy = false;
+        }
       }
 
       window.addEventListener('callsal:intro-complete', () => setOpen(false));
 
       menu?.addEventListener('click', () => {
-        setOpen(!document.body.classList.contains('drawer-open'));
+        void openDirectoryMenu();
       });
       scrim?.addEventListener('click', () => setOpen(false));
       function closeShopInfo() {
@@ -225,18 +347,24 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         paintBookmarks();
         paintSaved();
         paintLeadsPill(path);
+        syncChromeLock();
         window.dispatchEvent(new Event('callsal:page-applied'));
       }
 
       async function go(path, push) {
         if (!main || !viewport) return;
+        const nextUrl = new URL(path, location.origin);
+        if (normalize(nextUrl.pathname) === '/leads') {
+          await ensureStickyThen(() => {});
+        }
         const token = ++navToken;
         scrollMap.set(normalize(location.pathname), viewport.scrollTop);
 
-        const nextUrl = new URL(path, location.origin);
         if (push && normalize(nextUrl.pathname) !== normalize(location.pathname)) {
           history.pushState({}, '', nextUrl.pathname + nextUrl.search);
         }
+
+        syncChromeLock();
 
         const payload = await load(nextUrl.pathname + nextUrl.search);
         if (token !== navToken) return;
@@ -509,12 +637,9 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       if (withRoom) {
         const stage = document.getElementById('stage-scroll');
         const hero = document.getElementById('hero-stage');
-        const slot = document.getElementById('chrome-slot');
-        const chrome = document.getElementById('app-chrome');
         const fadeTargets = hero
           ? [...hero.querySelectorAll('.hero-landing, .hero-glass-header, .hero-glass-nav, .scroll-hint')]
           : [];
-        let stuck = false;
         let lastFade = -1;
         const applyLandingFade = () => {
           if (!hero || !stage) return;
@@ -544,15 +669,8 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           if (canvas) canvas.style.opacity = String(opacity);
           hero.classList.toggle('is-faded', opacity < 0.06);
         };
-        const applySticky = () => {
-          if (!slot || !chrome) return;
-          const top = slot.getBoundingClientRect().top;
-          const next = stuck ? top <= 1 : top <= 0;
-          if (next === stuck) return;
-          stuck = next;
-          chrome.classList.toggle('is-stuck', stuck);
-        };
         const onStageScroll = () => {
+          if (shouldLockChrome()) clampStageToStick();
           applyLandingFade();
           applySticky();
         };
@@ -564,4 +682,5 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       }
 
       paintAuth();
+      if (isLeadsView()) syncChromeLock();
       void refreshAuth();

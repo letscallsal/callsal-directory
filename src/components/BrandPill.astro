@@ -18,14 +18,51 @@ const isCall = mark === 'callsal';
   </a>
 ) : (
   <button type="button" class:list={['brand-pill', 'hover-lift', className]} data-menu aria-controls="sidebar" aria-expanded="false" aria-label="DIRECTORY">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-      <circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none"></circle>
-      <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle>
-      <circle cx="5" cy="18" r="1.4" fill="currentColor" stroke="none"></circle>
-      <path d="M10 6h10"></path>
-      <path d="M10 12h10"></path>
-      <path d="M10 18h10"></path>
+    <svg class="brand-mark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+      <g class="brand-mark-book">
+        <circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none"></circle>
+        <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle>
+        <circle cx="5" cy="18" r="1.4" fill="currentColor" stroke="none"></circle>
+        <path d="M10 6h10"></path>
+        <path d="M10 12h10"></path>
+        <path d="M10 18h10"></path>
+      </g>
+      <g class="brand-mark-close">
+        <path d="M6 6l12 12"></path>
+        <path d="M18 6L6 18"></path>
+      </g>
     </svg>
     <span>DIRECTORY</span>
   </button>
 )}
+
+<style>
+  .brand-mark {
+    display: block;
+    flex-shrink: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform var(--ease);
+  }
+
+  .brand-mark-book,
+  .brand-mark-close {
+    transition: opacity var(--ease);
+  }
+
+  .brand-mark-close {
+    opacity: 0;
+  }
+
+  .brand-pill[aria-expanded='true'] .brand-mark {
+    transform: rotate(90deg);
+  }
+
+  .brand-pill[aria-expanded='true'] .brand-mark-book {
+    opacity: 0;
+  }
+
+  .brand-pill[aria-expanded='true'] .brand-mark-close {
+    opacity: 1;
+  }
+</style>
