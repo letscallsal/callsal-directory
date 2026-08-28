@@ -203,6 +203,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       }
 
       function syncChromeLock() {
+        document.documentElement.classList.toggle('is-leads', isLeadsView());
         const stage = document.getElementById('stage-scroll');
         const lock = shouldLockChrome();
         if (stage && hasHeroStage()) {
@@ -475,6 +476,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
 
       function paintLeadsPill(path) {
         const on = normalize(path || location.pathname) === '/leads';
+        document.documentElement.classList.toggle('is-leads', on);
         document.querySelectorAll('[data-leads-pill]').forEach((el) => {
           if (on) el.setAttribute('aria-current', 'page');
           else el.removeAttribute('aria-current');
