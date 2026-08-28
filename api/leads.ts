@@ -2,23 +2,18 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthUser, setCorsHeaders } from './lib/auth.js';
 import {
   PRICE,
-  STAGES,
   addShop,
   loadBoard,
   loadPlan,
   moveLead,
+  normalizeStage,
   oracleAllowed,
   runOracle,
   saveBoard,
   scanCity,
   setPlan,
   usage,
-  type Stage,
 } from './lib/board.js';
-
-function isStage(value: string): value is Stage {
-  return STAGES.includes(value as Stage);
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(req, res);
@@ -147,9 +142,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const slug = String(body.slug || '').trim().toLowerCase();
-  const stage = String(body.stage || '').trim().toLowerCase();
-  if (slug && isStage(stage)) {
-    board = moveLead(board, slug, stage);
+  const rawStage = String(body.stage || '').trim();
+  if (slug && rawStage) {
+    board = moveLead(board, slug, normalizeStage(rawStage));
     await saveBoard(user.id, board);
     return res.status(200).json({
       plan,

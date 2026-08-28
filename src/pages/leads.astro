@@ -2,16 +2,53 @@
 import AppShell from '../layouts/AppShell.astro';
 ---
 
-<AppShell title="Leads" description="A lead board for shops you add from the directory.">
-  <header class="page-head">
-    <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
-    <h1 class="page-title">Leads</h1>
-    <p class="page-tag">Add shops from the directory. Import all (pre-fill from preferred cities) is a paid unlock.</p>
-  </header>
+<AppShell title="Leads" description="A local Google Business index you can turn into a lead board.">
+  <div class="leads-sale editorial" data-leads-guest>
+    <header class="page-head">
+      <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
+      <h1 class="page-title">Leads</h1>
+      <p class="page-tag">A local Google Business index you can turn into a lead board.</p>
+    </header>
 
-  <p class="empty" data-leads-guest hidden>Register to save the board. A free account is welcome. It starts empty. You add shops from the directory. Import all (pre-fill from preferred cities) is a paid unlock.</p>
+    <section>
+      <h2>How the board works</h2>
+      <ul>
+        <li>Add shops from the directory.</li>
+        <li>NEW, CONTACTED, RESPONDED, MEETING, PROPOSAL, WON.</li>
+        <li>Drag a card to move it.</li>
+        <li>Open a card for the log.</li>
+        <li>Oracle drafts stay on the card. Oracle does not send email, post, or call.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Free</h2>
+      <ul>
+        <li>Browse Directory. Add to leads by hand.</li>
+        <li>Cap 25. A free account starts empty.</li>
+        <li>No scan. No Oracle.</li>
+      </ul>
+      <button type="button" class="btn-glass hover-lift" data-leads-pick="free">JOIN</button>
+    </section>
+
+    <section>
+      <h2>Paid Directory</h2>
+      <p>Paid Directory is $999 a month. Import all fills the board from your cities. A free account starts empty. This form does not take payment.</p>
+      <ul>
+        <li>Scan / import all. Deduped by place id or name+address.</li>
+        <li>Oracle drafts only, never sends.</li>
+      </ul>
+      <button type="button" class="btn-primary hover-lift" data-leads-pick="paid">USE THE PAID BOARD IN SANDBOX</button>
+    </section>
+  </div>
 
   <div class="leads-app" data-leads-app hidden>
+    <header class="page-head">
+      <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
+      <h1 class="page-title">Leads</h1>
+      <p class="page-tag">Add shops from the directory. Import all (pre-fill from preferred cities) is a paid unlock.</p>
+    </header>
+
     <div class="leads-toolbar">
       <p class="leads-usage" data-leads-usage></p>
       <div class="leads-actions">
@@ -21,24 +58,31 @@ import AppShell from '../layouts/AppShell.astro';
     </div>
 
     <aside class="oracle-panel" data-oracle-panel hidden></aside>
-    <p class="empty" data-leads-empty hidden>Your board is empty. Add a shop from the directory.</p>
 
     <div class="kanban" data-leads-board>
-      <section class="kanban-col" data-col="new">
-        <h2>New</h2>
-        <div data-col-cards="new"></div>
+      <section class="kanban-col" data-col="New">
+        <h2>NEW <span data-col-count="New"></span></h2>
+        <div data-col-cards="New"></div>
       </section>
-      <section class="kanban-col" data-col="contacted">
-        <h2>Contacted</h2>
-        <div data-col-cards="contacted"></div>
+      <section class="kanban-col" data-col="Contacted">
+        <h2>CONTACTED <span data-col-count="Contacted"></span></h2>
+        <div data-col-cards="Contacted"></div>
       </section>
-      <section class="kanban-col" data-col="replied">
-        <h2>Replied</h2>
-        <div data-col-cards="replied"></div>
+      <section class="kanban-col" data-col="Responded">
+        <h2>RESPONDED <span data-col-count="Responded"></span></h2>
+        <div data-col-cards="Responded"></div>
       </section>
-      <section class="kanban-col" data-col="booked">
-        <h2>Booked</h2>
-        <div data-col-cards="booked"></div>
+      <section class="kanban-col" data-col="Meeting Scheduled">
+        <h2>MEETING <span data-col-count="Meeting Scheduled"></span></h2>
+        <div data-col-cards="Meeting Scheduled"></div>
+      </section>
+      <section class="kanban-col" data-col="Proposal Sent">
+        <h2>PROPOSAL <span data-col-count="Proposal Sent"></span></h2>
+        <div data-col-cards="Proposal Sent"></div>
+      </section>
+      <section class="kanban-col" data-col="Won">
+        <h2>WON <span data-col-count="Won"></span></h2>
+        <div data-col-cards="Won"></div>
       </section>
     </div>
   </div>
