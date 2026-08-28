@@ -1,7 +1,6 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
 import ShopCarousel from '../components/ShopCarousel.astro';
-import ShopFilters from '../components/ShopFilters.astro';
 import { getShops, featuredShops, typesWithShops, byType } from '../lib/shops';
 
 const shops = await getShops();
@@ -10,7 +9,6 @@ const typeRows = typesWithShops(shops).map((item) => ({
   ...item,
   shops: byType(shops, item.slug),
 }));
-const cities = [...new Set(shops.map((shop) => shop.city))].sort((a, b) => a.localeCompare(b));
 ---
 
 <AppShell title="Directory" description="A local Google Business index you can turn into a lead board." withRoom>
@@ -19,8 +17,6 @@ const cities = [...new Set(shops.map((shop) => shop.city))].sort((a, b) => a.loc
     <h1>THE INDEX</h1>
     <p>A local Google Business index you can turn into a lead board.</p>
   </div>
-
-  <ShopFilters cities={cities} />
 
   <div class="rows intro-hold intro-d5">
     <ShopCarousel title="Featured" shops={featuredRow} />

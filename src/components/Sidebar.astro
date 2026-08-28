@@ -1,5 +1,6 @@
 ---
 import { TYPE_META, type Shop } from '../lib/shops';
+import ShopFilters from './ShopFilters.astro';
 
 interface Props {
   shops: Shop[];
@@ -15,21 +16,14 @@ const grouped = TYPE_META.map((item) => ({
   ...item,
   count: shops.filter((shop) => shop.category === item.slug).length,
 })).filter((item) => item.count > 0);
+
+const cities = [...new Set(shops.map((shop) => shop.city))].sort((a, b) => a.localeCompare(b));
 ---
 
-<aside class="sidebar" id="sidebar" data-sidebar>
-  <div class="sidebar-search">
-    <label for="directory-search">Search</label>
-    <input
-      id="directory-search"
-      type="search"
-      placeholder="Filter shop types"
-      autocomplete="off"
-      data-search
-    />
-  </div>
+<aside class="sidebar sleek-scroll" id="sidebar" data-sidebar>
+  <ShopFilters cities={cities} />
 
-  <nav class="sidebar-index sleek-scroll" aria-label="Index" data-index>
+  <nav class="sidebar-index" aria-label="Index" data-index>
     <a class="sidebar-saved" href="/leads/" data-leads-link aria-current={isLeads ? 'page' : undefined}>Leads</a>
     <a class="sidebar-saved" href="/saved/" data-saved-link aria-current={isSaved ? 'page' : undefined}>Saved</a>
     {grouped.map((item) => (
@@ -45,18 +39,3 @@ const grouped = TYPE_META.map((item) => ({
     ))}
   </nav>
 </aside>
-
-<script>
-  const search = document.querySelector('[data-search]') as HTMLInputElement | null;
-  const types = document.querySelectorAll('[data-type]');
-
-  function filterIndex(query: string) {
-    const q = query.trim().toLowerCase();
-    for (const item of types) {
-      const label = ((item as HTMLElement).dataset.label ?? '').toLowerCase();
-      (item as HTMLElement).hidden = Boolean(q) && !label.includes(q);
-    }
-  }
-
-  search?.addEventListener('input', () => filterIndex(search.value));
-</script>
