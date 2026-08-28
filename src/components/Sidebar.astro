@@ -9,8 +9,6 @@ interface Props {
 
 const { shops, currentPath } = Astro.props;
 const currentType = currentPath.match(/^\/type\/([^/]+)/)?.[1] ?? '';
-const isSaved = currentPath.replace(/\/$/, '') === '/saved';
-const isLeads = currentPath.replace(/\/$/, '') === '/leads';
 
 const grouped = TYPE_META.map((item) => ({
   ...item,
@@ -20,12 +18,10 @@ const grouped = TYPE_META.map((item) => ({
 const cities = [...new Set(shops.map((shop) => shop.city))].sort((a, b) => a.localeCompare(b));
 ---
 
-<aside class="sidebar sleek-scroll" id="sidebar" data-sidebar>
+<aside class="sidebar sleek-scroll" id="sidebar" data-sidebar aria-label="Directory menu">
   <ShopFilters cities={cities} />
 
-  <nav class="sidebar-index" aria-label="Index" data-index>
-    <a class="sidebar-saved" href="/leads/" data-leads-link aria-current={isLeads ? 'page' : undefined}>Leads</a>
-    <a class="sidebar-saved" href="/saved/" data-saved-link aria-current={isSaved ? 'page' : undefined}>Saved</a>
+  <nav class="sidebar-index" data-index>
     {grouped.map((item) => (
       <a
         class="sidebar-saved"

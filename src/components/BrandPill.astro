@@ -7,15 +7,17 @@ interface Props {
 
 const { href, class: className = '', mark = 'directory' } = Astro.props;
 const isCall = mark === 'callsal';
-const dest = href ?? (isCall ? 'https://callsal.app' : '/');
 ---
 
-<a class:list={['brand-pill', 'hover-lift', className]} href={dest} aria-label={isCall ? 'CALL SAL' : 'DIRECTORY'}>
-  {isCall ? (
+{isCall ? (
+  <a class:list={['brand-pill', 'hover-lift', className]} href={href ?? 'https://callsal.app'} aria-label="CALL SAL">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
     </svg>
-  ) : (
+    <span>CALL SAL</span>
+  </a>
+) : (
+  <button type="button" class:list={['brand-pill', 'hover-lift', className]} data-menu aria-controls="sidebar" aria-expanded="false" aria-label="DIRECTORY">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
       <circle cx="5" cy="6" r="1.4" fill="currentColor" stroke="none"></circle>
       <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"></circle>
@@ -24,6 +26,6 @@ const dest = href ?? (isCall ? 'https://callsal.app' : '/');
       <path d="M10 12h10"></path>
       <path d="M10 18h10"></path>
     </svg>
-  )}
-  <span>{isCall ? 'CALL SAL' : 'DIRECTORY'}</span>
-</a>
+    <span>DIRECTORY</span>
+  </button>
+)}

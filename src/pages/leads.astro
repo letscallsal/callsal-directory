@@ -2,26 +2,26 @@
 import AppShell from '../layouts/AppShell.astro';
 ---
 
-<AppShell title="Leads" description="A lead board for shops you add from the Milton index.">
+<AppShell title="Leads" description="A lead board for shops you add from the directory.">
   <header class="page-head">
     <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
     <h1 class="page-title">Leads</h1>
-    <p class="page-tag">Add shops from the index. Paid Directory can scan a city and ask Oracle what to work next.</p>
+    <p class="page-tag">Add shops from the directory. Import all (pre-fill from preferred cities) is a paid unlock.</p>
   </header>
 
-  <p class="empty" data-leads-guest hidden>Join to open your lead board.</p>
+  <p class="empty" data-leads-guest hidden>Register to save the board. A free account is welcome. It starts empty. You add shops from the directory. Import all (pre-fill from preferred cities) is a paid unlock.</p>
 
   <div class="leads-app" data-leads-app hidden>
     <div class="leads-toolbar">
       <p class="leads-usage" data-leads-usage></p>
       <div class="leads-actions">
-        <button type="button" class="soft-pill" data-scan-leads>SCAN LEADS</button>
+        <button type="button" class="soft-pill" data-scan-leads>IMPORT ALL</button>
         <button type="button" class="soft-pill" data-ask-oracle>ORACLE</button>
       </div>
     </div>
 
     <aside class="oracle-panel" data-oracle-panel hidden></aside>
-    <p class="empty" data-leads-empty hidden>Your board is empty. Open the index and add a shop.</p>
+    <p class="empty" data-leads-empty hidden>Your board is empty. Add a shop from the directory.</p>
 
     <div class="kanban" data-leads-board>
       <section class="kanban-col" data-col="new">
