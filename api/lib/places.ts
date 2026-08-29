@@ -94,7 +94,10 @@ export function typeLabel(slug: string): string {
 }
 
 export function placesApiKey(): string | undefined {
-  const key = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_API_KEY;
+  const key =
+    process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GEMINI_API_KEY;
   const trimmed = key?.trim();
   return trimmed || undefined;
 }
@@ -198,7 +201,7 @@ function categoryFromOsm(osmKey: string, osmValue: string): ShopCategory {
 
 function cacheKey(city: string, region: string, country: string, category: string): string {
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `directory:places:v3:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
+  return `directory:places:v4:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
 }
 
 async function readCache(key: string): Promise<PlacesResult | null> {
@@ -256,7 +259,6 @@ async function searchGoogleNiche(
       pageSize: 20,
       languageCode: 'en',
       regionCode: metro.country,
-      includedType: niche.includedType,
       locationBias: {
         circle: {
           center: { latitude: metro.lat, longitude: metro.lng },
@@ -301,6 +303,119 @@ function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: Shop
       website: Boolean(place.websiteUri),
       email: false,
       address: Boolean(place.formattedAddress),
+      ownerName: false,
+      socials: false,
+      photo: Boolean(photo),
+    },
+  };
+}
+
+const FRANCHISE_PATTERNS = [
+  /anytime fitness/i, /planet fitness/i, /goodlife/i, /fit4less/i,
+  /mcdonald/i, /starbucks/i, /tim horton/i, /subway/i, /pizza hut/i,
+  /domino/i, /wendy/i, /burger king/i, /taco bell/i, /\bkfc\b/i,
+  /great clips/i, /sport clips/i, /supercuts/i, /cost cutters/i,
+  /jiffy lube/i, /midas/i, /h&r block/i, /massage envy/i,
+  /the ups store/i, /fedex office/i, /walmart/i, /costco/i,
+  /home depot/i, /canadian tire/i, /shoppers drug/i,
+];
+
+function isFranchise(name: string): boolean {
+  return FRANCHISE_PATTERNS.some((pattern) => pattern.test(name));
+}
+
+type LegacyPlace = {
+  place_id?: string;
+  name?: string;
+  formatted_address?: string;
+  rating?: number;
+  user_ratings_total?: number;
+  types?: string[];
+};
+
+type LegacyDetails = {
+  name?: string;
+  formatted_address?: string;
+  formatted_phone_number?: string;
+  website?: string;
+  rating?: number;
+  user_ratings_total?: number;
+  url?: string;
+  opening_hours?: { weekday_text?: string[] };
+};
+
+async function fetchLegacyJson<T>(url: string): Promise<T | null> {
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  return (await res.json()) as T;
+}
+
+async function searchLegacyNiche(
+  metro: Metro,
+  niche: (typeof NICHE_QUERIES)[number],
+  key: string,
+): Promise<Shop[]> {
+  const query = encodeURIComponent(`${niche.query} in ${metro.city} ${metro.region}`);
+  const searchUrl =
+    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}` +
+    `&location=${metro.lat},${metro.lng}&radius=18000&key=${key}`;
+  const data = await fetchLegacyJson<{ status?: string; results?: LegacyPlace[] }>(searchUrl);
+  if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') || !data.results?.length) {
+    return [];
+  }
+
+  const basics = data.results
+    .filter((place) => place.place_id && place.name && !isFranchise(place.name))
+    .slice(0, 12);
+
+  const detailed = await Promise.all(
+    basics.slice(0, 6).map(async (place) => {
+      const detailsUrl =
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}` +
+        `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url&key=${key}`;
+      const payload = await fetchLegacyJson<{ status?: string; result?: LegacyDetails }>(detailsUrl);
+      return mapLegacyPlace(place, metro, niche.category, payload?.status === 'OK' ? payload.result : undefined);
+    }),
+  );
+
+  const rest = basics.slice(6).map((place) => mapLegacyPlace(place, metro, niche.category));
+  return [...detailed, ...rest].filter((shop): shop is Shop => Boolean(shop));
+}
+
+function mapLegacyPlace(
+  place: LegacyPlace,
+  metro: Metro,
+  fallbackCategory: ShopCategory,
+  details?: LegacyDetails,
+): Shop | null {
+  const name = (details?.name || place.name || '').trim();
+  if (!name || isFranchise(name)) return null;
+  const parsed = parseFormattedAddress(details?.formatted_address || place.formatted_address, metro);
+  const placeId = place.place_id;
+  const photo = placeId ? `/api/photo?placeId=${encodeURIComponent(placeId)}` : undefined;
+  const phone = details?.formatted_phone_number;
+  const website = details?.website;
+  return {
+    name,
+    slug: `${slugify(name)}-${slugify(parsed.city)}`,
+    city: parsed.city,
+    region: parsed.region,
+    country: parsed.country,
+    address: parsed.address,
+    phone,
+    website,
+    placeId,
+    photo,
+    mapsUrl: details?.url || mapsSearchUrl(name, parsed.address),
+    rating: details?.rating ?? place.rating,
+    reviews: details?.user_ratings_total ?? place.user_ratings_total,
+    hours: details?.opening_hours?.weekday_text,
+    category: categoryFromTypes(place.types || []) === 'other' ? fallbackCategory : categoryFromTypes(place.types || []),
+    verified: {
+      phone: Boolean(phone),
+      website: Boolean(website),
+      email: false,
+      address: Boolean(parsed.address),
       ownerName: false,
       socials: false,
       photo: Boolean(photo),
@@ -465,11 +580,20 @@ export async function listCityShops(
 
   if (googleKey) {
     try {
-      const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey)));
+      const groups = await Promise.all(wanted.map((item) => searchLegacyNiche(metro, item, googleKey)));
       live = mergeShops(groups);
       if (live.length) source = 'places';
     } catch {
       live = [];
+    }
+    if (!live.length) {
+      try {
+        const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey)));
+        live = mergeShops(groups).filter((shop) => !isFranchise(shop.name));
+        if (live.length) source = 'places';
+      } catch {
+        live = [];
+      }
     }
   }
 
@@ -479,9 +603,9 @@ export async function listCityShops(
     source = live.length ? 'listings' : 'seed';
   }
 
-  const shops = mergeShops([live, seedForCity(metro.city)]);
+  const shops = live.length ? live : seedForCity(metro.city);
   const result: PlacesResult = {
-    source: shops.length ? source : 'seed',
+    source: shops.length ? (live.length ? source : 'seed') : 'seed',
     city: metro.city,
     region: metro.region,
     country: metro.country,
