@@ -104,6 +104,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     board = result.board;
     if (persist) await saveBoard(user, board);
+    if (owner && result.added) {
+      const { importListingToCrm } = await import('./lib/crm-sync.js');
+      await importListingToCrm(listing);
+    }
     await writeSession(req, res, session, plan, board);
     return res.status(200).json({
       plan,

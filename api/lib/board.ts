@@ -183,7 +183,7 @@ export function normalizeStage(value: string | undefined): Stage {
 
 export function isPipelineOwner(user: BoardUser | DirectoryUser | string): boolean {
   if (typeof user === 'string') return false;
-  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || '').trim().toLowerCase();
+  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || 'letscallsal@gmail.com').trim().toLowerCase();
   if (!owner) return false;
   const email = String(user.email || '').trim().toLowerCase();
   const id = String(user.id || '').trim().toLowerCase();
@@ -413,8 +413,17 @@ function crmToLead(raw: CrmLight): Lead | null {
     oracleDraft: light.oracleDraft,
     note: note || undefined,
     log,
+    name: String(light.company || shop?.name || ''),
+    category: String(light.industry || shop?.category || ''),
+    city: cityFromAddress(String(light.address || shop?.address || '')),
+    address: light.address ? String(light.address) : shop?.address,
+    phone: light.phone ? String(light.phone) : shop?.phone,
+    website: light.website ? String(light.website) : shop?.website,
+    email: light.email ? String(light.email) : shop?.email,
+    ownerName: light.contact_name ? String(light.contact_name) : shop?.ownerName,
+    mapsUrl: light.google_maps_url ? String(light.google_maps_url) : shop?.mapsUrl,
   };
-  const lead = hydrateFromShop(record, shop);
+  const lead = shop ? hydrateFromShop(record, shop) : hydrateFromSnapshot(record);
   if (!shop) {
     lead.name = String(light.company || record.slug);
     lead.type = String(light.industry || '');
@@ -481,8 +490,10 @@ export async function setPlan(userId: string, plan: Plan): Promise<void> {
 }
 
 async function loadOwnerBoard(): Promise<BoardState> {
+  const { fetchCrmLeads } = await import('./crm-sync.js');
+  const remote = await fetchCrmLeads();
   const storage = await getStorage();
-  const raw = (await storage.get<CrmLight[] | null>(CRM_LEADS_KEY)) || [];
+  const raw = (remote || (await storage.get<CrmLight[] | null>(CRM_LEADS_KEY)) || []) as CrmLight[];
   const rows = Array.isArray(raw) ? raw : [];
   const leads = rows.map(crmToLead).filter((lead): lead is Lead => Boolean(lead));
   return { leads, lastScanByCity: {}, oracleDays: {} };
@@ -493,8 +504,11 @@ async function saveOwnerBoard(board: BoardState): Promise<void> {
   const existing = ((await storage.get<CrmLight[] | null>(CRM_LEADS_KEY)) || []) as CrmLight[];
   const rows = Array.isArray(existing) ? existing.map(stripHeavy) : [];
   const byId = new Map(rows.map((row) => [String(row.id || ''), row]));
+  const byPlace = new Map(
+    rows.filter((row) => row.google_place_id).map((row) => [String(row.google_place_id), row]),
+  );
   for (const lead of board.leads) {
-    const current = byId.get(lead.slug);
+    const current = byId.get(lead.slug) || (lead.placeId ? byPlace.get(lead.placeId) : undefined);
     if (current) {
       current.stage = lead.stage;
       current.updated_at = lead.updatedAt;
@@ -502,11 +516,15 @@ async function saveOwnerBoard(board: BoardState): Promise<void> {
       if (lead.oracleDraft) current.oracleDraft = lead.oracleDraft;
       if (lead.note) current.notes = lead.note;
       if (lead.placeId && !current.google_place_id) current.google_place_id = lead.placeId;
+      if (lead.phone && !current.phone) current.phone = lead.phone;
+      if (lead.website && !current.website) current.website = lead.website;
+      if (lead.address && !current.address) current.address = lead.address;
       continue;
     }
     const created = leadToCrmLight(lead);
     rows.unshift(created);
     byId.set(String(created.id || created.company), created);
+    if (created.google_place_id) byPlace.set(String(created.google_place_id), created);
   }
   await storage.set(CRM_LEADS_KEY, rows);
 }
