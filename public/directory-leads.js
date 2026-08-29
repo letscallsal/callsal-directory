@@ -654,8 +654,8 @@
       + ' data-has-phone="' + (phone ? '1' : '0') + '"'
       + ' data-has-website="' + (web ? '1' : '0') + '"'
       + ' data-lead-stage="' + esc(stage) + '">'
-      + '<h3>' + esc(lead.name) + '</h3>'
       + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
+      + '<h3>' + esc(lead.name) + '</h3>'
       + (phone ? '<p class="lead-phone" data-lead-act="copy" data-copy="' + esc(phone) + '" data-tip="' + esc(phone) + '">' + esc(phone) + '</p>' : '')
       + renderLeadActs(lead)
       + '</article>';

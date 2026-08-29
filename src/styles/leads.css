@@ -91,11 +91,12 @@
 
 .lead-card {
   margin: 0 0 0.75rem;
-  padding: 0.85rem 0.9rem 0.8rem;
+  padding: 0.9rem 1rem 0.85rem;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.85rem;
-  background: rgba(0, 0, 0, 0.75);
+  border-left: 3px solid #CCFF00;
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.85);
   cursor: pointer;
 }
 
@@ -108,11 +109,12 @@
 }
 
 .lead-card h3 {
-  margin: 0;
+  margin: 0.4rem 0 0;
   font-family: Syne, ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.08rem;
+  font-size: 1.05rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
+  text-transform: uppercase;
 }
 
 .lead-type {

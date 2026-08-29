@@ -73,18 +73,58 @@
     });
   }
 
+  var ICON_WEB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>';
+  var ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h3l1.2 4.2-2 1.2a12 12 0 0 0 5.4 5.4l1.2-2H21l.2 3.2A16 16 0 0 1 7 3z"/></svg>';
+  var ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>';
+  var ICON_IG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.6"/><circle cx="17.2" cy="6.8" r="0.8" fill="currentColor" stroke="none"/></svg>';
+
+  function safeHref(url) {
+    var v = String(url || '').trim();
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    return 'https://' + v.replace(/^\/+/, '');
+  }
+
+  function igParts(raw) {
+    var v = String(raw || '').trim();
+    if (!v) return null;
+    var handle = v;
+    var m = v.match(/instagram\.com\/([^/?#]+)/i);
+    if (m) handle = m[1];
+    handle = handle.replace(/^@/, '').replace(/\/+$/, '');
+    if (!handle) return null;
+    return { href: 'https://www.instagram.com/' + encodeURIComponent(handle), tip: '@' + handle };
+  }
+
+  function actBtn(kind, tip, extra, svg) {
+    return '<button type="button" class="lead-act" draggable="false" data-lead-act="' + kind + '" data-tip="' + esc(tip) + '" aria-label="' + esc(tip) + '"' + extra + '>' + svg + '</button>';
+  }
+
+  function cardActs(shop) {
+    var phone = String(shop.phone || '').trim();
+    var email = String(shop.email || '').trim();
+    var web = String(shop.website || '').trim();
+    var ig = igParts(shop.socials && shop.socials.instagram);
+    var bits = [];
+    if (web) bits.push(actBtn('web', web, ' data-href="' + esc(safeHref(web)) + '"', ICON_WEB));
+    if (phone) bits.push(actBtn('copy', phone, ' data-copy="' + esc(phone) + '"', ICON_PHONE));
+    if (email) bits.push(actBtn('copy', email, ' data-copy="' + esc(email) + '"', ICON_MAIL));
+    if (ig) bits.push(actBtn('ig', ig.tip, ' data-href="' + esc(ig.href) + '"', ICON_IG));
+    return bits.length ? '<div class="lead-acts">' + bits.join('') + '</div>' : '';
+  }
+
   function cardHtml(shop) {
     var type = TYPE_LABELS[shop.category] || 'Local';
-    var photo = shop.photo || (shop.placeId && String(shop.placeId).indexOf('osm:') !== 0
-      ? '/api/photo?placeId=' + encodeURIComponent(shop.placeId)
-      : '');
     var rating = shop.rating ? Number(shop.rating).toFixed(1) : '';
     var cat = [type, shop.city, rating ? rating + '★' : ''].filter(Boolean).join(' · ');
     var hours = Array.isArray(shop.hours) ? shop.hours.join(' | ') : '';
     var maps = shop.mapsUrl || '';
-    var media = photo
-      ? '<img class="card-preview" src="' + esc(photo) + '" alt="' + esc(shop.name) + ' listing photo" width="640" height="400" loading="lazy" />'
-      : '<div class="card-preview card-preview-missing" aria-label="Photo missing"><span>Photo missing</span></div>';
+    var phone = String(shop.phone || '').trim();
+    var email = String(shop.email || '').trim();
+    var web = String(shop.website || '').trim();
+    var phoneLine = phone
+      ? '<p class="lead-phone" data-lead-act="copy" data-copy="' + esc(phone) + '" data-tip="' + esc(phone) + '">' + esc(phone) + '</p>'
+      : '<p class="lead-phone lead-phone-empty">No phone</p>';
     return (
       '<div class="card-wrap" data-card-slug="' + esc(shop.slug) + '" data-live-card="1"'
       + ' data-shop-name="' + esc(shop.name) + '"'
@@ -92,24 +132,24 @@
       + ' data-shop-region="' + esc(shop.region || '') + '"'
       + ' data-shop-type="' + esc(shop.category) + '"'
       + ' data-shop-type-label="' + esc(type) + '"'
-      + ' data-has-email="' + (shop.verified && shop.verified.email ? '1' : '0') + '"'
-      + ' data-has-phone="' + (shop.verified && shop.verified.phone ? '1' : '0') + '"'
-      + ' data-has-website="' + (shop.verified && shop.verified.website ? '1' : '0') + '"'
+      + ' data-has-email="' + (email ? '1' : '0') + '"'
+      + ' data-has-phone="' + (phone ? '1' : '0') + '"'
+      + ' data-has-website="' + (web ? '1' : '0') + '"'
       + ' data-shop-address="' + esc(shop.address || '') + '"'
-      + ' data-shop-phone="' + esc(shop.phone || '') + '"'
-      + ' data-shop-website="' + esc(shop.website || '') + '"'
-      + ' data-shop-email="' + esc(shop.email || '') + '"'
+      + ' data-shop-phone="' + esc(phone) + '"'
+      + ' data-shop-website="' + esc(web) + '"'
+      + ' data-shop-email="' + esc(email) + '"'
       + ' data-shop-owner="' + esc(shop.ownerName || '') + '"'
       + ' data-shop-ig="' + esc(shop.socials && shop.socials.instagram ? shop.socials.instagram : '') + '"'
-      + ' data-shop-photo="' + esc(photo) + '"'
       + ' data-shop-place-id="' + esc(shop.placeId || '') + '"'
       + ' data-shop-rating="' + esc(rating) + '"'
       + ' data-shop-maps="' + esc(maps) + '"'
       + ' data-shop-hours="' + esc(hours) + '">'
-      + '<div class="card hover-lift">' + media
+      + '<div class="card hover-lift">'
       + '<span class="card-cat">' + esc(cat) + '</span>'
       + '<h3>' + esc(shop.name) + '</h3>'
-      + '<p>' + esc([shop.city, shop.region].filter(Boolean).join(', ')) + '</p>'
+      + phoneLine
+      + cardActs(shop)
       + '</div>'
       + '<button type="button" class="add-lead-btn" data-add-lead="' + esc(shop.slug) + '" aria-label="Add ' + esc(shop.name) + ' to leads" aria-pressed="false">'
       + '<svg class="add-lead-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'

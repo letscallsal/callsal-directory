@@ -239,6 +239,7 @@
 
 .card-wrap[data-shop-type] .card {
   cursor: pointer;
+  min-height: 0;
 }
 
 .bookmark-btn {
