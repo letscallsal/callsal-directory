@@ -26,6 +26,17 @@ export interface SessionBoard {
     oracleDraft?: string;
     note?: string;
     log?: Array<{ at: string; type: string; from?: string; to?: string; text?: string }>;
+    name?: string;
+    category?: string;
+    city?: string;
+    region?: string;
+    address?: string;
+    phone?: string;
+    website?: string;
+    email?: string;
+    ownerName?: string;
+    photo?: string;
+    mapsUrl?: string;
   }>;
   lastScanByCity?: Record<string, string>;
   oracleDays?: Record<string, number>;

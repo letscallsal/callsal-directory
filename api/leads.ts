@@ -72,8 +72,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (action === 'add') {
-    const slug = String(body.slug || '').trim().toLowerCase();
-    const result = await addShop(board, slug, plan, owner);
+    const listing = {
+      slug: String(body.slug || '').trim().toLowerCase(),
+      placeId: String(body.placeId || '').trim(),
+      name: String(body.name || '').trim(),
+      category: String(body.category || '').trim().toLowerCase(),
+      city: String(body.city || '').trim(),
+      region: String(body.region || '').trim(),
+      country: String(body.country || '').trim(),
+      address: String(body.address || '').trim(),
+      phone: String(body.phone || '').trim(),
+      website: String(body.website || '').trim(),
+      email: String(body.email || '').trim(),
+      ownerName: String(body.ownerName || '').trim(),
+      photo: String(body.photo || '').trim(),
+      mapsUrl: String(body.mapsUrl || '').trim(),
+      instagram: String(body.instagram || '').trim(),
+    };
+    const result = await addShop(board, listing, plan, owner);
     if (result.reason === 'missing') return res.status(404).json({ error: 'SHOP NOT FOUND' });
     if (result.reason === 'cap') {
       return res.status(402).json({

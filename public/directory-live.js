@@ -89,6 +89,7 @@
       '<div class="card-wrap" data-card-slug="' + esc(shop.slug) + '" data-live-card="1"'
       + ' data-shop-name="' + esc(shop.name) + '"'
       + ' data-shop-city="' + esc(shop.city) + '"'
+      + ' data-shop-region="' + esc(shop.region || '') + '"'
       + ' data-shop-type="' + esc(shop.category) + '"'
       + ' data-shop-type-label="' + esc(type) + '"'
       + ' data-has-email="' + (shop.verified && shop.verified.email ? '1' : '0') + '"'

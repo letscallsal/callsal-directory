@@ -91,7 +91,8 @@
 
 .lead-card {
   margin: 0 0 0.75rem;
-  padding: 0.9rem;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.85rem;
   background: rgba(0, 0, 0, 0.75);
@@ -107,17 +108,46 @@
 }
 
 .lead-card h3 {
-  margin: 0;
+  margin: 0.75rem 0.9rem 0;
   font-family: Syne, ui-sans-serif, system-ui, sans-serif;
   font-size: 1.05rem;
 }
 
+.lead-card-photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  height: auto;
+  object-fit: cover;
+  object-position: top center;
+  background: #0a0a0a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .lead-type {
-  margin: 0.25rem 0 0;
+  margin: 0.25rem 0.9rem 0.35rem;
   color: #8a8a8a;
   font-size: 0.68rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.lead-phone,
+.lead-address {
+  margin: 0 0.9rem 0.35rem;
+  color: #c0c0c0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.lead-address {
+  color: #8a8a8a;
+}
+
+.lead-card .lead-type:last-child,
+.lead-card .lead-phone:last-child,
+.lead-card .lead-address:last-child {
+  margin-bottom: 0.75rem;
 }
 
 .lead-fields {

@@ -26,6 +26,7 @@
   let lastLeads = { plan: 'free', leads: [], usage: null, oracle: null };
   let draggedSlug = null;
   let didDrag = false;
+  let lastListing = null;
 
   function isLeadsPath() {
     try {
@@ -58,6 +59,53 @@
     setLeadsMenu(!document.body.classList.contains('leads-drawer-open'));
   }
 
+
+  function listingFromCard(card) {
+    if (!card) return null;
+    return {
+      slug: card.getAttribute('data-card-slug') || card.getAttribute('data-add-lead') || '',
+      placeId: card.getAttribute('data-shop-place-id') || '',
+      name: card.getAttribute('data-shop-name') || '',
+      category: card.getAttribute('data-shop-type') || '',
+      city: card.getAttribute('data-shop-city') || '',
+      region: card.getAttribute('data-shop-region') || '',
+      address: card.getAttribute('data-shop-address') || '',
+      phone: card.getAttribute('data-shop-phone') || '',
+      website: card.getAttribute('data-shop-website') || '',
+      email: card.getAttribute('data-shop-email') || '',
+      ownerName: card.getAttribute('data-shop-owner') || '',
+      photo: card.getAttribute('data-shop-photo') || '',
+      mapsUrl: card.getAttribute('data-shop-maps') || '',
+      instagram: card.getAttribute('data-shop-ig') || '',
+    };
+  }
+
+  function listingFromAddButton(btn) {
+    const card = btn && btn.closest ? btn.closest('[data-card-slug]') : null;
+    if (card) return listingFromCard(card);
+    if (lastListing) return lastListing;
+    const slug = btn ? (btn.getAttribute('data-add-lead') || '') : '';
+    return slug ? { slug: slug } : null;
+  }
+
+  function listingOnBoard(listing) {
+    if (!listing) return false;
+    if (listing.slug && leadSlugs.has(listing.slug)) return true;
+    if (listing.placeId && leadSlugs.has(listing.placeId)) return true;
+    if (listing.name && listing.city) {
+      const key = (listing.name + '|' + listing.city).toLowerCase();
+      if (leadSlugs.has(key)) return true;
+    }
+    return false;
+  }
+
+  function leadPhoto(lead) {
+    if (lead && lead.photo) return lead.photo;
+    if (lead && lead.placeId && String(lead.placeId).indexOf('osm:') !== 0) {
+      return '/api/photo?placeId=' + encodeURIComponent(lead.placeId);
+    }
+    return '';
+  }
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -179,7 +227,7 @@
     const meta = [data.typeLabel, data.city].filter(Boolean).join(' · ');
     const slug = data.slug || '';
     const addBtn = lead ? '' : (
-      '<button type="button" class="add-lead-btn" data-add-lead="' + esc(slug) + '" aria-label="Add ' + esc(name) + ' to leads" aria-pressed="false">'
+      '<button type="button" class="add-lead-btn" data-add-lead="' + esc(slug) + '" data-shop-place-id="' + esc(data.placeId || '') + '" aria-label="Add ' + esc(name) + ' to leads" aria-pressed="false">'
       + '<svg class="add-lead-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">'
       + '<path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
       + '<svg class="add-lead-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
@@ -194,11 +242,15 @@
   }
 
   function openShopInfoFromCard(card) {
+    lastListing = listingFromCard(card);
     openShopInfo({
       slug: card.getAttribute('data-card-slug') || '',
+      placeId: card.getAttribute('data-shop-place-id') || '',
       name: card.getAttribute('data-shop-name') || '',
       typeLabel: card.getAttribute('data-shop-type-label') || '',
+      category: card.getAttribute('data-shop-type') || '',
       city: card.getAttribute('data-shop-city') || '',
+      region: card.getAttribute('data-shop-region') || '',
       address: card.getAttribute('data-shop-address') || '',
       phone: card.getAttribute('data-shop-phone') || '',
       website: card.getAttribute('data-shop-website') || '',
@@ -218,28 +270,32 @@
     const v = lead.verified || {};
     openShopInfo({
       slug: lead.slug,
+      placeId: lead.placeId || '',
       name: lead.name || '',
       typeLabel: lead.type || '',
+      category: lead.category || '',
       city: lead.city || '',
+      region: lead.region || '',
       address: v.address && lead.address ? lead.address : '',
       phone: v.phone && lead.phone ? lead.phone : '',
       website: v.website && lead.website ? lead.website : '',
       email: v.email && lead.email ? lead.email : '',
       owner: v.ownerName && lead.ownerName ? lead.ownerName : '',
       ig: v.socials && lead.socials && lead.socials.instagram ? lead.socials.instagram : '',
-      photo: v.photo && lead.photo ? lead.photo : '',
+      photo: v.photo && lead.photo ? lead.photo : leadPhoto(lead),
+      maps: lead.mapsUrl || '',
     }, lead);
   }
 
   function paintAddLeads() {
     document.querySelectorAll('[data-add-lead]').forEach((btn) => {
-      const slug = btn.getAttribute('data-add-lead') || '';
-      const on = leadSlugs.has(slug);
+      const listing = listingFromAddButton(btn);
+      const on = listingOnBoard(listing);
       const card = btn.closest('[data-card-slug]');
       const infoTitle = document.querySelector('#shop-info-modal [data-shop-info-title]');
-      const name = card && card.getAttribute('data-shop-name')
-        ? card.getAttribute('data-shop-name')
-        : (btn.closest('#shop-info-modal') && infoTitle && infoTitle.textContent ? infoTitle.textContent : 'this shop');
+      const name = (listing && listing.name)
+        || (card && card.getAttribute('data-shop-name'))
+        || (btn.closest('#shop-info-modal') && infoTitle && infoTitle.textContent ? infoTitle.textContent : 'this shop');
       btn.classList.toggle('is-on', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.setAttribute('aria-label', on ? name + ' is on your board' : 'Add ' + name + ' to leads');
@@ -522,7 +578,14 @@
   function renderLeadCard(lead) {
     const stage = normalizeStage(lead.stage);
     const v = lead.verified || {};
+    const photo = leadPhoto(lead);
+    const media = photo
+      ? '<img class="lead-card-photo" src="' + esc(photo) + '" alt="" width="320" height="200" loading="lazy" />'
+      : '';
+    const phone = v.phone && lead.phone ? lead.phone : '';
+    const address = v.address && lead.address ? lead.address : '';
     return '<article class="lead-card" draggable="true" data-lead-slug="' + esc(lead.slug) + '"'
+      + ' data-lead-place-id="' + esc(lead.placeId || '') + '"'
       + ' data-lead-name="' + esc(lead.name || '') + '"'
       + ' data-lead-city="' + esc((lead.city || '').toLowerCase()) + '"'
       + ' data-lead-niche="' + esc(lead.category || '') + '"'
@@ -530,8 +593,11 @@
       + ' data-has-phone="' + (v.phone && lead.phone ? '1' : '0') + '"'
       + ' data-has-website="' + (v.website && lead.website ? '1' : '0') + '"'
       + ' data-lead-stage="' + esc(stage) + '">'
+      + media
       + '<h3>' + esc(lead.name) + '</h3>'
       + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
+      + (phone ? '<p class="lead-phone">' + esc(phone) + '</p>' : '')
+      + (address ? '<p class="lead-address">' + esc(address) + '</p>' : '')
       + '</article>';
   }
 
@@ -611,7 +677,11 @@
       usage: data.usage || null,
       oracle: data.oracle || lastLeads.oracle || null,
     };
-    leadSlugs = new Set((lastLeads.leads || []).flatMap((lead) => [lead.slug, lead.catalogSlug].filter(Boolean)));
+    leadSlugs = new Set((lastLeads.leads || []).flatMap((lead) => {
+      const keys = [lead.slug, lead.catalogSlug, lead.placeId].filter(Boolean);
+      if (lead.name && lead.city) keys.push((lead.name + '|' + lead.city).toLowerCase());
+      return keys;
+    }));
     paintAddLeads();
     paintLeadsBoard();
   }
@@ -723,8 +793,10 @@
         openAuth('register');
         return;
       }
-      const slug = addLead.getAttribute('data-add-lead');
-      if (slug && !leadSlugs.has(slug)) void postLeads({ action: 'add', slug });
+      const listing = listingFromAddButton(addLead);
+      if (listing && (listing.slug || listing.placeId || listing.name) && !listingOnBoard(listing)) {
+        void postLeads(Object.assign({ action: 'add' }, listing));
+      }
       return;
     }
     if (target && target.closest && target.closest('[data-scan-leads]')) {

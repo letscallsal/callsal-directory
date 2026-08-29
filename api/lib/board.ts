@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { leadsKey, planKey, type DirectoryUser } from './auth.js';
 import { getStorage } from './storage.js';
-import { seedShops, shopDedupeKey, typeLabel, type Shop } from './places.js';
+import { seedShops, shopDedupeKey, typeLabel, type Shop, type ShopCategory } from './places.js';
 
 export type Stage =
   | 'New'
@@ -76,6 +76,17 @@ export interface StoredLead {
   oracleDraft?: string;
   note?: string;
   log?: LeadLog[];
+  name?: string;
+  category?: string;
+  city?: string;
+  region?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  email?: string;
+  ownerName?: string;
+  photo?: string;
+  mapsUrl?: string;
 }
 
 export interface Lead extends StoredLead {
@@ -92,6 +103,7 @@ export interface Lead extends StoredLead {
   ownerName?: string;
   socials?: { instagram?: string };
   photo?: string;
+  mapsUrl?: string;
   verified: {
     phone: boolean;
     website: boolean;
@@ -183,6 +195,37 @@ function userIdOf(user: BoardUser | string): string {
   return typeof user === 'string' ? user : user.id;
 }
 
+function clip(value: unknown, max: number): string {
+  return String(value || '').trim().slice(0, max);
+}
+
+const SHOP_CATEGORIES: ShopCategory[] = [
+  'dental',
+  'salon',
+  'food',
+  'barber',
+  'legal',
+  'accounting',
+  'auto',
+  'fitness',
+  'wellness',
+  'trades',
+  'other',
+];
+
+function asCategory(value: unknown): ShopCategory {
+  const raw = String(value || '').trim().toLowerCase();
+  return SHOP_CATEGORIES.includes(raw as ShopCategory) ? (raw as ShopCategory) : 'other';
+}
+
+function listingPhotoSrc(placeId?: string, photo?: string): string | undefined {
+  if (placeId && !String(placeId).startsWith('osm:')) {
+    return `/api/photo?placeId=${encodeURIComponent(placeId)}`;
+  }
+  const src = clip(photo, 220);
+  return src || undefined;
+}
+
 function toTiny(lead: Lead | StoredLead): StoredLead {
   const tiny: StoredLead = {
     slug: lead.slug,
@@ -194,6 +237,33 @@ function toTiny(lead: Lead | StoredLead): StoredLead {
   if (lead.oracleDraft) tiny.oracleDraft = lead.oracleDraft;
   if (lead.note) tiny.note = lead.note;
   if (Array.isArray(lead.log) && lead.log.length) tiny.log = lead.log;
+  const byPlace = findShopByPlaceId(lead.placeId);
+  const catalogued = byPlace || (!lead.placeId ? findShop(lead.slug) : undefined);
+  if (!catalogued) {
+    const full = lead as Lead;
+    const name = clip(full.name || lead.name, 80);
+    const category = clip(full.category || lead.category, 24);
+    const city = clip(full.city || lead.city, 40);
+    const region = clip(full.region || lead.region, 8);
+    const address = clip(full.address || lead.address, 80);
+    const phone = clip(full.phone || lead.phone, 32);
+    const website = clip(full.website || lead.website, 80);
+    const email = clip(full.email || lead.email, 80);
+    const ownerName = clip(full.ownerName || lead.ownerName, 60);
+    const mapsUrl = clip(full.mapsUrl || lead.mapsUrl, 160);
+    const photo = listingPhotoSrc(lead.placeId, full.photo || lead.photo);
+    if (name) tiny.name = name;
+    if (category) tiny.category = category;
+    if (city) tiny.city = city;
+    if (region) tiny.region = region;
+    if (address) tiny.address = address;
+    if (phone) tiny.phone = phone;
+    if (website) tiny.website = website;
+    if (email) tiny.email = email;
+    if (ownerName) tiny.ownerName = ownerName;
+    if (mapsUrl) tiny.mapsUrl = mapsUrl;
+    if (photo && (!lead.placeId || String(lead.placeId).startsWith('osm:'))) tiny.photo = photo;
+  }
   return tiny;
 }
 
@@ -255,14 +325,7 @@ function cityFromAddress(address?: string): string {
 function hydrateFromShop(record: StoredLead, shop?: Shop): Lead {
   const stage = normalizeStage(record.stage);
   if (!shop) {
-    return {
-      ...toTiny({ ...record, stage }),
-      name: record.slug,
-      type: '',
-      category: '',
-      city: '',
-      verified: emptyVerified(),
-    };
+    return hydrateFromSnapshot(record);
   }
   return {
     ...toTiny({ ...record, stage, placeId: record.placeId || shop.placeId }),
@@ -278,14 +341,48 @@ function hydrateFromShop(record: StoredLead, shop?: Shop): Lead {
     email: shop.email,
     ownerName: shop.verified.ownerName ? shop.ownerName : undefined,
     socials: shop.socials,
-    photo: shop.verified.photo ? shop.photo : undefined,
-    verified: { ...shop.verified, photo: Boolean(shop.verified.photo && shop.photo) },
+    photo: shop.verified.photo ? shop.photo : listingPhotoSrc(shop.placeId, shop.photo),
+    mapsUrl: shop.mapsUrl,
+    verified: { ...shop.verified, photo: Boolean((shop.verified.photo && shop.photo) || listingPhotoSrc(shop.placeId)) },
+  };
+}
+
+function hydrateFromSnapshot(record: StoredLead): Lead {
+  const stage = normalizeStage(record.stage);
+  const category = asCategory(record.category);
+  const photo = listingPhotoSrc(record.placeId, record.photo);
+  return {
+    ...toTiny({ ...record, stage }),
+    name: clip(record.name, 80) || record.slug,
+    type: typeLabel(category),
+    category,
+    city: clip(record.city, 40),
+    region: clip(record.region, 8) || undefined,
+    address: clip(record.address, 80) || undefined,
+    phone: clip(record.phone, 32) || undefined,
+    website: clip(record.website, 80) || undefined,
+    email: clip(record.email, 80) || undefined,
+    ownerName: clip(record.ownerName, 60) || undefined,
+    photo,
+    mapsUrl: clip(record.mapsUrl, 160) || undefined,
+    verified: {
+      phone: Boolean(record.phone),
+      website: Boolean(record.website),
+      email: Boolean(record.email),
+      address: Boolean(record.address),
+      ownerName: Boolean(record.ownerName),
+      socials: false,
+      photo: Boolean(photo),
+    },
   };
 }
 
 function hydrateStored(record: StoredLead): Lead {
-  const shop = findShop(record.slug) || findShopByPlaceId(record.placeId);
-  return hydrateFromShop(record, shop);
+  const byPlace = findShopByPlaceId(record.placeId);
+  if (byPlace) return hydrateFromShop(record, byPlace);
+  if (record.name) return hydrateFromSnapshot(record);
+  const bySlug = findShop(record.slug);
+  return hydrateFromShop(record, bySlug);
 }
 
 function stripHeavy(raw: CrmLight): CrmLight {
@@ -505,11 +602,92 @@ export function shopToLead(shop: Shop, stage: Stage = 'New'): Lead {
   }, shop);
 }
 
-export async function addShop(board: BoardState, slug: string, plan: Plan, owner = false): Promise<{ board: BoardState; added: boolean; reason?: string }> {
-  if (hasLead(board, { slug, name: slug })) {
-    return { board, added: false, reason: 'on-board' };
+export interface ListingInput {
+  slug?: string;
+  placeId?: string;
+  name?: string;
+  category?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  email?: string;
+  ownerName?: string;
+  photo?: string;
+  mapsUrl?: string;
+  instagram?: string;
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 72);
+}
+
+export function shopFromListing(input: ListingInput | string | null | undefined): Shop | undefined {
+  const raw = typeof input === 'string' ? { slug: input } : (input || {});
+  const byPlace = findShopByPlaceId(raw.placeId);
+  if (byPlace) return byPlace;
+  const name = clip(raw.name, 120);
+  const livePlace = clip(raw.placeId, 128);
+  if (!(livePlace && name)) {
+    const bySlug = findShop(raw.slug || '');
+    if (bySlug) return bySlug;
+    if (!name) return undefined;
   }
-  const shop = findShop(slug);
+  const city = clip(raw.city, 60) || 'Local';
+  const slug = slugify(raw.slug || '') || `${slugify(name)}-${slugify(city)}`;
+  const placeId = clip(raw.placeId, 128) || undefined;
+  const address = clip(raw.address, 120) || undefined;
+  const phone = clip(raw.phone, 40) || undefined;
+  const website = clip(raw.website, 160) || undefined;
+  const email = clip(raw.email, 80) || undefined;
+  const ownerName = clip(raw.ownerName, 80) || undefined;
+  const instagram = clip(raw.instagram, 80) || undefined;
+  const mapsUrl = clip(raw.mapsUrl, 220) || undefined;
+  const photo = listingPhotoSrc(placeId, raw.photo);
+  const category = asCategory(raw.category);
+  const region = clip(raw.region, 8) || '';
+  const country = clip(raw.country, 2).toUpperCase() || 'CA';
+  return {
+    name,
+    slug,
+    city,
+    region,
+    country,
+    address,
+    phone,
+    website,
+    email,
+    ownerName,
+    socials: instagram ? { instagram } : undefined,
+    photo,
+    placeId,
+    mapsUrl,
+    category,
+    verified: {
+      phone: Boolean(phone),
+      website: Boolean(website),
+      email: Boolean(email),
+      address: Boolean(address),
+      ownerName: Boolean(ownerName),
+      socials: Boolean(instagram),
+      photo: Boolean(photo),
+    },
+  };
+}
+
+export async function addShop(
+  board: BoardState,
+  listing: ListingInput | string,
+  plan: Plan,
+  owner = false,
+): Promise<{ board: BoardState; added: boolean; reason?: string }> {
+  const shop = shopFromListing(listing);
   if (!shop) return { board, added: false, reason: 'missing' };
   if (hasLead(board, shop)) return { board, added: false, reason: 'on-board' };
   if (board.leads.length >= capFor(plan, owner)) {
