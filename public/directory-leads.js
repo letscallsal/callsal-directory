@@ -614,7 +614,7 @@
   }
 
   function hideLeadTips(keep) {
-    document.querySelectorAll('.lead-act.is-tip').forEach((el) => {
+    document.querySelectorAll('[data-lead-act].is-tip').forEach((el) => {
       if (el !== keep) el.classList.remove('is-tip');
     });
   }
