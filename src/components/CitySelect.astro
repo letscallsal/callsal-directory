@@ -6,7 +6,7 @@ const metros = labeledMetros();
 ---
 
 <div class="guest-city" data-guest-city>
-  <div class="guest-city-row">
+  <div class="guest-city-combo">
     <label class="guest-city-field">
       <span class="guest-city-sr">Search city</span>
       <svg class="guest-city-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
@@ -20,37 +20,36 @@ const metros = labeledMetros();
         autocomplete="off"
         spellcheck="false"
         role="combobox"
-        aria-expanded="true"
+        aria-expanded="false"
         aria-controls="guest-city-list"
         aria-autocomplete="list"
       />
     </label>
-    <button type="button" class="guest-city-go" data-city-apply>SELECT CITY</button>
+
+    <ul class="guest-city-list" id="guest-city-list" data-city-list role="listbox" hidden>
+      <li>
+        <button type="button" class="guest-city-opt is-on" data-city-pick="" data-city-popular="1" role="option">All cities</button>
+      </li>
+      {metros.map((metro) => (
+        <li hidden={!metro.popular}>
+          <button
+            type="button"
+            class="guest-city-opt"
+            data-city-pick={metro.city}
+            data-city-region={metro.region}
+            data-city-country={metro.country}
+            data-city-label={metro.label}
+            data-city-popular={metro.popular ? '1' : '0'}
+            role="option"
+          >
+            {metro.label}
+          </button>
+        </li>
+      ))}
+    </ul>
   </div>
 
-  <ul class="guest-city-list" id="guest-city-list" data-city-list role="listbox">
-    <li>
-      <button type="button" class="guest-city-opt is-on" data-city-pick="" data-city-popular="1" role="option">All cities</button>
-    </li>
-    {metros.map((metro) => (
-      <li hidden={!metro.popular}>
-        <button
-          type="button"
-          class="guest-city-opt"
-          data-city-pick={metro.city}
-          data-city-region={metro.region}
-          data-city-country={metro.country}
-          data-city-label={metro.label}
-          data-city-popular={metro.popular ? '1' : '0'}
-          role="option"
-        >
-          {metro.label}
-        </button>
-      </li>
-    ))}
-  </ul>
-
-  <p class="guest-city-hint">Canada and the United States. Pick a city to load live Google Business listings.</p>
+  <p class="guest-city-hint">Canada and the United States. Type a city, then pick it.</p>
   <p class="guest-city-status" data-city-status hidden></p>
-  <p class="guest-city-miss" data-city-miss hidden>No listings found for that city yet.</p>
+  <p class="guest-city-miss" data-city-miss hidden>No city match. Pick one from the list.</p>
 </div>

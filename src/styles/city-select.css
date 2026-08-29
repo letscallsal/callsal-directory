@@ -1,27 +1,26 @@
-/* Guest city search on THE INDEX. White / black / lime only. */
+/* Guest city search. Combobox only. White / black / lime. */
 
 .guest-city {
   width: 100%;
   max-width: 100%;
   min-width: 0;
   margin: 1.15rem 0 0;
-  overflow-x: clip;
+  overflow: visible;
 }
 
 [data-guest-city][hidden] {
   display: none !important;
 }
 
-.guest-city-row {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.65rem;
-  min-width: 0;
+.guest-city-combo {
+  position: relative;
+  z-index: 5;
+  width: 100%;
 }
 
 .guest-city-field {
   position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -32,6 +31,11 @@
   color: #000;
   border: 1.5px solid #000;
   border-radius: 9999px;
+}
+
+.guest-city.is-open .guest-city-field {
+  border-bottom-left-radius: 0.9rem;
+  border-bottom-right-radius: 0.9rem;
 }
 
 .guest-city-sr {
@@ -77,46 +81,37 @@
   font-size: 16px;
 }
 
-.guest-city-field input[type='search']::-webkit-search-decoration {
+.guest-city-field input[type='search']::-webkit-search-decoration,
+.guest-city-field input[type='search']::-webkit-search-cancel-button {
   -webkit-appearance: none;
 }
 
-.guest-city-go {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
-  padding: 0.5rem 0.85rem;
-  background: #ccff00;
-  color: #000;
-  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
-  font-weight: 800;
-  font-size: 14px;
-  letter-spacing: -0.025em;
-  text-transform: uppercase;
-  border: 0;
-  border-radius: 9999px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.guest-city-go:hover {
-  color: #000;
-  filter: brightness(1.08);
-}
-
 .guest-city-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 1px);
+  z-index: 6;
   list-style: none;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0;
   width: 100%;
-  min-width: 0;
-  margin: 0.65rem 0 0;
-  padding: 0.45rem;
+  max-height: min(18rem, 55vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem 0 0.35rem;
   background: #fff;
+  color: #000;
   border: 1.5px solid #000;
-  border-radius: 1rem;
+  border-top: 0;
+  border-radius: 0 0 1rem 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.guest-city-list[hidden] {
+  display: none;
 }
 
 .guest-city-list li {
@@ -130,23 +125,27 @@
 }
 
 .guest-city-opt {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  width: 100%;
   max-width: 100%;
-  padding: 0.38rem 0.7rem;
+  padding: 0.72rem 0.95rem;
   background: #fff;
   color: #000;
-  border: 1.5px solid #000;
-  border-radius: 9999px;
+  border: 0;
+  border-radius: 0;
   font-family: Syne, ui-sans-serif, system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   line-height: 1.2;
+  text-align: left;
 }
 
-.guest-city-opt.is-on {
+.guest-city-opt.is-on,
+.guest-city-opt.is-hi,
+.guest-city-opt:hover {
   background: #ccff00;
   color: #000;
 }
@@ -176,20 +175,4 @@
 .guest-city-status[hidden],
 .guest-city-miss[hidden] {
   display: none;
-}
-
-@media (min-width: 520px) {
-  .guest-city-row {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .guest-city-field {
-    flex: 1 1 auto;
-  }
-
-  .guest-city-go {
-    align-self: center;
-    flex: 0 0 auto;
-  }
 }
