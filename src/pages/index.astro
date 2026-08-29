@@ -5,7 +5,6 @@ import CitySelect from '../components/CitySelect.astro';
 import { getShops, featuredShops, typesWithShops, byType } from '../lib/shops';
 
 const shops = await getShops();
-const cities = [...new Set(shops.map((shop) => shop.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const featuredRow = featuredShops(shops);
 const typeRows = typesWithShops(shops).map((item) => ({
   ...item,
@@ -13,20 +12,19 @@ const typeRows = typesWithShops(shops).map((item) => ({
 }));
 ---
 
-<AppShell title="Directory" description="A local Google Business index you can turn into a lead board." withRoom>
+<AppShell title="Directory" description="A live Google Business index for Canada and the United States." withRoom>
   <div class="lede intro-hold intro-trace intro-d3">
     <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
     <h1>THE INDEX</h1>
-    <p>A local Google Business index you can turn into a lead board.</p>
-    <CitySelect cities={cities} />
+    <p>Search any city in Canada or the United States. Listings are pulled from the public Google Business profile: name, address, phone, site, hours, rating.</p>
+    <CitySelect />
   </div>
 
-  <div class="rows intro-hold intro-d5">
+  <div class="rows intro-hold intro-d5" data-seed-rows>
     <ShopCarousel title="Featured" shops={featuredRow} />
     {typeRows.map((row) => (
       <ShopCarousel title={row.label} shops={row.shops} href={`/type/${row.slug}/`} />
     ))}
   </div>
-
-  <script src="/directory-city.js" defer></script>
+  <div class="rows intro-hold" data-live-rows hidden></div>
 </AppShell>

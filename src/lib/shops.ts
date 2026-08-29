@@ -37,6 +37,10 @@ export interface Shop {
   socials?: { instagram?: string };
   photo?: string;
   placeId?: string;
+  mapsUrl?: string;
+  rating?: number;
+  reviews?: number;
+  hours?: string[];
   category: ShopCategory;
   verified: ShopVerified;
 }
@@ -158,7 +162,9 @@ export function storedHomepagePreview(shop: Shop): string | undefined {
 }
 
 export function listingPhotoSrc(shop: Shop): string | undefined {
-  if (shop.placeId) return `/api/photo?placeId=${encodeURIComponent(shop.placeId)}`;
+  if (shop.placeId && !String(shop.placeId).startsWith('osm:')) {
+    return `/api/photo?placeId=${encodeURIComponent(shop.placeId)}`;
+  }
   const name = shop.name?.trim();
   if (!name) return undefined;
   const params = new URLSearchParams({ name });

@@ -638,7 +638,8 @@ main {
 .card-wrap[hidden],
 .row[hidden],
 [data-shop-row][hidden],
-[data-shop-grid][hidden] {
+[data-shop-grid][hidden],
+[data-live-rows][hidden] {
   display: none !important;
 }
 

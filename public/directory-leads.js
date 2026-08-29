@@ -116,6 +116,10 @@
     if (data.email) rows.push('<li><span>Email</span> <span>' + esc(data.email) + '</span></li>');
     if (data.owner) rows.push('<li><span>Owner</span> <span>' + esc(data.owner) + '</span></li>');
     if (data.ig) rows.push('<li><span>Instagram</span> <span>' + esc(data.ig) + '</span></li>');
+    if (data.hours) rows.push('<li><span>Hours</span> <span>' + esc(data.hours) + '</span></li>');
+    if (data.maps) {
+      rows.push('<li><span>Google Business</span> <span><a href="' + esc(safeHref(data.maps)) + '" target="_blank" rel="noopener noreferrer">Open listing</a></span></li>');
+    }
     return rows.length ? '<ul class="shop-info-fields">' + rows.join('') + '</ul>' : '';
   }
 
@@ -202,6 +206,8 @@
       owner: card.getAttribute('data-shop-owner') || '',
       ig: card.getAttribute('data-shop-ig') || '',
       photo: card.getAttribute('data-shop-photo') || '',
+      hours: card.getAttribute('data-shop-hours') || '',
+      maps: card.getAttribute('data-shop-maps') || '',
     });
   }
 
@@ -342,6 +348,7 @@
   }
 
   window.__dirApplyShopFilters = applyShopFilters;
+  window.__dirPaintAddLeads = paintAddLeads;
 
   function bindShopFilters() {
     if (window.__dirShopFilterBound) {
@@ -365,6 +372,13 @@
         const wrap = cityBtn.closest('[data-filter-accord]');
         if (wrap) wrap.removeAttribute('open');
         window.dispatchEvent(new Event('callsal:close-directory'));
+        window.dispatchEvent(new CustomEvent('callsal:city-applied', {
+          detail: {
+            city: cityBtn.getAttribute('data-filter-city') || '',
+            region: cityBtn.getAttribute('data-city-region') || '',
+            country: cityBtn.getAttribute('data-city-country') || '',
+          },
+        }));
         return;
       }
       const nicheBtn = hit.closest('[data-filter-niche]');
@@ -374,6 +388,12 @@
         const wrap = nicheBtn.closest('[data-filter-accord]');
         if (wrap) wrap.removeAttribute('open');
         window.dispatchEvent(new Event('callsal:close-directory'));
+        const city = selectedCity();
+        if (city) {
+          window.dispatchEvent(new CustomEvent('callsal:city-applied', {
+            detail: { city: city, region: '', country: '' },
+          }));
+        }
         return;
       }
       const hasBtn = hit.closest('[data-filter-has]');

@@ -17,6 +17,10 @@ const website = shop.verified.website && shop.website ? shop.website : undefined
 const email = shop.verified.email && shop.email ? shop.email : undefined;
 const owner = shop.verified.ownerName && shop.ownerName ? shop.ownerName : undefined;
 const ig = shop.verified.socials && shop.socials?.instagram ? shop.socials.instagram : undefined;
+const rating = shop.rating ? shop.rating.toFixed(1) : '';
+const maps = shop.mapsUrl || '';
+const hours = shop.hours?.join(' | ') || '';
+const catLine = [type, shop.city, rating ? `${rating}★` : ''].filter(Boolean).join(' · ');
 ---
 
 <div
@@ -37,6 +41,9 @@ const ig = shop.verified.socials && shop.socials?.instagram ? shop.socials.insta
   data-shop-ig={ig}
   data-shop-photo={photo}
   data-shop-place-id={shop.placeId}
+  data-shop-rating={rating}
+  data-shop-maps={maps}
+  data-shop-hours={hours}
 >
   <div class="card hover-lift">
     {photo ? (
@@ -54,7 +61,7 @@ const ig = shop.verified.socials && shop.socials?.instagram ? shop.socials.insta
         <span>Photo missing</span>
       </div>
     )}
-    <span class="card-cat">{type} · {shop.city}</span>
+    <span class="card-cat">{catLine}</span>
     <h3>{shop.name}</h3>
     <p>{shop.city}, {shop.region}</p>
   </div>

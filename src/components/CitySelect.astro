@@ -1,11 +1,8 @@
 ---
 import '../styles/city-select.css';
+import { labeledMetros } from '../data/metros';
 
-interface Props {
-  cities: string[];
-}
-
-const { cities } = Astro.props;
+const metros = labeledMetros();
 ---
 
 <div class="guest-city" data-guest-city>
@@ -33,15 +30,27 @@ const { cities } = Astro.props;
 
   <ul class="guest-city-list" id="guest-city-list" data-city-list role="listbox">
     <li>
-      <button type="button" class="guest-city-opt is-on" data-city-pick="" role="option">All cities</button>
+      <button type="button" class="guest-city-opt is-on" data-city-pick="" data-city-popular="1" role="option">All cities</button>
     </li>
-    {cities.map((city) => (
-      <li>
-        <button type="button" class="guest-city-opt" data-city-pick={city} role="option">{city}</button>
+    {metros.map((metro) => (
+      <li hidden={!metro.popular}>
+        <button
+          type="button"
+          class="guest-city-opt"
+          data-city-pick={metro.city}
+          data-city-region={metro.region}
+          data-city-country={metro.country}
+          data-city-label={metro.label}
+          data-city-popular={metro.popular ? '1' : '0'}
+          role="option"
+        >
+          {metro.label}
+        </button>
       </li>
     ))}
   </ul>
 
-  <p class="guest-city-hint">These are the Ontario cities we already have shops for.</p>
-  <p class="guest-city-miss" data-city-miss hidden>We only have shops in the listed cities.</p>
+  <p class="guest-city-hint">Canada and the United States. Pick a city to load live Google Business listings.</p>
+  <p class="guest-city-status" data-city-status hidden></p>
+  <p class="guest-city-miss" data-city-miss hidden>No listings found for that city yet.</p>
 </div>

@@ -22,8 +22,15 @@
 
   function catalogCities() {
     return cityButtons()
-      .map(function (el) { return (el.getAttribute('data-city-pick') || '').trim(); })
-      .filter(Boolean);
+      .map(function (el) {
+        return {
+          city: (el.getAttribute('data-city-pick') || '').trim(),
+          region: (el.getAttribute('data-city-region') || '').trim(),
+          country: (el.getAttribute('data-city-country') || '').trim(),
+          label: (el.getAttribute('data-city-label') || el.textContent || '').trim(),
+        };
+      })
+      .filter(function (item) { return item.city; });
   }
 
   function isApp() {
@@ -57,18 +64,21 @@
     items.forEach(function (li) {
       var btn = li.querySelector('[data-city-pick]');
       var city = ((btn && btn.getAttribute('data-city-pick')) || '').trim();
+      var label = ((btn && (btn.getAttribute('data-city-label') || btn.textContent)) || city).trim();
+      var popular = btn && btn.getAttribute('data-city-popular') === '1';
       if (!city) {
         allItem = li;
         li.hidden = false;
         return;
       }
       if (!q) {
-        li.hidden = false;
-        starts.push(li);
+        li.hidden = !popular;
+        if (popular) starts.push(li);
+        else hidden.push(li);
         return;
       }
-      var name = city.toLowerCase();
-      if (name.indexOf(q) === 0) {
+      var name = (label + ' ' + city).toLowerCase();
+      if (name.indexOf(q) === 0 || city.toLowerCase().indexOf(q) === 0) {
         li.hidden = false;
         starts.push(li);
       } else if (name.indexOf(q) !== -1) {
@@ -81,8 +91,8 @@
     });
 
     function byName(a, b) {
-      var ca = ((a.querySelector('[data-city-pick]') && a.querySelector('[data-city-pick]').getAttribute('data-city-pick')) || '').toLowerCase();
-      var cb = ((b.querySelector('[data-city-pick]') && b.querySelector('[data-city-pick]').getAttribute('data-city-pick')) || '').toLowerCase();
+      var ca = ((a.querySelector('[data-city-pick]') && a.querySelector('[data-city-pick]').getAttribute('data-city-label')) || '').toLowerCase();
+      var cb = ((b.querySelector('[data-city-pick]') && b.querySelector('[data-city-pick]').getAttribute('data-city-label')) || '').toLowerCase();
       return ca.localeCompare(cb);
     }
     starts.sort(byName);
@@ -92,12 +102,17 @@
     ordered.forEach(function (li) { list.appendChild(li); });
   }
 
-  function exactCity(query) {
+  function matchCity(query) {
     var typed = (query || '').trim().toLowerCase();
-    if (!typed || typed === 'all cities') return '';
+    if (!typed || typed === 'all cities') return { city: '', region: '', country: '' };
     var list = catalogCities();
     for (var i = 0; i < list.length; i += 1) {
-      if (list[i].toLowerCase() === typed) return list[i];
+      var item = list[i];
+      var city = item.city.toLowerCase();
+      var label = (item.label || '').toLowerCase();
+      var combo = (item.city + ' ' + item.region).toLowerCase();
+      var comma = (item.city + ', ' + item.region).toLowerCase();
+      if (city === typed || label === typed || combo === typed || comma === typed) return item;
     }
     return null;
   }
@@ -128,8 +143,16 @@
     });
   }
 
-  function applyCity(city, persist) {
+  function emitCity(city, region, country) {
+    window.dispatchEvent(new CustomEvent('callsal:city-applied', {
+      detail: { city: city || '', region: region || '', country: country || '' },
+    }));
+  }
+
+  function applyCity(city, persist, meta) {
     var chosen = (city || '').trim();
+    var region = (meta && meta.region) || '';
+    var country = (meta && meta.country) || '';
     var input = inputEl();
     if (input) input.value = chosen;
     markActive(chosen);
@@ -140,9 +163,10 @@
     } else {
       applyCityCards(chosen);
     }
+    emitCity(chosen, region, country);
     if (persist !== false) {
       try {
-        if (chosen) sessionStorage.setItem(KEY, chosen);
+        if (chosen) sessionStorage.setItem(KEY, JSON.stringify({ city: chosen, region: region, country: country }));
         else sessionStorage.removeItem(KEY);
       } catch (err) { /* private mode */ }
     }
@@ -151,29 +175,26 @@
   function tryApplyFromBar() {
     var input = inputEl();
     if (!input) return;
-    var match = exactCity(input.value);
-    if (match === null) {
+    var typed = (input.value || '').trim();
+    var match = matchCity(typed);
+    if (match && !match.city) {
+      applyCity('');
+      return;
+    }
+    if (match) {
+      applyCity(match.city, true, match);
+      return;
+    }
+    if (typed.length < 2) {
       setMiss(true);
       return;
     }
-    applyCity(match);
+    applyCity(typed, true, {});
   }
 
   async function hideIfAuthed() {
     var root = wrap();
     if (!root) return true;
-    if (isApp()) {
-      root.hidden = true;
-      return true;
-    }
-    try {
-      var res = await fetch('/api/auth/me', { credentials: 'include' });
-      var data = await res.json();
-      if (res.ok && data.user) {
-        root.hidden = true;
-        return true;
-      }
-    } catch (err) { /* guest */ }
     root.hidden = false;
     return false;
   }
@@ -184,8 +205,11 @@
     if (!root || hidden) return;
     var saved = '';
     try { saved = sessionStorage.getItem(KEY) || ''; } catch (err) { saved = ''; }
-    var match = exactCity(saved);
-    if (match) applyCity(match, false);
+    var parsed = null;
+    try { parsed = saved.charAt(0) === '{' ? JSON.parse(saved) : { city: saved }; } catch (err) { parsed = { city: saved }; }
+    var match = matchCity((parsed && parsed.city) || '');
+    if (match && match.city) applyCity(match.city, false, match);
+    else if (parsed && parsed.city) applyCity(parsed.city, false, parsed);
     else applyCity('', false);
     var input = inputEl();
     filterSuggestions(input ? input.value : '');
@@ -202,10 +226,13 @@
     var pick = event.target && event.target.closest && event.target.closest('[data-city-pick]');
     if (pick) {
       var city = pick.getAttribute('data-city-pick') || '';
+      var region = pick.getAttribute('data-city-region') || '';
+      var country = pick.getAttribute('data-city-country') || '';
+      var label = pick.getAttribute('data-city-label') || city;
       var input = inputEl();
-      if (input) input.value = city;
-      filterSuggestions(city);
-      applyCity(city);
+      if (input) input.value = city ? label : '';
+      filterSuggestions(city ? label : '');
+      applyCity(city, true, { region: region, country: country });
       return;
     }
     if (event.target && event.target.closest && event.target.closest('[data-city-apply]')) {

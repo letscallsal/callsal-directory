@@ -8,7 +8,6 @@
   overflow-x: clip;
 }
 
-html.is-app [data-guest-city],
 [data-guest-city][hidden] {
   display: none !important;
 }
@@ -153,7 +152,8 @@ html.is-app [data-guest-city],
 }
 
 .lede .guest-city-hint,
-.lede .guest-city-miss {
+.lede .guest-city-miss,
+.lede .guest-city-status {
   margin: 0.6rem 0 0;
   max-width: none;
   color: #fff;
@@ -169,6 +169,11 @@ html.is-app [data-guest-city],
   color: #ccff00;
 }
 
+.lede .guest-city-status {
+  color: #ccff00;
+}
+
+.guest-city-status[hidden],
 .guest-city-miss[hidden] {
   display: none;
 }

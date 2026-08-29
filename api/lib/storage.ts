@@ -3,7 +3,7 @@
 
 interface StorageInterface {
   get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T): Promise<void>;
+  set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
   del(key: string): Promise<void>;
 }
 
@@ -13,7 +13,7 @@ const memoryStorage: StorageInterface = {
   async get<T>(key: string): Promise<T | null> {
     return (memoryStore[key] as T) ?? null;
   },
-  async set<T>(key: string, value: T): Promise<void> {
+  async set<T>(key: string, value: T, _ttlSeconds?: number): Promise<void> {
     memoryStore[key] = value;
   },
   async del(key: string): Promise<void> {
@@ -36,7 +36,11 @@ async function getRedisStorage(): Promise<StorageInterface> {
       async get<T>(key: string): Promise<T | null> {
         return await redis.get<T>(key);
       },
-      async set<T>(key: string, value: T): Promise<void> {
+      async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+        if (ttlSeconds && ttlSeconds > 0) {
+          await redis.set(key, value, { ex: ttlSeconds });
+          return;
+        }
         await redis.set(key, value);
       },
       async del(key: string): Promise<void> {

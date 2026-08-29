@@ -15,11 +15,11 @@ const shops = byType(all, slug);
 const label = typeLabel(slug);
 ---
 
-<AppShell title={label} description={`Published ${label.toLowerCase()} shops in Milton.`}>
+<AppShell title={label} description={`Live ${label.toLowerCase()} listings across Canada and the United States.`}>
   <header class="page-head">
     <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
     <h1 class="page-title">{label}</h1>
-    <p class="page-tag">Published {label.toLowerCase()} shops in Milton.</p>
+    <p class="page-tag">Pick a city in the menu to load live {label.toLowerCase()} listings from Google Business.</p>
   </header>
 
   {shops.length > 0 ? (
@@ -29,6 +29,7 @@ const label = typeLabel(slug);
       ))}
     </div>
   ) : (
-    <p class="empty">Nothing listed here yet.</p>
+    <p class="empty">Nothing listed here yet. Open a city from the menu.</p>
   )}
+  <div class="rows" data-live-rows hidden></div>
 </AppShell>

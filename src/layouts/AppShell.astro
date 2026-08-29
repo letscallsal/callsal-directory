@@ -14,7 +14,7 @@ interface Props {
   withRoom?: boolean;
 }
 
-const { title, description = 'A local Google Business index you can turn into a lead board.', withRoom = false } = Astro.props;
+const { title, description = 'A live Google Business index for Canada and the United States.', withRoom = false } = Astro.props;
 const shops = await getShops();
 const cities = [...new Set(shops.map((shop) => shop.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const pageTitle = title === 'Directory' ? 'DIRECTORY — CALL SAL' : `${title} — DIRECTORY`;
@@ -278,6 +278,8 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
       </div>
     </div>
     <script src="/directory-leads.js" defer></script>
+    <script src="/directory-city.js" defer></script>
+    <script src="/directory-live.js" defer></script>
 
     <script define:vars={{ withRoom }}>
       window.__DIRECTORY_WITH_ROOM = withRoom;
