@@ -575,29 +575,89 @@
     applyBoardFilters();
   }
 
+  const ICON_WEB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>';
+  const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h3l1.2 4.2-2 1.2a12 12 0 0 0 5.4 5.4l1.2-2H21l.2 3.2A16 16 0 0 1 7 3z"/></svg>';
+  const ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>';
+  const ICON_IG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.6"/><circle cx="17.2" cy="6.8" r="0.8" fill="currentColor" stroke="none"/></svg>';
+
+  function igParts(raw) {
+    const v = String(raw || '').trim();
+    if (!v) return null;
+    let handle = v;
+    const m = v.match(/instagram\.com\/([^/?#]+)/i);
+    if (m) handle = m[1];
+    handle = handle.replace(/^@/, '').replace(/\/+$/, '');
+    if (!handle || handle === 'p' || handle === 'reel' || handle === 'stories') return null;
+    return {
+      handle: handle,
+      href: 'https://www.instagram.com/' + encodeURIComponent(handle),
+      tip: '@' + handle,
+    };
+  }
+
+  function copyText(value) {
+    const v = String(value || '');
+    if (!v) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      void navigator.clipboard.writeText(v);
+      return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = v;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (err) { /* ignore */ }
+    ta.remove();
+  }
+
+  function hideLeadTips(keep) {
+    document.querySelectorAll('.lead-act.is-tip').forEach((el) => {
+      if (el !== keep) el.classList.remove('is-tip');
+    });
+  }
+
+  function leadActBtn(kind, tip, extra, svg) {
+    return '<button type="button" class="lead-act" draggable="false" data-lead-act="' + kind + '" data-tip="' + esc(tip) + '" aria-label="' + esc(tip) + '"' + extra + '>' + svg + '</button>';
+  }
+
+  function renderLeadActs(lead) {
+    const phone = String(lead.phone || '').trim();
+    const email = String(lead.email || '').trim();
+    const web = String(lead.website || '').trim();
+    const ig = igParts(lead.socials && lead.socials.instagram);
+    const bits = [];
+    if (web) {
+      const href = safeHref(web);
+      bits.push(leadActBtn('web', web, ' data-href="' + esc(href) + '"', ICON_WEB));
+    }
+    if (phone) bits.push(leadActBtn('copy', phone, ' data-copy="' + esc(phone) + '"', ICON_PHONE));
+    if (email) bits.push(leadActBtn('copy', email, ' data-copy="' + esc(email) + '"', ICON_MAIL));
+    if (ig) bits.push(leadActBtn('ig', ig.tip, ' data-href="' + esc(ig.href) + '"', ICON_IG));
+    return bits.length ? '<div class="lead-acts">' + bits.join('') + '</div>' : '';
+  }
+
   function renderLeadCard(lead) {
     const stage = normalizeStage(lead.stage);
     const v = lead.verified || {};
-    const photo = leadPhoto(lead);
-    const media = photo
-      ? '<img class="lead-card-photo" src="' + esc(photo) + '" alt="" width="320" height="200" loading="lazy" />'
-      : '';
-    const phone = v.phone && lead.phone ? lead.phone : '';
-    const address = v.address && lead.address ? lead.address : '';
+    const phone = String(lead.phone || '').trim();
+    const email = String(lead.email || '').trim();
+    const web = String(lead.website || '').trim();
     return '<article class="lead-card" draggable="true" data-lead-slug="' + esc(lead.slug) + '"'
       + ' data-lead-place-id="' + esc(lead.placeId || '') + '"'
       + ' data-lead-name="' + esc(lead.name || '') + '"'
       + ' data-lead-city="' + esc((lead.city || '').toLowerCase()) + '"'
       + ' data-lead-niche="' + esc(lead.category || '') + '"'
-      + ' data-has-email="' + (v.email && lead.email ? '1' : '0') + '"'
-      + ' data-has-phone="' + (v.phone && lead.phone ? '1' : '0') + '"'
-      + ' data-has-website="' + (v.website && lead.website ? '1' : '0') + '"'
+      + ' data-has-email="' + (email ? '1' : '0') + '"'
+      + ' data-has-phone="' + (phone ? '1' : '0') + '"'
+      + ' data-has-website="' + (web ? '1' : '0') + '"'
       + ' data-lead-stage="' + esc(stage) + '">'
-      + media
       + '<h3>' + esc(lead.name) + '</h3>'
       + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
-      + (phone ? '<p class="lead-phone">' + esc(phone) + '</p>' : '')
-      + (address ? '<p class="lead-address">' + esc(address) + '</p>' : '')
+      + (phone ? '<p class="lead-phone" data-lead-act="copy" data-copy="' + esc(phone) + '" data-tip="' + esc(phone) + '">' + esc(phone) + '</p>' : '')
+      + renderLeadActs(lead)
       + '</article>';
   }
 
@@ -851,6 +911,25 @@
       if (draft && navigator.clipboard) void navigator.clipboard.writeText(draft);
       return;
     }
+    const act = target && target.closest ? target.closest('[data-lead-act]') : null;
+    if (act) {
+      event.preventDefault();
+      event.stopPropagation();
+      const kind = act.getAttribute('data-lead-act') || '';
+      if (kind === 'web' || kind === 'ig') {
+        hideLeadTips();
+        const href = act.getAttribute('data-href') || '';
+        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (kind === 'copy') {
+        copyText(act.getAttribute('data-copy') || act.getAttribute('data-tip') || '');
+        hideLeadTips(act);
+        act.classList.add('is-tip');
+        return;
+      }
+    }
+    hideLeadTips();
     const shopWrap = target && target.closest ? target.closest('[data-card-slug][data-shop-type]') : null;
     if (shopWrap) {
       event.preventDefault();
@@ -861,6 +940,7 @@
     if (leadCard) {
       event.preventDefault();
       if (didDrag) return;
+      if (target && target.closest && target.closest('[data-lead-act]')) return;
       openShopInfoFromLead(leadCard);
     }
   });
