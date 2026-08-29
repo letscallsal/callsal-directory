@@ -805,7 +805,26 @@
         openAuth('register');
         return;
       }
-      void postLeads({ action: 'scan', city: 'milton' });
+      if (lastLeads.plan !== 'paid') {
+        openPremium('Bulk import is paid. Free accounts add one shop at a time with plus.');
+        return;
+      }
+      const cityBtn = document.querySelector('[data-filter-city].is-on') || document.querySelector('[data-leads-filter-city].is-on');
+      const city = cityBtn ? (cityBtn.getAttribute('data-filter-city') || cityBtn.getAttribute('data-leads-filter-city') || '') : (selectedCity() || boardCity());
+      if (!city) {
+        const usageEl = document.querySelector('[data-leads-usage]');
+        if (usageEl) usageEl.textContent = 'Pick one city first. Bulk import is one city at a time.';
+        return;
+      }
+      const nicheBtn = document.querySelector('[data-filter-niche].is-on') || document.querySelector('[data-leads-filter-niche].is-on');
+      const niche = nicheBtn ? (nicheBtn.getAttribute('data-filter-niche') || nicheBtn.getAttribute('data-leads-filter-niche') || '') : (selectedNiche() || '');
+      void postLeads({
+        action: 'scan',
+        city: city,
+        region: cityBtn ? (cityBtn.getAttribute('data-city-region') || '') : '',
+        country: cityBtn ? (cityBtn.getAttribute('data-city-country') || '') : '',
+        category: niche,
+      });
       return;
     }
     if (target && target.closest && target.closest('[data-ask-oracle]')) {

@@ -54,13 +54,13 @@ import AppShell from '../layouts/AppShell.astro';
       <article class="leads-plan">
         <p class="page-kicker">Free</p>
         <h2>Free</h2>
-        <p>You can browse Directory and add shops by hand. The board starts empty and holds up to 25 leads. This plan has no scan and no Oracle.</p>
+        <p>Browse Directory and tap plus. Your board starts empty and holds up to 25 leads. No bulk import. No Oracle.</p>
         <button type="button" class="btn-glass hover-lift" data-leads-pick="free">JOIN</button>
       </article>
       <article class="leads-plan is-paid">
         <p class="page-kicker">$999 a month</p>
         <h2>Paid Directory</h2>
-        <p>Paid Directory is $999 a month. Import all fills the board from your cities and dedupes by place id or name and address. Oracle drafts never send. This form does not take payment.</p>
+        <p>Paid Directory is $999 a month. Bulk import one city at a time, any niches. Your board stays yours. The CRM holds the full pile. Oracle drafts never send. This form does not take payment.</p>
         <button type="button" class="btn-primary hover-lift" data-leads-pick="paid">USE THE PAID BOARD IN SANDBOX</button>
       </article>
     </div>
@@ -70,13 +70,13 @@ import AppShell from '../layouts/AppShell.astro';
     <header class="page-head">
       <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
       <h1 class="page-title">Leads</h1>
-      <p class="page-tag">Add shops from the directory. Import all (pre-fill from preferred cities) is a paid unlock.</p>
+      <p class="page-tag">Free: plus on a listing. Paid: bulk import one city at a time.</p>
     </header>
 
     <div class="leads-toolbar">
       <p class="leads-usage" data-leads-usage></p>
       <div class="leads-actions">
-        <button type="button" class="soft-pill" data-scan-leads>IMPORT ALL</button>
+        <button type="button" class="soft-pill" data-scan-leads>IMPORT CITY</button>
         <button type="button" class="soft-pill" data-ask-oracle>ORACLE</button>
       </div>
     </div>

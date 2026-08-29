@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { leadsKey, planKey, type DirectoryUser } from './auth.js';
 import { getStorage } from './storage.js';
-import { seedShops, shopDedupeKey, typeLabel, type Shop, type ShopCategory } from './places.js';
+import { listCityShops, seedShops, shopDedupeKey, typeLabel, type Shop, type ShopCategory } from './places.js';
 
 export type Stage =
   | 'New'
@@ -563,16 +563,30 @@ async function saveMemberBoard(userId: string, board: BoardState): Promise<void>
 }
 
 export async function loadBoard(user: BoardUser | string): Promise<BoardState> {
-  if (isPipelineOwner(user)) return loadOwnerBoard();
   return loadMemberBoard(userIdOf(user));
 }
 
 export async function saveBoard(user: BoardUser | string, board: BoardState): Promise<void> {
-  if (isPipelineOwner(user)) {
-    await saveOwnerBoard(board);
-    return;
-  }
   await saveMemberBoard(userIdOf(user), board);
+}
+
+export async function upsertCrmMaster(shops: Shop[]): Promise<void> {
+  if (!shops.length) return;
+  const storage = await getStorage();
+  const existing = ((await storage.get<CrmLight[] | null>(CRM_LEADS_KEY)) || []) as CrmLight[];
+  const rows = Array.isArray(existing) ? existing.map(stripHeavy) : [];
+  const byPlace = new Map(
+    rows.filter((row) => row.google_place_id).map((row) => [String(row.google_place_id), row]),
+  );
+  let changed = false;
+  for (const shop of shops) {
+    if (shop.placeId && byPlace.has(shop.placeId)) continue;
+    const created = leadToCrmLight(shopToLead(shop));
+    rows.unshift(created);
+    if (created.google_place_id) byPlace.set(String(created.google_place_id), created);
+    changed = true;
+  }
+  if (changed) await storage.set(CRM_LEADS_KEY, rows);
 }
 
 export function torontoDate(now = new Date()): string {
@@ -732,32 +746,46 @@ function scannedToday(board: BoardState, city: string): boolean {
   return Boolean(stamp && torontoDate(new Date(stamp)) === torontoDate());
 }
 
-export async function scanCity(board: BoardState, city: string, plan: Plan, owner = false): Promise<{
+export async function scanCity(
+  board: BoardState,
+  city: string,
+  plan: Plan,
+  owner = false,
+  extra: { region?: string; country?: string; category?: string } = {},
+): Promise<{
   board: BoardState;
   added: number;
   skipped: number;
   reason?: string;
-  source: 'places' | 'seed';
+  source: 'places' | 'listings' | 'seed';
+  imported: Shop[];
 }> {
-  if (plan !== 'paid') return { board, added: 0, skipped: 0, reason: 'paid', source: 'seed' };
-  const cityKey = city.trim().toLowerCase() || 'milton';
-  if (scannedToday(board, cityKey)) {
-    return { board, added: 0, skipped: 0, reason: 'scan-wait', source: 'seed' };
+  if (plan !== 'paid') return { board, added: 0, skipped: 0, reason: 'paid', source: 'seed', imported: [] };
+  const cityKey = city.trim();
+  if (!cityKey || cityKey.toLowerCase() === 'all' || /[,|/]/.test(cityKey)) {
+    return { board, added: 0, skipped: 0, reason: 'city-required', source: 'seed', imported: [] };
   }
-  const shops = catalogShops().filter((shop) => shop.city.trim().toLowerCase() === cityKey);
+  const category = String(extra.category || '').trim().toLowerCase();
+  const stampKey = `${cityKey.toLowerCase()}:${category || 'all'}`;
+  if (scannedToday(board, stampKey)) {
+    return { board, added: 0, skipped: 0, reason: 'scan-wait', source: 'seed', imported: [] };
+  }
+  const live = await listCityShops(cityKey, extra.region || '', extra.country || '', category);
+  const imported: Shop[] = [];
   let added = 0;
   let skipped = 0;
-  for (const shop of shops) {
+  for (const shop of live.shops) {
     if (board.leads.length >= capFor(plan, owner)) break;
     if (hasLead(board, shop)) {
       skipped += 1;
       continue;
     }
     board.leads.push(shopToLead(shop));
+    imported.push(shop);
     added += 1;
   }
-  board.lastScanByCity = { ...(board.lastScanByCity || {}), [cityKey]: new Date().toISOString() };
-  return { board, added, skipped, source: 'seed' };
+  board.lastScanByCity = { ...(board.lastScanByCity || {}), [stampKey]: new Date().toISOString() };
+  return { board, added, skipped, source: live.source, imported };
 }
 
 export function oracleAllowed(board: BoardState, plan: Plan): { ok: boolean; remaining: number; message?: string } {

@@ -104,7 +104,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     board = result.board;
     if (persist) await saveBoard(user, board);
-    if (owner && result.added) {
+    if (result.added) {
+      const shop = (await import('./lib/board.js')).shopFromListing(listing);
+      if (shop) {
+        const { upsertCrmMaster } = await import('./lib/board.js');
+        await upsertCrmMaster([shop]);
+      }
       const { importListingToCrm } = await import('./lib/crm-sync.js');
       await importListingToCrm(listing);
     }
@@ -118,14 +123,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (action === 'scan') {
-    const city = String(body.city || 'milton').trim().toLowerCase();
-    const result = await scanCity(board, city, plan, owner);
+    const city = String(body.city || '').trim();
+    const region = String(body.region || '').trim();
+    const country = String(body.country || '').trim();
+    const category = String(body.category || body.niche || '').trim().toLowerCase();
+    const result = await scanCity(board, city, plan, owner, { region, country, category });
     if (result.reason === 'paid') {
       return res.status(402).json({
         error: 'PAID',
         upgrade: true,
         price: PRICE,
-        message: `Scan is on Paid Directory at ${PRICE}.`,
+        message: `Bulk import is on Paid Directory at ${PRICE}. Free accounts add shops with plus.`,
+        plan,
+        leads: board.leads,
+        usage: usage(board, plan, owner),
+      });
+    }
+    if (result.reason === 'city-required') {
+      return res.status(400).json({
+        error: 'CITY REQUIRED',
+        message: 'Pick one city. Bulk import is one city at a time. All niches is fine.',
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),
@@ -134,7 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (result.reason === 'scan-wait') {
       return res.status(429).json({
         error: 'SCAN WAIT',
-        message: 'Scan can run again after 8am.',
+        message: 'That city already imported today. Try again after 8am.',
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),
@@ -142,6 +159,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     board = result.board;
     if (persist) await saveBoard(user, board);
+    if (result.imported && result.imported.length) {
+      const { upsertCrmMaster } = await import('./lib/board.js');
+      await upsertCrmMaster(result.imported);
+    }
     await writeSession(req, res, session, plan, board);
     return res.status(200).json({
       plan,
