@@ -311,7 +311,56 @@ html:has(#app-chrome.is-stuck):not(.is-leads).has-room .app {
   overflow: hidden;
 }
 
+html:has(#app-chrome.is-stuck):not(.is-leads) .map-stage {
+  display: block;
+}
+
+html:has(#app-chrome.is-stuck):not(.is-leads) .listings-rail {
+  display: flex;
+  flex-direction: column;
+}
+
+html:has(#app-chrome.is-stuck):not(.is-leads) main,
+html:has(#app-chrome.is-stuck):not(.is-leads) .page-foot,
+html:has(#app-chrome.is-stuck):not(.is-leads) [data-index-lede] {
+  display: none;
+}
+
+html:has(#app-chrome.is-stuck):not(.is-leads) .app-body {
+  display: grid;
+  grid-template-columns: minmax(17.5rem, 22rem) 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+html:has(#app-chrome.is-stuck):not(.is-leads) .viewport {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  overflow: hidden;
+  padding: 0;
+}
+
 @media (max-width: 860px) {
+  html:has(#app-chrome.is-stuck):not(.is-leads) .app-body {
+    display: flex;
+    grid-template-columns: none;
+  }
+
+  html:has(#app-chrome.is-stuck):not(.is-leads) .viewport {
+    flex: 1;
+    width: 100%;
+  }
+
+  html:has(#app-chrome.is-stuck):not(.is-leads) .listings-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 22;
+    height: 38vh;
+    display: flex !important;
+  }
+
   .map-search-here { top: auto; bottom: calc(38vh + 0.85rem); }
   .map-status { bottom: calc(38vh + 0.85rem); }
 }
+

@@ -22,12 +22,13 @@
   var ICON_IG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.6"/><circle cx="17.2" cy="6.8" r="0.8" fill="currentColor" stroke="none"/></svg>';
 
   var map = null;
-  var layer = null;
   var markers = {};
   var shops = [];
   var lastSearch = null;
   var loading = false;
   var moved = false;
+  var engine = 'none';
+  var mapsBoot = null;
 
   function esc(value) {
     return String(value || '')
@@ -160,31 +161,24 @@
     );
   }
 
-  var MAP_STYLES = [
-    { elementType: 'geometry', stylers: [{ color: '#111111' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#111111' }] },
-    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
-    { featureType: 'landscape', stylers: [{ color: '#111111' }] },
-    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-    { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
-    { featureType: 'poi.park', stylers: [{ visibility: 'off' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1c1c1c' }] },
-    { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
-    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-    { featureType: 'water', stylers: [{ color: '#0a0a0a' }] },
-  ];
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
 
-  function pinIcon(on) {
-    return {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      scale: on ? 9 : 6,
-      fillColor: on ? '#ffffff' : '#CCFF00',
-      fillOpacity: 1,
-      strokeColor: on ? '#CCFF00' : '#111111',
-      strokeWeight: on ? 3 : 2,
-    };
+  function loadCss(href) {
+    if (document.querySelector('link[data-map-css="' + href + '"]')) return;
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.setAttribute('data-map-css', href);
+    document.head.appendChild(link);
   }
 
   function haversine(a, b) {
@@ -197,17 +191,50 @@
     return 2 * R * Math.asin(Math.sqrt(s));
   }
 
+  function getCenter() {
+    if (engine === 'google' && map) {
+      var gc = map.getCenter();
+      return { lat: gc.lat(), lng: gc.lng() };
+    }
+    if (engine === 'leaflet' && map) {
+      var lc = map.getCenter();
+      return { lat: lc.lat, lng: lc.lng };
+    }
+    return { lat: 43.5081, lng: -79.8829 };
+  }
+
+  function getZoom() {
+    if (!map) return 14;
+    return map.getZoom();
+  }
+
+  function setCenter(lat, lng, zoom) {
+    if (!map) return;
+    if (engine === 'google') {
+      map.setCenter({ lat: lat, lng: lng });
+      if (zoom) map.setZoom(zoom);
+      return;
+    }
+    if (engine === 'leaflet') map.setView([lat, lng], zoom || map.getZoom());
+  }
+
+  function panTo(lat, lng) {
+    if (!map) return;
+    if (engine === 'google') map.panTo({ lat: lat, lng: lng });
+    else if (engine === 'leaflet') map.panTo([lat, lng]);
+  }
+
   function radiusMeters() {
     if (!map) return 4000;
-    var b = map.getBounds();
+    var b = map.getBounds ? map.getBounds() : null;
     if (!b) return 4000;
-    var sw = b.getSouthWest();
-    var ne = b.getNorthEast();
-    var meters = haversine(
-      { lat: sw.lat(), lng: sw.lng() },
-      { lat: ne.lat(), lng: ne.lng() },
-    ) / 2;
-    return Math.max(600, Math.min(meters, 25000));
+    var sw = engine === 'google'
+      ? { lat: b.getSouthWest().lat(), lng: b.getSouthWest().lng() }
+      : { lat: b.getSouthWest().lat, lng: b.getSouthWest().lng };
+    var ne = engine === 'google'
+      ? { lat: b.getNorthEast().lat(), lng: b.getNorthEast().lng() }
+      : { lat: b.getNorthEast().lat, lng: b.getNorthEast().lng };
+    return Math.max(600, Math.min(haversine(sw, ne) / 2, 25000));
   }
 
   function showSearchHere(on) {
@@ -216,10 +243,33 @@
     moved = on;
   }
 
+  function leafletPin(on) {
+    return window.L.divIcon({
+      className: on ? 'map-pin is-on' : 'map-pin',
+      iconSize: on ? [18, 18] : [14, 14],
+      iconAnchor: on ? [9, 9] : [7, 7],
+    });
+  }
+
+  function googlePin(on) {
+    return {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      scale: on ? 9 : 6,
+      fillColor: on ? '#ffffff' : '#CCFF00',
+      fillOpacity: 1,
+      strokeColor: on ? '#CCFF00' : '#111111',
+      strokeWeight: on ? 3 : 2,
+    };
+  }
+
   function highlight(key) {
     Object.keys(markers).forEach(function (id) {
-      markers[id].setIcon(pinIcon(id === key));
-      markers[id].setZIndex(id === key ? 200 : 1);
+      if (engine === 'google') {
+        markers[id].setIcon(googlePin(id === key));
+        markers[id].setZIndex(id === key ? 200 : 1);
+      } else if (engine === 'leaflet') {
+        markers[id].setIcon(leafletPin(id === key));
+      }
     });
     document.querySelectorAll('[data-map-card]').forEach(function (el) {
       el.classList.toggle('is-on', el.getAttribute('data-map-card') === key);
@@ -230,7 +280,7 @@
     var rail = listEl();
     if (!rail) return;
     if (!shops.length) {
-      rail.innerHTML = '<p class="listings-empty">No Google Business listings in view. Move the map, then search this area.</p>';
+      rail.innerHTML = '<p class="listings-empty">No listings in view. Move the map, then search this area.</p>';
     } else {
       rail.innerHTML = shops.map(listingHtml).join('');
     }
@@ -239,69 +289,179 @@
     if (typeof window.__dirPaintAddLeads === 'function') window.__dirPaintAddLeads();
   }
 
+  function markerLatLng(marker) {
+    if (engine === 'google') {
+      var p = marker.getPosition();
+      return { lat: p.lat(), lng: p.lng() };
+    }
+    var ll = marker.getLatLng();
+    return { lat: ll.lat, lng: ll.lng };
+  }
+
   function clearPins() {
     Object.keys(markers).forEach(function (id) {
-      markers[id].setMap(null);
+      if (engine === 'google') markers[id].setMap(null);
+      else if (engine === 'leaflet') map.removeLayer(markers[id]);
     });
     markers = {};
   }
 
   function paintPins() {
-    if (!map || !window.google || !window.google.maps) return;
+    if (!map || engine === 'none') return;
     clearPins();
     shops.forEach(function (shop) {
       var lat = Number(shop.lat);
       var lng = Number(shop.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       var key = shop.placeId || shop.slug;
-      var marker = new window.google.maps.Marker({
-        position: { lat: lat, lng: lng },
-        map: map,
-        title: shop.name,
-        icon: pinIcon(false),
-        clickable: true,
-      });
-      marker.addListener('click', function () {
-        highlight(key);
-        var card = document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]');
-        if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      });
+      var marker;
+      if (engine === 'google') {
+        marker = new window.google.maps.Marker({
+          position: { lat: lat, lng: lng },
+          map: map,
+          title: shop.name,
+          icon: googlePin(false),
+          clickable: true,
+        });
+        marker.addListener('click', function () {
+          highlight(key);
+          var card = document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]');
+          if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+      } else {
+        marker = window.L.marker([lat, lng], { icon: leafletPin(false), title: shop.name });
+        marker.on('click', function () {
+          highlight(key);
+          var card = document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]');
+          if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+        marker.addTo(map);
+      }
       markers[key] = marker;
     });
   }
 
-  function centerOf(mapOrData) {
-    if (mapOrData && typeof mapOrData.lat === 'function') {
-      return { lat: mapOrData.lat(), lng: mapOrData.lng() };
-    }
-    if (map && map.getCenter) {
-      var c = map.getCenter();
-      return { lat: c.lat(), lng: c.lng() };
-    }
-    return { lat: 43.5081, lng: -79.8829 };
+  function bindMove() {
+    if (!map) return;
+    var onMove = function () {
+      if (!lastSearch) {
+        showSearchHere(true);
+        return;
+      }
+      var c = getCenter();
+      var dist = haversine(lastSearch, c);
+      showSearchHere(dist > 220);
+    };
+    if (engine === 'google') map.addListener('idle', onMove);
+    else map.on('moveend', onMove);
+  }
+
+  function resizeMap() {
+    if (!map) return;
+    if (engine === 'google' && window.google) window.google.maps.event.trigger(map, 'resize');
+    if (engine === 'leaflet') map.invalidateSize();
+  }
+
+  function ensureGoogle() {
+    if (map) return map;
+    var el = canvas();
+    if (!el) return null;
+    map = new window.google.maps.Map(el, {
+      center: { lat: 43.5081, lng: -79.8829 },
+      zoom: 14,
+      disableDefaultUI: true,
+      zoomControl: true,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      clickableIcons: false,
+      gestureHandling: 'greedy',
+      backgroundColor: '#111111',
+      styles: [
+        { elementType: 'geometry', stylers: [{ color: '#111111' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#111111' }] },
+        { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
+        { featureType: 'landscape', stylers: [{ color: '#111111' }] },
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+        { featureType: 'poi.park', stylers: [{ visibility: 'off' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1c1c1c' }] },
+        { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+        { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
+        { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+        { featureType: 'water', stylers: [{ color: '#0a0a0a' }] },
+      ],
+    });
+    bindMove();
+    return map;
+  }
+
+  function ensureLeaflet() {
+    if (map) return map;
+    var el = canvas();
+    if (!el || !window.L) return null;
+    map = window.L.map(el, { zoomControl: true, attributionControl: true }).setView([43.5081, -79.8829], 14);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(map);
+    bindMove();
+    return map;
+  }
+
+  function startLeaflet() {
+    loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+    var ready = window.L ? Promise.resolve() : loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+    return ready.then(function () {
+      engine = 'leaflet';
+      ensureLeaflet();
+    });
+  }
+
+  function startGoogle(key) {
+    return loadScript('https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&v=weekly').then(function () {
+      if (!window.google || !window.google.maps) throw new Error('no maps');
+      engine = 'google';
+      ensureGoogle();
+    });
+  }
+
+  function bootMap() {
+    if (mapsBoot) return mapsBoot;
+    mapsBoot = fetch('/api/maps-config', { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.key) {
+          return startGoogle(data.key).catch(function () { return startLeaflet(); });
+        }
+        return startLeaflet();
+      })
+      .catch(function () { return startLeaflet(); });
+    return mapsBoot;
   }
 
   async function loadShops(query, fly) {
     if (loading) return;
     loading = true;
-    setStatus('Scanning Google Business listings…');
+    setStatus('Scanning this area…');
     showSearchHere(false);
     try {
       var res = await fetch('/api/places?' + query, { credentials: 'same-origin' });
       var data = await res.json();
       shops = (data && data.shops) || [];
-      var here = centerOf();
+      var here = getCenter();
       lastSearch = {
         lat: Number(data.lat) || here.lat,
         lng: Number(data.lng) || here.lng,
       };
       paintList();
       paintPins();
-      if (fly && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng)) && map) {
-        map.setCenter({ lat: Number(data.lat), lng: Number(data.lng) });
-        if (map.getZoom() < 13) map.setZoom(13);
+      if (fly && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+        setCenter(Number(data.lat), Number(data.lng), Math.max(getZoom(), 13));
       }
-      setStatus(shops.length ? '' : 'No Google Business listings in this view.');
+      setStatus(shops.length ? '' : 'No listings in this view.');
     } catch (err) {
       setStatus('Could not load listings.');
     }
@@ -310,10 +470,9 @@
   }
 
   function searchView() {
-    if (!map) return;
-    var c = map.getCenter();
+    var c = getCenter();
     var niche = currentNiche();
-    var q = 'lat=' + encodeURIComponent(c.lat()) + '&lng=' + encodeURIComponent(c.lng()) + '&radius=' + encodeURIComponent(Math.round(radiusMeters()));
+    var q = 'lat=' + encodeURIComponent(c.lat) + '&lng=' + encodeURIComponent(c.lng) + '&radius=' + encodeURIComponent(Math.round(radiusMeters()));
     if (niche) q += '&category=' + encodeURIComponent(niche);
     loadShops(q, false);
   }
@@ -332,72 +491,14 @@
     loadShops(q, true);
   }
 
-  function resizeMap() {
-    if (!map || !window.google) return;
-    window.google.maps.event.trigger(map, 'resize');
-  }
-
-  var mapsReady = null;
-  function loadGoogleMaps() {
-    if (window.google && window.google.maps) return Promise.resolve();
-    if (mapsReady) return mapsReady;
-    mapsReady = fetch('/api/maps-config', { credentials: 'same-origin' })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data || !data.key) throw new Error('no key');
-        return new Promise(function (resolve, reject) {
-          var s = document.createElement('script');
-          s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(data.key) + '&v=weekly';
-          s.async = true;
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      });
-    return mapsReady;
-  }
-
-  function ensureMap() {
-    if (map) return map;
-    if (!window.google || !window.google.maps) return null;
-    var el = canvas();
-    if (!el) return null;
-    map = new window.google.maps.Map(el, {
-      center: { lat: 43.5081, lng: -79.8829 },
-      zoom: 14,
-      disableDefaultUI: true,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      clickableIcons: false,
-      gestureHandling: 'greedy',
-      styles: MAP_STYLES,
-      backgroundColor: '#111111',
-    });
-    map.addListener('idle', function () {
-      if (!lastSearch) {
-        showSearchHere(true);
-        return;
-      }
-      var c = map.getCenter();
-      var dist = haversine(lastSearch, { lat: c.lat(), lng: c.lng() });
-      showSearchHere(dist > 220 || Math.abs((map.getZoom() || 14) - 14) > 0);
-    });
-    return map;
-  }
-
   function syncMode() {
     if (isLeads()) return;
-    loadGoogleMaps()
-      .then(function () {
-        ensureMap();
-        resizeMap();
-        if (!shops.length && isApp()) searchView();
-      })
-      .catch(function () {
-        setStatus('Google Maps could not load.');
-      });
+    bootMap().then(function () {
+      resizeMap();
+      if (!shops.length) searchView();
+    }).catch(function () {
+      setStatus('Map could not load.');
+    });
   }
 
   document.addEventListener('click', function (event) {
@@ -412,8 +513,9 @@
       var key = card.getAttribute('data-map-card');
       highlight(key);
       var marker = markers[key];
-      if (marker && map) {
-        map.panTo(marker.getPosition());
+      if (marker) {
+        var pos = markerLatLng(marker);
+        panTo(pos.lat, pos.lng);
       }
     }
   });
@@ -433,7 +535,7 @@
     var niche = event.target && event.target.closest && event.target.closest('[data-shop-filters] [data-filter-niche], [data-sidebar] [data-type]');
     if (!niche) return;
     setTimeout(function () {
-      if (lastSearch) searchView();
+      if (lastSearch || isApp()) searchView();
     }, 0);
   });
 

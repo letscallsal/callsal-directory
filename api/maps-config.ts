@@ -16,7 +16,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     ''
   ).trim();
 
-  if (!key) return res.status(500).json({ error: 'Server configuration error' });
   res.setHeader('Cache-Control', 'public, max-age=60');
-  return res.status(200).json({ key });
+  return res.status(200).json({ key: key || null, tiles: key ? 'google' : 'osm' });
 }

@@ -774,18 +774,29 @@ export async function listAreaShops(opts: {
     }
   }
 
+  if (!live.length) {
+    const wanted = niche
+      ? NICHE_QUERIES.filter((item) => item.category === niche)
+      : NICHE_QUERIES;
+    try {
+      const groups = await Promise.all(wanted.map((item) => searchPhotonArea(lat, lng, item)));
+      live = mergeShops(groups);
+    } catch {
+      live = [];
+    }
+  }
+
   const result: PlacesResult = {
-    source: live.length ? 'places' : 'seed',
+    source: live.some((shop) => shop.placeId && !String(shop.placeId).startsWith('osm:'))
+      ? 'places'
+      : live.length
+        ? 'listings'
+        : 'seed',
     city: '',
     country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
     lat,
     lng,
     radius,
-    shops: live.slice(0, 160),
-  };
-  if (live.length) await writeCache(key, result);
-  return result;
-}
     shops: live.slice(0, 160),
   };
   if (live.length) await writeCache(key, result);
