@@ -11,7 +11,6 @@ import {
   setAuthCookie,
   setCorsHeaders,
   setUserPassword,
-  userFromCredentials,
   verifyPassword,
 } from '../lib/auth.js';
 import type { StoredUser } from '../lib/auth.js';
@@ -48,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!isPersistentStorage()) {
-      return signIn(res, userFromCredentials(email, password), origin, 201);
+      return res.status(503).json({ error: 'ACCOUNT STORAGE IS NOT CONFIGURED' });
     }
 
     const existing = await loadUserByEmail(email);

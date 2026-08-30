@@ -152,6 +152,13 @@ function parseFormattedAddress(
   return { city, region, country, address: formatted };
 }
 
+function pickCategory(types: string[], fallback: ShopCategory): ShopCategory {
+  const from = categoryFromTypes(types);
+  if (fallback === 'barber' && (from === 'salon' || from === 'wellness' || from === 'other')) return 'barber';
+  if (from === 'other') return fallback || 'other';
+  return from;
+}
+
 function categoryFromTypes(types: string[]): ShopCategory {
   const blob = types.join(' ').toLowerCase();
   if (blob.includes('barber')) return 'barber';
@@ -299,7 +306,7 @@ function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: Shop
     hours: place.regularOpeningHours?.weekdayDescriptions,
     lat: place.location?.latitude,
     lng: place.location?.longitude,
-    category: categoryFromTypes(place.types || []) === 'other' ? fallbackCategory : categoryFromTypes(place.types || []),
+    category: pickCategory(place.types || [], fallbackCategory),
     verified: {
       phone: Boolean(place.nationalPhoneNumber),
       website: Boolean(place.websiteUri),
@@ -485,7 +492,7 @@ function mapLegacyPlace(
     hours: details?.opening_hours?.weekday_text,
     lat: details?.geometry?.location?.lat ?? place.geometry?.location?.lat,
     lng: details?.geometry?.location?.lng ?? place.geometry?.location?.lng,
-    category: categoryFromTypes(place.types || []) === 'other' ? fallbackCategory : categoryFromTypes(place.types || []),
+    category: pickCategory(place.types || [], fallbackCategory),
     verified: {
       phone: Boolean(phone),
       website: Boolean(website),
@@ -715,7 +722,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v5:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v6:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {

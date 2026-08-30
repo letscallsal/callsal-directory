@@ -1,12 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   createToken,
-  getAuthSession,
   loadUserByEmail,
   publicUser,
   setAuthCookie,
   setCorsHeaders,
-  userFromCredentials,
   verifyPassword,
 } from '../lib/auth.js';
 import { isPersistentStorage } from '../lib/storage.js';
@@ -24,14 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!email || !password) return res.status(400).json({ error: 'EMAIL AND PASSWORD REQUIRED' });
 
     if (!isPersistentStorage()) {
-      const user = userFromCredentials(email, password);
-      const existing = await getAuthSession(req);
-      const extra = existing && existing.id === user.id
-        ? { plan: existing.plan === 'paid' ? 'paid' as const : 'free' as const, board: existing.board }
-        : { plan: 'free' as const };
-      const token = await createToken(user, extra);
-      setAuthCookie(res, token, origin);
-      return res.status(200).json({ success: true, user });
+      return res.status(503).json({ error: 'ACCOUNT STORAGE IS NOT CONFIGURED' });
     }
 
     const stored = await loadUserByEmail(email);

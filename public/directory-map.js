@@ -480,8 +480,18 @@
     loadShops(q, true);
   }
 
+  function canvasReady() {
+    var el = canvas();
+    return Boolean(el && el.offsetWidth >= 24 && el.offsetHeight >= 24);
+  }
+
   function syncMode() {
     if (isLeads()) return;
+    if (!isApp() && !document.documentElement.classList.contains('is-map-locked')) return;
+    if (!canvasReady()) {
+      window.setTimeout(syncMode, 80);
+      return;
+    }
     bootMap().then(function () {
       resizeMap();
       if (!shops.length) searchView();
