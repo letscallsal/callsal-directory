@@ -81,7 +81,7 @@ const NICHE_QUERIES: Array<{
   osmTag: string;
 }> = [
   { category: 'food', query: 'restaurants', includedType: 'restaurant', osmTag: 'amenity:restaurant' },
-  { category: 'barber', query: 'barber shops', includedType: 'barber_shop', osmTag: 'shop:hairdresser' },
+  { category: 'barber', query: 'barber shops', includedType: 'hair_care', osmTag: 'shop:hairdresser' },
   { category: 'dental', query: 'dentists', includedType: 'dentist', osmTag: 'amenity:dentist' },
   { category: 'legal', query: 'lawyers', includedType: 'lawyer', osmTag: 'office:lawyer' },
   { category: 'salon', query: 'hair salons', includedType: 'beauty_salon', osmTag: 'shop:beauty' },
@@ -346,12 +346,75 @@ type LegacyDetails = {
   user_ratings_total?: number;
   url?: string;
   opening_hours?: { weekday_text?: string[] };
+  geometry?: { location?: { lat?: number; lng?: number } };
 };
 
 async function fetchLegacyJson<T>(url: string): Promise<T | null> {
   const res = await fetch(url);
   if (!res.ok) return null;
   return (await res.json()) as T;
+}
+
+async function reverseGeocode(lat: number, lng: number, key: string): Promise<Metro | undefined> {
+  const data = await fetchLegacyJson<{
+    status?: string;
+    results?: Array<{
+      address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }>;
+    }>;
+  }>(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`);
+  if (!data || data.status !== 'OK' || !data.results?.length) return undefined;
+  const comps = data.results[0].address_components || [];
+  const pick = (type: string, short = false) => {
+    const hit = comps.find((item) => (item.types || []).includes(type));
+    return (short ? hit?.short_name : hit?.long_name) || '';
+  };
+  const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3');
+  const region = pick('administrative_area_level_1', true);
+  const countryRaw = pick('country', true);
+  if (!city || (countryRaw !== 'CA' && countryRaw !== 'US')) return undefined;
+  return { city, region, country: countryRaw, lat, lng };
+}
+
+async function enrichWithDetails(shops: Shop[], metro: Metro, key: string, limit = 32): Promise<Shop[]> {
+  const head = shops.slice(0, limit);
+  const tail = shops.slice(limit);
+  const filled = await Promise.all(
+    head.map(async (shop) => {
+      if (!shop.placeId) return shop;
+      const payload = await fetchLegacyJson<{ status?: string; result?: LegacyDetails }>(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(shop.placeId)}` +
+          `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url,geometry&key=${key}`,
+      );
+      if (payload?.status !== 'OK' || !payload.result) return shop;
+      const details = payload.result;
+      const parsed = parseFormattedAddress(details.formatted_address, metro);
+      const phone = details.formatted_phone_number || shop.phone;
+      const website = details.website || shop.website;
+      return {
+        ...shop,
+        name: details.name || shop.name,
+        city: parsed.city && parsed.city !== 'Map' ? parsed.city : shop.city,
+        region: parsed.region || shop.region,
+        country: parsed.country || shop.country,
+        address: parsed.address || shop.address,
+        phone,
+        website,
+        mapsUrl: details.url || shop.mapsUrl,
+        rating: details.rating ?? shop.rating,
+        reviews: details.user_ratings_total ?? shop.reviews,
+        hours: details.opening_hours?.weekday_text || shop.hours,
+        lat: details.geometry?.location?.lat ?? shop.lat,
+        lng: details.geometry?.location?.lng ?? shop.lng,
+        verified: {
+          ...shop.verified,
+          phone: Boolean(phone),
+          website: Boolean(website),
+          address: Boolean(parsed.address || shop.address),
+        },
+      };
+    }),
+  );
+  return [...filled, ...tail];
 }
 
 async function searchLegacyNiche(
@@ -372,10 +435,10 @@ async function searchLegacyNiche(
 
   const basics = data.results
     .filter((place) => place.place_id && place.name && !isFranchise(place.name))
-    .slice(0, 12);
+    .slice(0, 16);
 
   const detailed = await Promise.all(
-    basics.slice(0, 6).map(async (place) => {
+    basics.slice(0, 12).map(async (place) => {
       const detailsUrl =
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}` +
         `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url,geometry&key=${key}`;
@@ -384,7 +447,7 @@ async function searchLegacyNiche(
     }),
   );
 
-  const rest = basics.slice(6).map((place) => mapLegacyPlace(place, metro, niche.category));
+  const rest = basics.slice(12).map((place) => mapLegacyPlace(place, metro, niche.category));
   return [...detailed, ...rest].filter((shop): shop is Shop => Boolean(shop));
 }
 
@@ -420,8 +483,8 @@ function mapLegacyPlace(
     rating: details?.rating ?? place.rating,
     reviews: details?.user_ratings_total ?? place.user_ratings_total,
     hours: details?.opening_hours?.weekday_text,
-    lat: place.geometry?.location?.lat,
-    lng: place.geometry?.location?.lng,
+    lat: details?.geometry?.location?.lat ?? place.geometry?.location?.lat,
+    lng: details?.geometry?.location?.lng ?? place.geometry?.location?.lng,
     category: categoryFromTypes(place.types || []) === 'other' ? fallbackCategory : categoryFromTypes(place.types || []),
     verified: {
       phone: Boolean(phone),
@@ -652,7 +715,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v4:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v5:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
@@ -727,33 +790,28 @@ export async function listAreaShops(opts: {
 
   const googleKey = await resolveGoogleKey();
   let live: Shop[] = [];
+  const guessedCountry: 'CA' | 'US' = lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US';
+  let metro: Metro = { city: '', region: '', country: guessedCountry, lat, lng };
   if (googleKey) {
     const typed = NICHE_QUERIES.find((item) => item.category === niche);
     try {
+      metro = (await reverseGeocode(lat, lng, googleKey)) || metro;
       if (typed) {
-        const metro: Metro = {
-          city: 'Map',
-          region: '',
-          country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
-          lat,
-          lng,
-        };
-        live = await searchLegacyNearby(metro, googleKey, radius, typed.includedType, radius <= 1600 ? 3 : 1);
+        live = await searchLegacyNiche(metro, typed, googleKey, radius);
       } else {
         const cells = areaCells(lat, lng, radius);
         const groups = await Promise.all(
-          cells.map((cell) => {
-            const metro: Metro = {
-              city: 'Map',
-              region: '',
-              country: cell.lat >= 41.6 && cell.lng <= -52 && cell.lng >= -141 && cell.lat <= 83.2 ? 'CA' : 'US',
-              lat: cell.lat,
-              lng: cell.lng,
-            };
-            return searchLegacyNearby(metro, googleKey, cell.radius, '', 1);
-          }),
+          cells.map((cell) =>
+            searchLegacyNearby(
+              { ...metro, lat: cell.lat, lng: cell.lng },
+              googleKey,
+              cell.radius,
+              '',
+              1,
+            ),
+          ),
         );
-        live = mergeShops(groups);
+        live = await enrichWithDetails(mergeShops(groups), metro, googleKey, 32);
       }
     } catch {
       live = [];
@@ -762,8 +820,9 @@ export async function listAreaShops(opts: {
 
   const result: PlacesResult = {
     source: live.length ? 'places' : 'seed',
-    city: '',
-    country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
+    city: metro.city,
+    region: metro.region,
+    country: metro.country,
     lat,
     lng,
     radius,
