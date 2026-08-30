@@ -160,18 +160,53 @@
     );
   }
 
+  var MAP_STYLES = [
+    { elementType: 'geometry', stylers: [{ color: '#111111' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#111111' }] },
+    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
+    { featureType: 'landscape', stylers: [{ color: '#111111' }] },
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.park', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1c1c1c' }] },
+    { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    { featureType: 'water', stylers: [{ color: '#0a0a0a' }] },
+  ];
+
   function pinIcon(on) {
-    return window.L.divIcon({
-      className: on ? 'map-pin is-on' : 'map-pin',
-      iconSize: on ? [18, 18] : [14, 14],
-      iconAnchor: on ? [9, 9] : [7, 7],
-    });
+    return {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      scale: on ? 9 : 6,
+      fillColor: on ? '#ffffff' : '#CCFF00',
+      fillOpacity: 1,
+      strokeColor: on ? '#CCFF00' : '#111111',
+      strokeWeight: on ? 3 : 2,
+    };
+  }
+
+  function haversine(a, b) {
+    var R = 6371000;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLng = (b.lng - a.lng) * Math.PI / 180;
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+      + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180)
+      * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.sqrt(s));
   }
 
   function radiusMeters() {
     if (!map) return 4000;
     var b = map.getBounds();
-    var meters = map.distance(b.getSouthWest(), b.getNorthEast()) / 2;
+    if (!b) return 4000;
+    var sw = b.getSouthWest();
+    var ne = b.getNorthEast();
+    var meters = haversine(
+      { lat: sw.lat(), lng: sw.lng() },
+      { lat: ne.lat(), lng: ne.lng() },
+    ) / 2;
     return Math.max(600, Math.min(meters, 25000));
   }
 
@@ -184,6 +219,7 @@
   function highlight(key) {
     Object.keys(markers).forEach(function (id) {
       markers[id].setIcon(pinIcon(id === key));
+      markers[id].setZIndex(id === key ? 200 : 1);
     });
     document.querySelectorAll('[data-map-card]').forEach(function (el) {
       el.classList.toggle('is-on', el.getAttribute('data-map-card') === key);
@@ -194,7 +230,7 @@
     var rail = listEl();
     if (!rail) return;
     if (!shops.length) {
-      rail.innerHTML = '<p class="listings-empty">No listings in view. Move the map, then search this area.</p>';
+      rail.innerHTML = '<p class="listings-empty">No Google Business listings in view. Move the map, then search this area.</p>';
     } else {
       rail.innerHTML = shops.map(listingHtml).join('');
     }
@@ -203,60 +239,81 @@
     if (typeof window.__dirPaintAddLeads === 'function') window.__dirPaintAddLeads();
   }
 
-  function paintPins() {
-    if (!map || !window.L) return;
-    if (layer) layer.clearLayers();
-    else {
-      layer = window.L.layerGroup().addTo(map);
-    }
+  function clearPins() {
+    Object.keys(markers).forEach(function (id) {
+      markers[id].setMap(null);
+    });
     markers = {};
+  }
+
+  function paintPins() {
+    if (!map || !window.google || !window.google.maps) return;
+    clearPins();
     shops.forEach(function (shop) {
       var lat = Number(shop.lat);
       var lng = Number(shop.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       var key = shop.placeId || shop.slug;
-      var marker = window.L.marker([lat, lng], { icon: pinIcon(false), title: shop.name });
-      marker.on('click', function () {
+      var marker = new window.google.maps.Marker({
+        position: { lat: lat, lng: lng },
+        map: map,
+        title: shop.name,
+        icon: pinIcon(false),
+        clickable: true,
+      });
+      marker.addListener('click', function () {
         highlight(key);
-        var card = document.querySelector('[data-map-card="' + key + '"]');
+        var card = document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]');
         if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       });
-      marker.addTo(layer);
       markers[key] = marker;
     });
+  }
+
+  function centerOf(mapOrData) {
+    if (mapOrData && typeof mapOrData.lat === 'function') {
+      return { lat: mapOrData.lat(), lng: mapOrData.lng() };
+    }
+    if (map && map.getCenter) {
+      var c = map.getCenter();
+      return { lat: c.lat(), lng: c.lng() };
+    }
+    return { lat: 43.5081, lng: -79.8829 };
   }
 
   async function loadShops(query, fly) {
     if (loading) return;
     loading = true;
-    setStatus('Scanning this area…');
+    setStatus('Scanning Google Business listings…');
     showSearchHere(false);
     try {
       var res = await fetch('/api/places?' + query, { credentials: 'same-origin' });
       var data = await res.json();
       shops = (data && data.shops) || [];
+      var here = centerOf();
       lastSearch = {
-        lat: Number(data.lat) || (map && map.getCenter().lat),
-        lng: Number(data.lng) || (map && map.getCenter().lng),
+        lat: Number(data.lat) || here.lat,
+        lng: Number(data.lng) || here.lng,
       };
       paintList();
       paintPins();
       if (fly && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng)) && map) {
-        map.setView([Number(data.lat), Number(data.lng)], Math.max(map.getZoom(), 13), { animate: true });
+        map.setCenter({ lat: Number(data.lat), lng: Number(data.lng) });
+        if (map.getZoom() < 13) map.setZoom(13);
       }
       setStatus(shops.length ? '' : 'No Google Business listings in this view.');
     } catch (err) {
       setStatus('Could not load listings.');
     }
     loading = false;
-    if (map) map.invalidateSize();
+    resizeMap();
   }
 
   function searchView() {
     if (!map) return;
     var c = map.getCenter();
     var niche = currentNiche();
-    var q = 'lat=' + encodeURIComponent(c.lat) + '&lng=' + encodeURIComponent(c.lng) + '&radius=' + encodeURIComponent(Math.round(radiusMeters()));
+    var q = 'lat=' + encodeURIComponent(c.lat()) + '&lng=' + encodeURIComponent(c.lng()) + '&radius=' + encodeURIComponent(Math.round(radiusMeters()));
     if (niche) q += '&category=' + encodeURIComponent(niche);
     loadShops(q, false);
   }
@@ -275,36 +332,72 @@
     loadShops(q, true);
   }
 
+  function resizeMap() {
+    if (!map || !window.google) return;
+    window.google.maps.event.trigger(map, 'resize');
+  }
+
+  var mapsReady = null;
+  function loadGoogleMaps() {
+    if (window.google && window.google.maps) return Promise.resolve();
+    if (mapsReady) return mapsReady;
+    mapsReady = fetch('/api/maps-config', { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || !data.key) throw new Error('no key');
+        return new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(data.key) + '&v=weekly';
+          s.async = true;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      });
+    return mapsReady;
+  }
+
   function ensureMap() {
-    if (map || !window.L) return map;
+    if (map) return map;
+    if (!window.google || !window.google.maps) return null;
     var el = canvas();
     if (!el) return null;
-    map = window.L.map(el, {
+    map = new window.google.maps.Map(el, {
+      center: { lat: 43.5081, lng: -79.8829 },
+      zoom: 14,
+      disableDefaultUI: true,
       zoomControl: true,
-      attributionControl: true,
-    }).setView([43.5081, -79.8829], 13);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map);
-    map.on('moveend', function () {
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      clickableIcons: false,
+      gestureHandling: 'greedy',
+      styles: MAP_STYLES,
+      backgroundColor: '#111111',
+    });
+    map.addListener('idle', function () {
       if (!lastSearch) {
         showSearchHere(true);
         return;
       }
       var c = map.getCenter();
-      var dist = map.distance([lastSearch.lat, lastSearch.lng], c);
-      showSearchHere(dist > 280 || Math.abs((map.getZoom() || 13) - 13) > 1);
+      var dist = haversine(lastSearch, { lat: c.lat(), lng: c.lng() });
+      showSearchHere(dist > 220 || Math.abs((map.getZoom() || 14) - 14) > 0);
     });
     return map;
   }
 
   function syncMode() {
     if (isLeads()) return;
-    ensureMap();
-    if (map) setTimeout(function () { map.invalidateSize(); }, 80);
-    if (!shops.length && isApp()) searchView();
+    loadGoogleMaps()
+      .then(function () {
+        ensureMap();
+        resizeMap();
+        if (!shops.length && isApp()) searchView();
+      })
+      .catch(function () {
+        setStatus('Google Maps could not load.');
+      });
   }
 
   document.addEventListener('click', function (event) {
@@ -320,7 +413,7 @@
       highlight(key);
       var marker = markers[key];
       if (marker && map) {
-        map.panTo(marker.getLatLng(), { animate: true });
+        map.panTo(marker.getPosition());
       }
     }
   });
@@ -349,13 +442,4 @@
   } else {
     syncMode();
   }
-
-  var tries = 0;
-  var wait = setInterval(function () {
-    tries += 1;
-    if (window.L || tries > 40) {
-      clearInterval(wait);
-      syncMode();
-    }
-  }, 150);
 })();

@@ -338,6 +338,7 @@ type LegacyPlace = {
   place_id?: string;
   name?: string;
   formatted_address?: string;
+  vicinity?: string;
   rating?: number;
   user_ratings_total?: number;
   types?: string[];
@@ -400,10 +401,14 @@ function mapLegacyPlace(
   metro: Metro,
   fallbackCategory: ShopCategory,
   details?: LegacyDetails,
+  allowFranchise = false,
 ): Shop | null {
   const name = (details?.name || place.name || '').trim();
-  if (!name || isFranchise(name)) return null;
-  const parsed = parseFormattedAddress(details?.formatted_address || place.formatted_address, metro);
+  if (!name || (!allowFranchise && isFranchise(name))) return null;
+  const parsed = parseFormattedAddress(
+    details?.formatted_address || place.formatted_address || place.vicinity,
+    metro,
+  );
   const placeId = place.place_id;
   const photo = placeId ? `/api/photo?placeId=${encodeURIComponent(placeId)}` : undefined;
   const phone = details?.formatted_phone_number;
@@ -641,7 +646,59 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v1:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v2:${rlat}:${rlng}:${r}:${category || 'all'}`;
+}
+
+function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
+  const dLat = northM / 111320;
+  const dLng = eastM / (111320 * Math.cos((lat * Math.PI) / 180) || 1);
+  return { lat: lat + dLat, lng: lng + dLng };
+}
+
+function areaCells(lat: number, lng: number, radius: number): Array<{ lat: number; lng: number; radius: number }> {
+  if (radius <= 1600) return [{ lat, lng, radius }];
+  const step = radius * 0.52;
+  const cellR = Math.max(700, radius * 0.58);
+  return [
+    [-1, -1],
+    [-1, 1],
+    [1, -1],
+    [1, 1],
+  ].map(([north, east]) => {
+    const point = offsetLatLng(lat, lng, north * step, east * step);
+    return { lat: point.lat, lng: point.lng, radius: cellR };
+  });
+}
+
+async function searchLegacyNearby(
+  metro: Metro,
+  key: string,
+  radius: number,
+  type = '',
+  pages = 1,
+): Promise<Shop[]> {
+  let url =
+    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${metro.lat},${metro.lng}` +
+    `&radius=${Math.round(radius)}&key=${key}`;
+  if (type) url += `&type=${encodeURIComponent(type)}`;
+  const shops: Shop[] = [];
+  for (let page = 0; page < pages; page += 1) {
+    const data = await fetchLegacyJson<{
+      status?: string;
+      results?: LegacyPlace[];
+      next_page_token?: string;
+    }>(url);
+    if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS')) break;
+    for (const place of data.results || []) {
+      const fallback = type ? categoryFromTypes([type, ...(place.types || [])]) : categoryFromTypes(place.types || []);
+      const shop = mapLegacyPlace(place, metro, fallback === 'other' ? 'other' : fallback, undefined, true);
+      if (shop) shops.push(shop);
+    }
+    if (!data.next_page_token || page === pages - 1) break;
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(data.next_page_token)}&key=${key}`;
+  }
+  return shops;
 }
 
 export async function listAreaShops(opts: {
@@ -662,53 +719,49 @@ export async function listAreaShops(opts: {
   const cached = await readCache(key);
   if (cached) return cached;
 
-  const metro: Metro = {
-    city: 'Map',
-    region: '',
-    country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
-    lat,
-    lng,
-  };
-
-  const wanted = NICHE_QUERIES.filter((item) => !niche || item.category === niche);
   const googleKey = placesApiKey();
-  let source: PlacesResult['source'] = 'listings';
   let live: Shop[] = [];
-
   if (googleKey) {
+    const typed = NICHE_QUERIES.find((item) => item.category === niche);
     try {
-      const groups = await Promise.all(wanted.map((item) => searchLegacyNiche(metro, item, googleKey, radius)));
-      live = mergeShops(groups);
-      if (live.length) source = 'places';
+      if (typed) {
+        const metro: Metro = {
+          city: 'Map',
+          region: '',
+          country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
+          lat,
+          lng,
+        };
+        live = await searchLegacyNearby(metro, googleKey, radius, typed.includedType, radius <= 1600 ? 3 : 1);
+      } else {
+        const cells = areaCells(lat, lng, radius);
+        const groups = await Promise.all(
+          cells.map((cell) => {
+            const metro: Metro = {
+              city: 'Map',
+              region: '',
+              country: cell.lat >= 41.6 && cell.lng <= -52 && cell.lng >= -141 && cell.lat <= 83.2 ? 'CA' : 'US',
+              lat: cell.lat,
+              lng: cell.lng,
+            };
+            return searchLegacyNearby(metro, googleKey, cell.radius, '', 1);
+          }),
+        );
+        live = mergeShops(groups);
+      }
     } catch {
       live = [];
     }
-    if (!live.length) {
-      try {
-        const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey, radius)));
-        live = mergeShops(groups).filter((shop) => !isFranchise(shop.name));
-        if (live.length) source = 'places';
-      } catch {
-        live = [];
-      }
-    }
-  }
-
-  if (!live.length) {
-    const groups = await Promise.all(wanted.map((item) => searchPhotonNiche(metro, item)));
-    live = mergeShops(groups);
-    source = live.length ? 'listings' : 'seed';
   }
 
   const result: PlacesResult = {
-    source: live.length ? source : 'seed',
+    source: live.length ? 'places' : 'seed',
     city: '',
-    region: metro.region,
-    country: metro.country,
+    country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
     lat,
     lng,
     radius,
-    shops: live,
+    shops: live.slice(0, 160),
   };
   if (live.length) await writeCache(key, result);
   return result;

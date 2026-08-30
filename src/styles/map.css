@@ -208,25 +208,20 @@ html.is-map-locked.is-leads .viewport {
   box-shadow: 0 0 0 3px #ccff00;
 }
 
-.leaflet-container {
-  background: #050505;
+.gm-style,
+.gm-style-cc,
+.gm-style .gm-style-cc {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
-.leaflet-control-attribution {
-  background: rgba(0, 0, 0, 0.55) !important;
-  color: #8a8a8a !important;
-  font-size: 9px !important;
+.gm-bundled-control,
+.gm-fullscreen-control,
+.gm-svpc {
+  filter: grayscale(1) contrast(1.1);
 }
 
-.leaflet-control-attribution a {
-  color: #c0c0c0 !important;
-}
-
-.leaflet-bar a {
-  background: #111 !important;
-  color: #ccff00 !important;
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+.map-canvas .gm-style iframe + div {
+  border: 0;
 }
 
 .sidebar .guest-city {
