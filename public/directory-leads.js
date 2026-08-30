@@ -868,7 +868,7 @@
         return;
       }
       if (lastLeads.plan !== 'paid') {
-        openPremium('Bulk import is paid. Import one niche in one city, or all niches in that city. Free accounts add one shop at a time with plus.');
+        openPremium('Bulk import is paid. One city every 24 hours — one niche, or all niches in that city. Free accounts add one shop at a time with plus.');
         return;
       }
       const cityBtn = document.querySelector('[data-leads-filter-city].is-on') || document.querySelector('[data-filter-city].is-on') || document.querySelector('[data-city-pick].is-on');

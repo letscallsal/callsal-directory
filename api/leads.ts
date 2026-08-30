@@ -134,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'PAID',
         upgrade: true,
         price: PRICE,
-        message: `Bulk import is on Paid Directory at ${PRICE}. Import one niche in one city, or all niches in that city. Free accounts add shops with plus.`,
+        message: `Bulk import is on Paid Directory at ${PRICE}. One city every 24 hours — one niche, or all niches in that city. Free accounts add shops with plus.`,
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),
@@ -152,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (result.reason === 'scan-wait') {
       return res.status(429).json({
         error: 'SCAN WAIT',
-        message: 'That city and niche already imported today. Try again after 8am.',
+        message: 'Bulk import can run once every 24 hours. One city per import.',
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),

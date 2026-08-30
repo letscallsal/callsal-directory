@@ -52,6 +52,7 @@ export const FREE_CAP = 100;
 export const PAID_CAP = Number.MAX_SAFE_INTEGER;
 export const ORACLE_PER_DAY = 3;
 export const PRICE = '$999 a month';
+export const SCAN_WAIT_MS = 24 * 60 * 60 * 1000;
 
 export interface BoardUser {
   id: string;
@@ -741,9 +742,21 @@ export function moveLead(board: BoardState, slug: string, stage: Stage): BoardSt
   return board;
 }
 
-function scannedToday(board: BoardState, city: string): boolean {
-  const stamp = board.lastScanByCity?.[city];
-  return Boolean(stamp && torontoDate(new Date(stamp)) === torontoDate());
+function lastScanAt(board: BoardState, city = ''): number {
+  const stamps = board.lastScanByCity || {};
+  const want = city.trim().toLowerCase();
+  let latest = 0;
+  for (const [key, value] of Object.entries(stamps)) {
+    if (want && key !== want && !key.startsWith(`${want}:`)) continue;
+    const at = Date.parse(String(value || ''));
+    if (Number.isFinite(at) && at > latest) latest = at;
+  }
+  return latest;
+}
+
+function scannedWithinDay(board: BoardState, city = ''): boolean {
+  const at = lastScanAt(board, city);
+  return at > 0 && Date.now() - at < SCAN_WAIT_MS;
 }
 
 export async function scanCity(
@@ -766,8 +779,7 @@ export async function scanCity(
     return { board, added: 0, skipped: 0, reason: 'city-required', source: 'seed', imported: [] };
   }
   const category = String(extra.category || '').trim().toLowerCase();
-  const stampKey = `${cityKey.toLowerCase()}:${category || 'all'}`;
-  if (scannedToday(board, stampKey)) {
+  if (scannedWithinDay(board)) {
     return { board, added: 0, skipped: 0, reason: 'scan-wait', source: 'seed', imported: [] };
   }
   const live = await listCityShops(cityKey, extra.region || '', extra.country || '', category);
@@ -784,7 +796,13 @@ export async function scanCity(
     imported.push(shop);
     added += 1;
   }
-  board.lastScanByCity = { ...(board.lastScanByCity || {}), [stampKey]: new Date().toISOString() };
+  const cityStamp = cityKey.toLowerCase();
+  const nextStamps = { ...(board.lastScanByCity || {}) };
+  for (const key of Object.keys(nextStamps)) {
+    if (key === cityStamp || key.startsWith(`${cityStamp}:`)) delete nextStamps[key];
+  }
+  nextStamps[cityStamp] = new Date().toISOString();
+  board.lastScanByCity = nextStamps;
   return { board, added, skipped, source: live.source, imported };
 }
 
@@ -863,8 +881,7 @@ export function runOracle(board: BoardState): OracleResult {
 
 export function usage(board: BoardState, plan: Plan, owner = false) {
   const day = torontoDate();
-  const scanStamp = board.lastScanByCity?.milton || Object.values(board.lastScanByCity || {})[0];
-  const scanned = Boolean(scanStamp && torontoDate(new Date(scanStamp)) === day);
+  const scanned = scannedWithinDay(board);
   const oracleUsed = board.oracleDays?.[day] || 0;
   return {
     plan,
@@ -876,8 +893,8 @@ export function usage(board: BoardState, plan: Plan, owner = false) {
       message: plan !== 'paid'
         ? `Import is on Paid Directory at ${PRICE}. Free accounts add shops with plus.`
         : scanned
-          ? 'That city already imported today. Try again after 8am.'
-          : 'Import one niche in one city, or all niches in that city.',
+          ? 'Bulk import can run once every 24 hours. One city per import.'
+          : 'Import one city every 24 hours. One niche, or all niches in that city.',
     },
     oracle: {
       remaining: plan === 'paid' ? Math.max(0, ORACLE_PER_DAY - oracleUsed) : 0,
