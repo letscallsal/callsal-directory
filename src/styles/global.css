@@ -1107,24 +1107,29 @@ textarea::placeholder {
 }
 
 /* Signed-in app mode: keep hero/room in the DOM, hide them, chrome already at the top. */
-html.is-app #hero-stage {
+html.is-app #hero-stage,
+html.is-map-locked #hero-stage {
   display: none !important;
   height: 0;
   min-height: 0;
   overflow: hidden;
 }
-html.is-app .room-canvas {
+html.is-app .room-canvas,
+html.is-map-locked .room-canvas {
   display: none !important;
 }
-html.is-app.has-room .stage-scroll {
+html.is-app.has-room .stage-scroll,
+html.is-map-locked.has-room .stage-scroll {
   overflow: hidden;
 }
-html.is-app.has-room .app {
+html.is-app.has-room .app,
+html.is-map-locked.has-room .app {
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
 }
-html.is-app .app-chrome {
+html.is-app .app-chrome,
+html.is-map-locked .app-chrome {
   position: sticky;
   top: 0;
   z-index: 40;

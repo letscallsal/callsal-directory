@@ -1,30 +1,11 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
-import ShopCarousel from '../components/ShopCarousel.astro';
-import CitySelect from '../components/CitySelect.astro';
-import { getShops, featuredShops, typesWithShops, byType } from '../lib/shops';
-
-const shops = await getShops();
-const featuredRow = featuredShops(shops);
-const typeRows = typesWithShops(shops).map((item) => ({
-  ...item,
-  shops: byType(shops, item.slug),
-}));
 ---
 
 <AppShell title="Directory" description="A live Google Business index for Canada and the United States." withRoom>
-  <div class="lede intro-hold intro-trace intro-d3">
+  <div class="lede intro-hold intro-trace intro-d3" data-index-lede>
     <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
     <h1>THE INDEX</h1>
     <p>Search any city in Canada or the United States. Listings are pulled from the public Google Business profile: name, address, phone, site, hours, rating.</p>
-    <CitySelect />
   </div>
-
-  <div class="rows intro-hold intro-d5" data-seed-rows>
-    <ShopCarousel title="Featured" shops={featuredRow} />
-    {typeRows.map((row) => (
-      <ShopCarousel title={row.label} shops={row.shops} href={`/type/${row.slug}/`} />
-    ))}
-  </div>
-  <div class="rows intro-hold" data-live-rows hidden></div>
 </AppShell>

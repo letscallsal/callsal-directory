@@ -2,12 +2,49 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let currentUser = null;
+      let mapLocked = false;
+      const LAST_VIEW = 'directory:last-view';
+
+      function lastView() {
+        try { return localStorage.getItem(LAST_VIEW) || '/'; } catch { return '/'; }
+      }
+
+      function saveLastView(path) {
+        const key = normalizePath(path);
+        const view = key === '/leads' ? '/leads/' : '/';
+        try { localStorage.setItem(LAST_VIEW, view); } catch { /* private */ }
+      }
+
+      function normalizePath(path) {
+        try {
+          const url = new URL(path, location.origin);
+          let p = url.pathname;
+          if (p.length > 1) p = p.replace(/\/$/, '');
+          return p || '/';
+        } catch {
+          return path;
+        }
+      }
+
+      function lockMapStage() {
+        if (mapLocked) return;
+        mapLocked = true;
+        document.documentElement.classList.add('is-map-locked');
+        const stage = document.getElementById('stage-scroll');
+        const hero = document.getElementById('hero-stage');
+        if (stage && hero) {
+          stage.scrollTop = hero.offsetHeight;
+          stage.style.overflow = 'hidden';
+        }
+        window.dispatchEvent(new Event('callsal:map-locked'));
+      }
 
       function applyAppMode(on) {
         const root = document.documentElement;
         if (on) {
-          root.classList.add('is-app', 'intro-ready', 'intro-done', 'intro-settled');
+          root.classList.add('is-app', 'is-map-locked', 'intro-ready', 'intro-done', 'intro-settled');
           document.body.classList.remove('drawer-open');
+          lockMapStage();
           return;
         }
         root.classList.remove('is-app');
@@ -173,7 +210,11 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       }
 
       function shouldLockChrome() {
-        return document.body.classList.contains('drawer-open') || isLeadsView();
+        return document.body.classList.contains('drawer-open')
+          || isLeadsView()
+          || mapLocked
+          || document.documentElement.classList.contains('is-app')
+          || document.documentElement.classList.contains('is-map-locked');
       }
 
       function clampStageToStick() {
@@ -282,6 +323,10 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       window.addEventListener('callsal:close-directory', () => setOpen(false));
 
       menu?.addEventListener('click', () => {
+        if (isLeadsView()) {
+          void go('/', true);
+          return;
+        }
         void openDirectoryMenu();
       });
       scrim?.addEventListener('click', () => setOpen(false));
@@ -402,6 +447,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         paintSaved();
         paintLeadsPill(path);
         syncChromeLock();
+        saveLastView(path);
         window.dispatchEvent(new Event('callsal:page-applied'));
       }
 
@@ -453,8 +499,23 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       function snapToDirectory() {
         const stage = document.getElementById('stage-scroll');
         const hero = document.getElementById('hero-stage');
-        if (!stage || !hero) return;
-        stage.scrollTo({ top: hero.offsetHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
+        if (!stage || !hero) {
+          lockMapStage();
+          return;
+        }
+        const done = () => lockMapStage();
+        if (reduceMotion) {
+          stage.scrollTop = hero.offsetHeight;
+          done();
+          return;
+        }
+        const onEnd = () => {
+          stage.removeEventListener('scrollend', onEnd);
+          done();
+        };
+        stage.addEventListener('scrollend', onEnd, { once: true });
+        stage.scrollTo({ top: hero.offsetHeight, behavior: 'smooth' });
+        window.setTimeout(done, 700);
       }
 
       let bookmarks = new Set();
@@ -681,7 +742,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           closeAuth();
           form.reset();
           await refreshAuth();
-          void go('/leads/', true);
+          void go(lastView() === '/leads/' ? '/leads/' : '/', true);
         } catch {
           if (authError) {
             authError.textContent = 'TRY AGAIN';
@@ -733,6 +794,10 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           hero.classList.toggle('is-faded', opacity < 0.06);
         };
         const onStageScroll = () => {
+          if (!document.documentElement.classList.contains('is-app') && !mapLocked) {
+            const hero = document.getElementById('hero-stage');
+            if (hero && stage && stage.scrollTop >= hero.offsetHeight - 8) lockMapStage();
+          }
           if (shouldLockChrome()) clampStageToStick();
           applyLandingFade();
           applySticky();
@@ -749,4 +814,8 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       void refreshAuth();
       authMePromise.then(() => {
         paintAuth();
+        if (!currentUser) return;
+        const here = normalize(location.pathname);
+        if (here === '/' && lastView() === '/leads/') void go('/leads/', false);
+        else saveLastView(location.pathname);
       });

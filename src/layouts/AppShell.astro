@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import '../styles/landing.css';
 import '../styles/leads.css';
+import '../styles/map.css';
 import Sidebar from '../components/Sidebar.astro';
 import ShopFilters from '../components/ShopFilters.astro';
 import BrandPill from '../components/BrandPill.astro';
@@ -32,6 +33,10 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
     <meta name="application-name" content="CALL SAL Directory" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
     <link rel="canonical" href={canonical} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -212,11 +217,23 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
 
         <div class="app-body">
           <Sidebar shops={shops} currentPath={Astro.url.pathname} />
+          <aside class="listings-rail" aria-label="Listings in view">
+            <div class="listings-head">
+              <p>In view</p>
+              <span class="listings-count" data-map-count>0</span>
+            </div>
+            <div class="listings-track sleek-scroll" data-map-list></div>
+          </aside>
           <aside class="sidebar sleek-scroll" id="leads-menu" data-leads-menu aria-label="Leads menu">
             <ShopFilters cities={cities} scope="board" />
           </aside>
           <div class="scrim" data-scrim hidden></div>
           <div class="viewport sleek-scroll" data-viewport>
+            <div class="map-stage" data-map-stage>
+              <div class="map-canvas" data-map></div>
+              <button type="button" class="map-search-here" data-search-here hidden>Search this area</button>
+              <p class="map-status" data-map-status hidden></p>
+            </div>
             <main data-main>
               <slot />
             </main>
@@ -277,9 +294,11 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
         <div class="auth-body shop-info-body" data-shop-info-body></div>
       </div>
     </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     <script src="/directory-leads.js" defer></script>
     <script src="/directory-city.js" defer></script>
     <script src="/directory-live.js" defer></script>
+    <script src="/directory-map.js" defer></script>
 
     <script define:vars={{ withRoom }}>
       window.__DIRECTORY_WITH_ROOM = withRoom;

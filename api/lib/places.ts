@@ -42,6 +42,8 @@ export interface Shop {
   rating?: number;
   reviews?: number;
   hours?: string[];
+  lat?: number;
+  lng?: number;
   category: ShopCategory;
   verified: ShopVerified;
 }
@@ -51,6 +53,9 @@ export interface PlacesResult {
   city: string;
   region?: string;
   country?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
   shops: Shop[];
 }
 
@@ -239,30 +244,33 @@ type GooglePlace = {
   userRatingCount?: number;
   googleMapsUri?: string;
   regularOpeningHours?: { weekdayDescriptions?: string[] };
+  location?: { latitude?: number; longitude?: number };
 };
 
 async function searchGoogleNiche(
   metro: Metro,
   niche: (typeof NICHE_QUERIES)[number],
   key: string,
+  radius = 18000,
 ): Promise<Shop[]> {
+  const inPlace = metro.city && metro.city !== 'Map' ? ` in ${metro.city} ${metro.region}` : '';
   const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': key,
       'X-Goog-FieldMask':
-        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.photos,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions',
+        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.photos,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions,places.location',
     },
     body: JSON.stringify({
-      textQuery: `${niche.query} in ${metro.city} ${metro.region}`,
+      textQuery: `${niche.query}${inPlace}`,
       pageSize: 20,
       languageCode: 'en',
       regionCode: metro.country,
       locationBias: {
         circle: {
           center: { latitude: metro.lat, longitude: metro.lng },
-          radius: 18000,
+          radius,
         },
       },
     }),
@@ -297,6 +305,8 @@ function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: Shop
     rating: place.rating,
     reviews: place.userRatingCount,
     hours: place.regularOpeningHours?.weekdayDescriptions,
+    lat: place.location?.latitude,
+    lng: place.location?.longitude,
     category: categoryFromTypes(place.types || []) === 'other' ? fallbackCategory : categoryFromTypes(place.types || []),
     verified: {
       phone: Boolean(place.nationalPhoneNumber),
@@ -331,6 +341,7 @@ type LegacyPlace = {
   rating?: number;
   user_ratings_total?: number;
   types?: string[];
+  geometry?: { location?: { lat?: number; lng?: number } };
 };
 
 type LegacyDetails = {
@@ -354,11 +365,13 @@ async function searchLegacyNiche(
   metro: Metro,
   niche: (typeof NICHE_QUERIES)[number],
   key: string,
+  radius = 18000,
 ): Promise<Shop[]> {
-  const query = encodeURIComponent(`${niche.query} in ${metro.city} ${metro.region}`);
+  const inPlace = metro.city && metro.city !== 'Map' ? ` in ${metro.city} ${metro.region}` : '';
+  const query = encodeURIComponent(`${niche.query}${inPlace}`);
   const searchUrl =
     `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}` +
-    `&location=${metro.lat},${metro.lng}&radius=18000&key=${key}`;
+    `&location=${metro.lat},${metro.lng}&radius=${Math.round(radius)}&key=${key}`;
   const data = await fetchLegacyJson<{ status?: string; results?: LegacyPlace[] }>(searchUrl);
   if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') || !data.results?.length) {
     return [];
@@ -372,7 +385,7 @@ async function searchLegacyNiche(
     basics.slice(0, 6).map(async (place) => {
       const detailsUrl =
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}` +
-        `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url&key=${key}`;
+        `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url,geometry&key=${key}`;
       const payload = await fetchLegacyJson<{ status?: string; result?: LegacyDetails }>(detailsUrl);
       return mapLegacyPlace(place, metro, niche.category, payload?.status === 'OK' ? payload.result : undefined);
     }),
@@ -410,6 +423,8 @@ function mapLegacyPlace(
     rating: details?.rating ?? place.rating,
     reviews: details?.user_ratings_total ?? place.user_ratings_total,
     hours: details?.opening_hours?.weekday_text,
+    lat: place.geometry?.location?.lat,
+    lng: place.geometry?.location?.lng,
     category: categoryFromTypes(place.types || []) === 'other' ? fallbackCategory : categoryFromTypes(place.types || []),
     verified: {
       phone: Boolean(phone),
@@ -495,6 +510,9 @@ function mapPhotonFeature(feature: PhotonFeature, metro: Metro, fallbackCategory
   const category = props.osm_key && props.osm_value
     ? categoryFromOsm(props.osm_key, props.osm_value)
     : fallbackCategory;
+  const coords = feature.geometry?.coordinates;
+  const lng = Array.isArray(coords) ? Number(coords[0]) : undefined;
+  const lat = Array.isArray(coords) ? Number(coords[1]) : undefined;
   return {
     name,
     slug: `${slugify(name)}-${slugify(city)}`,
@@ -504,6 +522,8 @@ function mapPhotonFeature(feature: PhotonFeature, metro: Metro, fallbackCategory
     address: address || undefined,
     placeId: osmId,
     mapsUrl: mapsSearchUrl(name, address),
+    lat: Number.isFinite(lat) ? lat : undefined,
+    lng: Number.isFinite(lng) ? lng : undefined,
     category: category === 'other' ? fallbackCategory : category,
     verified: {
       phone: false,
@@ -609,7 +629,86 @@ export async function listCityShops(
     city: metro.city,
     region: metro.region,
     country: metro.country,
+    lat: metro.lat,
+    lng: metro.lng,
     shops,
+  };
+  if (live.length) await writeCache(key, result);
+  return result;
+}
+
+function areaCacheKey(lat: number, lng: number, radius: number, category: string): string {
+  const rlat = Math.round(lat * 200) / 200;
+  const rlng = Math.round(lng * 200) / 200;
+  const r = Math.round(radius / 250) * 250;
+  return `directory:places:area:v1:${rlat}:${rlng}:${r}:${category || 'all'}`;
+}
+
+export async function listAreaShops(opts: {
+  lat: number;
+  lng: number;
+  radius?: number;
+  category?: string;
+}): Promise<PlacesResult> {
+  const lat = Number(opts.lat);
+  const lng = Number(opts.lng);
+  const radius = Math.max(600, Math.min(Number(opts.radius) || 4000, 25000));
+  const niche = String(opts.category || '').trim().toLowerCase();
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { source: 'seed', city: '', shops: [] };
+  }
+
+  const key = areaCacheKey(lat, lng, radius, niche);
+  const cached = await readCache(key);
+  if (cached) return cached;
+
+  const metro: Metro = {
+    city: 'Map',
+    region: '',
+    country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
+    lat,
+    lng,
+  };
+
+  const wanted = NICHE_QUERIES.filter((item) => !niche || item.category === niche);
+  const googleKey = placesApiKey();
+  let source: PlacesResult['source'] = 'listings';
+  let live: Shop[] = [];
+
+  if (googleKey) {
+    try {
+      const groups = await Promise.all(wanted.map((item) => searchLegacyNiche(metro, item, googleKey, radius)));
+      live = mergeShops(groups);
+      if (live.length) source = 'places';
+    } catch {
+      live = [];
+    }
+    if (!live.length) {
+      try {
+        const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey, radius)));
+        live = mergeShops(groups).filter((shop) => !isFranchise(shop.name));
+        if (live.length) source = 'places';
+      } catch {
+        live = [];
+      }
+    }
+  }
+
+  if (!live.length) {
+    const groups = await Promise.all(wanted.map((item) => searchPhotonNiche(metro, item)));
+    live = mergeShops(groups);
+    source = live.length ? 'listings' : 'seed';
+  }
+
+  const result: PlacesResult = {
+    source: live.length ? source : 'seed',
+    city: '',
+    region: metro.region,
+    country: metro.country,
+    lat,
+    lng,
+    radius,
+    shops: live,
   };
   if (live.length) await writeCache(key, result);
   return result;

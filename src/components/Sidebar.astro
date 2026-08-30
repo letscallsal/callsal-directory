@@ -1,6 +1,7 @@
 ---
 import { TYPE_META, type Shop } from '../lib/shops';
 import ShopFilters from './ShopFilters.astro';
+import CitySelect from './CitySelect.astro';
 
 interface Props {
   shops: Shop[];
@@ -19,19 +20,23 @@ const cities = [...new Set(shops.map((shop) => shop.city))].sort((a, b) => a.loc
 ---
 
 <aside class="sidebar sleek-scroll" id="sidebar" data-sidebar aria-label="Directory menu">
-  <ShopFilters cities={cities} />
+  <div class="sidebar-head">
+    <CitySelect />
+    <ShopFilters cities={cities} />
+  </div>
 
   <nav class="sidebar-index" data-index>
-    {grouped.map((item) => (
-      <a
+    {TYPE_META.map((item) => (
+      <button
+        type="button"
         class="sidebar-saved"
-        href={`/type/${item.slug}/`}
+        data-filter-niche={item.slug}
         data-type={item.slug}
         data-label={item.label}
-        aria-current={item.slug === currentType ? 'page' : undefined}
+        aria-pressed={item.slug === currentType ? 'true' : 'false'}
       >
         {item.label}
-      </a>
+      </button>
     ))}
   </nav>
   <div class="sidebar-auth" data-auth-slot="menu"></div>

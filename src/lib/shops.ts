@@ -41,6 +41,8 @@ export interface Shop {
   rating?: number;
   reviews?: number;
   hours?: string[];
+  lat?: number;
+  lng?: number;
   category: ShopCategory;
   verified: ShopVerified;
 }
