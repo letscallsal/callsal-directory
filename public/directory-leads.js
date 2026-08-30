@@ -444,6 +444,8 @@
         const wrap = nicheBtn.closest('[data-filter-accord]');
         if (wrap) wrap.removeAttribute('open');
         window.dispatchEvent(new Event('callsal:close-directory'));
+        const niche = nicheBtn.getAttribute('data-filter-niche') || '';
+        window.dispatchEvent(new CustomEvent('callsal:niche-applied', { detail: { niche } }));
         const city = selectedCity();
         if (city) {
           window.dispatchEvent(new CustomEvent('callsal:city-applied', {

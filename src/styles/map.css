@@ -176,13 +176,27 @@ html.is-map-locked.is-leads .viewport {
 }
 
 .listings-track .card-wrap {
+  position: relative;
   flex: none;
   width: 100%;
   margin: 0 0 0.55rem;
 }
 
-.listings-track .card-wrap .card {
+.listings-track .card-wrap .card,
+.listings-track .lead-card {
   min-height: 0;
+  flex: none;
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.9rem 2.6rem 0.85rem 1rem;
+  border-left: 3px solid #ccff00;
+}
+
+.listings-track .card h3,
+.listings-track .lead-card h3 {
+  margin: 0.35rem 0 0;
+  font-size: 1.05rem;
+  text-transform: uppercase;
 }
 
 .listings-empty {

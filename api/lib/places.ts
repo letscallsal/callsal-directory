@@ -203,9 +203,58 @@ function categoryFromOsm(osmKey: string, osmValue: string): ShopCategory {
   return 'other';
 }
 
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+const NON_LEAD_TYPES = new Set([
+  'school',
+  'primary_school',
+  'secondary_school',
+  'university',
+  'church',
+  'hindu_temple',
+  'mosque',
+  'synagogue',
+  'place_of_worship',
+  'cemetery',
+  'park',
+  'campground',
+  'locality',
+  'political',
+  'neighborhood',
+  'sublocality',
+  'route',
+  'street_address',
+  'plus_code',
+  'bus_station',
+  'subway_station',
+  'train_station',
+  'transit_station',
+  'light_rail_station',
+  'airport',
+  'city_hall',
+  'courthouse',
+  'fire_station',
+  'police',
+  'post_office',
+  'library',
+  'embassy',
+]);
+
+function isLeadWorthy(types: string[]): boolean {
+  return !(types || []).some((type) => NON_LEAD_TYPES.has(String(type || '').toLowerCase()));
+}
+
 function cacheKey(city: string, region: string, country: string, category: string): string {
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `directory:places:v4:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
+  return `directory:places:v5:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
 }
 
 async function readCache(key: string): Promise<PlacesResult | null> {
@@ -533,31 +582,37 @@ async function photonGet(url: string): Promise<PhotonFeature[]> {
 async function geocodeCity(query: string): Promise<Metro | undefined> {
   const known = findMetro(query);
   if (known) return known;
-  const features = await photonGet(
-    `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lang=en`,
-  );
-  for (const feature of features) {
-    const props = feature.properties || {};
-    const code = (props.countrycode || '').toUpperCase();
-    if (code !== 'CA' && code !== 'US') continue;
-    const city = (props.city || props.name || '').trim();
-    if (!city) continue;
-    const catalogHit = findMetro(city, '', code);
-    if (catalogHit) return catalogHit;
-    const stateRaw = String(props.state || '').trim();
-    const region = /^[A-Za-z]{2}$/.test(stateRaw)
-      ? stateRaw.toUpperCase()
-      : stateRaw.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || (code === 'CA' ? 'ON' : 'NY');
-    const coords = feature.geometry?.coordinates;
-    const lng = Array.isArray(coords) ? Number(coords[0]) : 0;
-    const lat = Array.isArray(coords) ? Number(coords[1]) : 0;
-    return {
-      city,
-      region,
-      country: code as 'CA' | 'US',
-      lat: Number.isFinite(lat) ? lat : 0,
-      lng: Number.isFinite(lng) ? lng : 0,
-    };
+  const googleKey = await resolveGoogleKey();
+  if (googleKey) {
+    const data = await fetchLegacyJson<{
+      status?: string;
+      results?: Array<{
+        formatted_address?: string;
+        geometry?: { location?: { lat?: number; lng?: number } };
+        address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }>;
+      }>;
+    }>(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}` +
+        `&components=country:CA|country:US&key=${googleKey}`,
+    );
+    if (data?.status === 'OK' && data.results?.length) {
+      const hit = data.results[0];
+      const comps = hit.address_components || [];
+      const pick = (type: string, short = false) => {
+        const row = comps.find((item) => (item.types || []).includes(type));
+        return (short ? row?.short_name : row?.long_name) || '';
+      };
+      const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || query.split(',')[0].trim();
+      const region = pick('administrative_area_level_1', true);
+      const countryRaw = pick('country', true);
+      const lat = hit.geometry?.location?.lat;
+      const lng = hit.geometry?.location?.lng;
+      if (city && (countryRaw === 'CA' || countryRaw === 'US') && Number.isFinite(lat) && Number.isFinite(lng)) {
+        const catalogHit = findMetro(city, region, countryRaw);
+        if (catalogHit) return catalogHit;
+        return { city, region, country: countryRaw, lat: lat as number, lng: lng as number };
+      }
+    }
   }
   return undefined;
 }
@@ -722,7 +777,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v6:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v7:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
@@ -767,14 +822,50 @@ async function searchLegacyNearby(
     if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS')) break;
     for (const place of data.results || []) {
       const fallback = type ? categoryFromTypes([type, ...(place.types || [])]) : categoryFromTypes(place.types || []);
-      const shop = mapLegacyPlace(place, metro, fallback === 'other' ? 'other' : fallback, undefined, true);
-      if (shop) shops.push(shop);
+  const shop = mapLegacyPlace(place, metro, fallback === 'other' ? 'other' : fallback, undefined, true);
+      if (shop && isLeadWorthy(place.types || [])) shops.push(shop);
     }
     if (!data.next_page_token || page === pages - 1) break;
     await new Promise((resolve) => setTimeout(resolve, 2100));
     url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(data.next_page_token)}&key=${key}`;
   }
   return shops;
+}
+
+async function searchGoogleNearby(
+  metro: Metro,
+  key: string,
+  radius: number,
+  includedType = '',
+): Promise<Shop[]> {
+  const body: Record<string, unknown> = {
+    maxResultCount: 20,
+    languageCode: 'en',
+    regionCode: metro.country || 'US',
+    locationRestriction: {
+      circle: {
+        center: { latitude: metro.lat, longitude: metro.lng },
+        radius: Math.max(600, Math.min(radius, 50000)),
+      },
+    },
+  };
+  if (includedType) body.includedTypes = [includedType];
+  const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask':
+        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { places?: GooglePlace[] };
+  return (data.places || [])
+    .filter((place) => isLeadWorthy(place.types || []))
+    .map((place) => mapGooglePlace(place, metro, includedType ? categoryFromTypes([includedType, ...(place.types || [])]) : categoryFromTypes(place.types || [])))
+    .filter((shop): shop is Shop => Boolean(shop));
 }
 
 export async function listAreaShops(opts: {
@@ -805,20 +896,31 @@ export async function listAreaShops(opts: {
       metro = (await reverseGeocode(lat, lng, googleKey)) || metro;
       if (typed) {
         live = await searchLegacyNiche(metro, typed, googleKey, radius);
+        live = live.filter((shop) => {
+          if (!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))) return true;
+          return haversineMeters({ lat, lng }, { lat: Number(shop.lat), lng: Number(shop.lng) }) <= radius * 1.25;
+        });
       } else {
         const cells = areaCells(lat, lng, radius);
-        const groups = await Promise.all(
-          cells.map((cell) =>
-            searchLegacyNearby(
-              { ...metro, lat: cell.lat, lng: cell.lng },
-              googleKey,
-              cell.radius,
-              '',
-              1,
-            ),
-          ),
+        const modern = await Promise.all(
+          cells.map((cell) => searchGoogleNearby({ ...metro, lat: cell.lat, lng: cell.lng }, googleKey, cell.radius)),
         );
-        live = await enrichWithDetails(mergeShops(groups), metro, googleKey, 32);
+        live = mergeShops(modern).filter((shop) => !isFranchise(shop.name));
+        const phones = live.filter((shop) => shop.phone).length;
+        if (!live.length || phones < Math.min(8, live.length)) {
+          const groups = await Promise.all(
+            cells.map((cell) =>
+              searchLegacyNearby(
+                { ...metro, lat: cell.lat, lng: cell.lng },
+                googleKey,
+                cell.radius,
+                '',
+                1,
+              ),
+            ),
+          );
+          live = await enrichWithDetails(mergeShops([live, ...groups]), metro, googleKey, 48);
+        }
       }
     } catch {
       live = [];

@@ -62,18 +62,6 @@ const isBoard = scope === 'board';
   <div class="shop-filters" data-shop-filters>
     <p class="page-kicker">Filter the directory</p>
     <div class="filter-accords">
-      <details class="filter-accord" data-filter-accord="city">
-        <summary class="filter-summary">
-          <span class="filter-label">City</span>
-          <span class="filter-now" data-filter-now="city">All cities</span>
-        </summary>
-        <div class="filter-pills" data-filter-group="city">
-          <button type="button" class="soft-pill is-on" data-filter-city="">All cities</button>
-          {cities.map((city) => (
-            <button type="button" class="soft-pill" data-filter-city={city.toLowerCase()}>{city}</button>
-          ))}
-        </div>
-      </details>
       {showNiche && (
         <details class="filter-accord" data-filter-accord="niche">
           <summary class="filter-summary">

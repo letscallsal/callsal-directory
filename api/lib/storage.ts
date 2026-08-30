@@ -1,5 +1,4 @@
-// Storage abstraction — Upstash Redis / Vercel KV in production, in-memory locally.
-// Same pattern as letscallsal/callsal-website api/lib/storage.ts
+// Storage abstraction — Upstash Redis / Vercel KV in production, CRM Redis via directory secret, in-memory locally.
 
 interface StorageInterface {
   get<T>(key: string): Promise<T | null>;
@@ -22,6 +21,26 @@ const memoryStorage: StorageInterface = {
 };
 
 let redisStorage: StorageInterface | null = null;
+let crmStorage: StorageInterface | null = null;
+
+function crmOrigin(): string {
+  return (process.env.CRM_API_URL || 'https://crm.callsal.app').replace(/\/$/, '');
+}
+
+function crmSecret(): string {
+  return String(process.env.DIRECTORY_CRM_SECRET || '').trim();
+}
+
+function isRedisConfigured(): boolean {
+  return !!(
+    (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
+    (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  );
+}
+
+function isCrmStorageConfigured(): boolean {
+  return Boolean(crmSecret());
+}
 
 async function getRedisStorage(): Promise<StorageInterface> {
   if (redisStorage) return redisStorage;
@@ -55,20 +74,46 @@ async function getRedisStorage(): Promise<StorageInterface> {
   }
 }
 
-function isRedisConfigured(): boolean {
-  return !!(
-    (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
-    (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
-  );
+function getCrmStorage(): StorageInterface {
+  if (crmStorage) return crmStorage;
+  const origin = crmOrigin();
+  const secret = crmSecret();
+  crmStorage = {
+    async get<T>(key: string): Promise<T | null> {
+      const res = await fetch(`${origin}/api/directory/kv?key=${encodeURIComponent(key)}`, {
+        headers: { 'x-directory-key': secret },
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { value?: T | null };
+      return (data?.value ?? null) as T | null;
+    },
+    async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+      await fetch(`${origin}/api/directory/kv`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-directory-key': secret },
+        body: JSON.stringify({ key, value, ttl: ttlSeconds || 0 }),
+      });
+    },
+    async del(key: string): Promise<void> {
+      await fetch(`${origin}/api/directory/kv?key=${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+        headers: { 'x-directory-key': secret },
+      });
+    },
+  };
+  return crmStorage;
 }
 
 export function isPersistentStorage(): boolean {
-  return isRedisConfigured();
+  return isRedisConfigured() || isCrmStorageConfigured();
 }
 
 export async function getStorage(): Promise<StorageInterface> {
   if (isRedisConfigured()) {
     return getRedisStorage();
+  }
+  if (isCrmStorageConfigured()) {
+    return getCrmStorage();
   }
   if (process.env.VERCEL === '1') {
     console.warn('KV/Upstash missing; accounts persist in the signed session cookie');

@@ -30,6 +30,8 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         if (mapLocked) return;
         mapLocked = true;
         document.documentElement.classList.add('is-map-locked');
+        const chrome = document.getElementById('app-chrome');
+        if (chrome) chrome.classList.add('is-stuck');
         const stage = document.getElementById('stage-scroll');
         const hero = document.getElementById('hero-stage');
         if (stage && hero) {
@@ -798,7 +800,9 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         const onStageScroll = () => {
           if (!document.documentElement.classList.contains('is-app') && !mapLocked) {
             const hero = document.getElementById('hero-stage');
-            if (hero && stage && stage.scrollTop >= hero.offsetHeight - 8) lockMapStage();
+            if (hero && stage && stage.scrollTop >= Math.max(48, hero.offsetHeight * 0.28)) lockMapStage();
+            const slot = document.getElementById('chrome-slot');
+            if (slot && slot.getBoundingClientRect().top <= 8) lockMapStage();
           }
           if (shouldLockChrome()) clampStageToStick();
           applyLandingFade();
@@ -806,6 +810,12 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         };
         if (stage && hero) {
           stage.addEventListener('scroll', onStageScroll, { passive: true });
+          stage.addEventListener('touchend', onStageScroll, { passive: true });
+          window.addEventListener('scroll', onStageScroll, { passive: true });
+          if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', onStageScroll);
+            window.visualViewport.addEventListener('scroll', onStageScroll);
+          }
           onStageScroll();
           window.addEventListener('callsal:intro-complete', applyLandingFade);
           if ('IntersectionObserver' in window) {
@@ -813,9 +823,17 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
             if (stageEl) {
               const io = new IntersectionObserver((entries) => {
                 const hit = entries[0];
-                if (hit && hit.intersectionRatio >= 0.45) lockMapStage();
-              }, { threshold: [0.45, 0.7] });
+                if (hit && hit.intersectionRatio >= 0.28) lockMapStage();
+              }, { threshold: [0.28, 0.45, 0.7] });
               io.observe(stageEl);
+            }
+            const lede = document.querySelector('[data-index-lede]');
+            if (lede) {
+              const ioLede = new IntersectionObserver((entries) => {
+                const hit = entries[0];
+                if (hit && hit.isIntersecting) lockMapStage();
+              }, { threshold: [0.12] });
+              ioLede.observe(lede);
             }
           }
         }

@@ -29,7 +29,7 @@ import { isPersistentStorage } from './lib/storage.js';
 
 async function writeSession(req: VercelRequest, res: VercelResponse, session: AuthSession, plan: Plan, board: BoardState) {
   if (isPersistentStorage()) return;
-  const token = await createToken(session, { plan, board: storedBoardOf(board) });
+  const token = await createToken(session, { plan, board: storedBoardOf(board), passwordHash: session.passwordHash });
   setAuthCookie(res, token, req.headers.origin || '');
 }
 

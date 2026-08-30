@@ -877,6 +877,8 @@ main {
 
 html.has-room .stage-scroll {
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 html.has-room .app {

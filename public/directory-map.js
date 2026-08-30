@@ -26,16 +26,19 @@
   var shops = [];
   var lastSearch = null;
   var loading = false;
+  var pendingLoad = null;
   var moved = false;
   var engine = 'none';
   var mapsBoot = null;
 
   function esc(value) {
-    return String(value || '')
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"');
+    var map = Object.create(null);
+    map['&'] = '&amp;';
+    map['<'] = '&lt;';
+    map['>'] = '&gt;';
+    map['"'] = '&quot;';
+    map["'"] = '&#39;';
+    return String(value || '').replace(/[&<>"']/g, function (ch) { return map[ch]; });
   }
 
   function isLeads() {
@@ -75,8 +78,24 @@
   }
 
   function currentNiche() {
+    var side = document.querySelector('[data-sidebar] [data-filter-niche].is-on, [data-sidebar] [data-type][aria-pressed="true"]');
+    if (side) return side.getAttribute('data-filter-niche') || side.getAttribute('data-type') || '';
     var on = document.querySelector('[data-shop-filters] [data-filter-niche].is-on');
-    return on ? (on.getAttribute('data-filter-niche') || '') : '';
+    var value = on ? (on.getAttribute('data-filter-niche') || '') : '';
+    return value;
+  }
+
+  function setNiche(slug) {
+    var want = String(slug || '');
+    document.querySelectorAll('[data-shop-filters] [data-filter-niche]').forEach(function (btn) {
+      btn.classList.toggle('is-on', (btn.getAttribute('data-filter-niche') || '') === want);
+    });
+    document.querySelectorAll('[data-sidebar] [data-filter-niche], [data-sidebar] [data-type]').forEach(function (btn) {
+      var val = btn.getAttribute('data-filter-niche') || btn.getAttribute('data-type') || '';
+      var on = Boolean(want) && val === want;
+      btn.classList.toggle('is-on', on);
+      if (btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
   }
 
   function safeHref(url) {
@@ -148,7 +167,7 @@
       + ' data-shop-hours="' + esc(hours) + '"'
       + ' data-shop-lat="' + esc(shop.lat || '') + '"'
       + ' data-shop-lng="' + esc(shop.lng || '') + '">'
-      + '<div class="card hover-lift">'
+      + '<div class="card lead-card hover-lift">'
       + '<span class="card-cat">' + esc(cat) + '</span>'
       + '<h3>' + esc(shop.name) + '</h3>'
       + phoneLine
@@ -287,6 +306,7 @@
     var count = countEl();
     if (count) count.textContent = shops.length ? String(shops.length) : '0';
     if (typeof window.__dirPaintAddLeads === 'function') window.__dirPaintAddLeads();
+    if (typeof window.__dirApplyShopFilters === 'function') window.__dirApplyShopFilters();
   }
 
   function markerLatLng(marker) {
@@ -432,7 +452,10 @@
   }
 
   async function loadShops(query, fly) {
-    if (loading) return;
+    if (loading) {
+      pendingLoad = { query: query, fly: fly };
+      return;
+    }
     loading = true;
     setStatus('Scanning this area…');
     showSearchHere(false);
@@ -456,6 +479,11 @@
     }
     loading = false;
     resizeMap();
+    if (pendingLoad) {
+      var next = pendingLoad;
+      pendingLoad = null;
+      loadShops(next.query, next.fly);
+    }
   }
 
   function searchView() {
@@ -485,9 +513,18 @@
     return Boolean(el && el.offsetWidth >= 24 && el.offsetHeight >= 24);
   }
 
+  function mapShouldLive() {
+    if (isLeads()) return false;
+    if (document.documentElement.classList.contains('is-app')) return true;
+    if (document.documentElement.classList.contains('is-map-locked')) return true;
+    var chrome = document.getElementById('app-chrome');
+    if (chrome && chrome.classList.contains('is-stuck')) return true;
+    return canvasReady();
+  }
+
   function syncMode() {
     if (isLeads()) return;
-    if (!isApp() && !document.documentElement.classList.contains('is-map-locked')) return;
+    if (!mapShouldLive()) return;
     if (!canvasReady()) {
       window.setTimeout(syncMode, 80);
       return;
@@ -531,11 +568,20 @@
   });
 
   document.addEventListener('click', function (event) {
-    var niche = event.target && event.target.closest && event.target.closest('[data-shop-filters] [data-filter-niche], [data-sidebar] [data-type]');
+    var niche = event.target && event.target.closest && event.target.closest('[data-shop-filters] [data-filter-niche], [data-sidebar] [data-filter-niche], [data-sidebar] [data-type]');
     if (!niche) return;
+    var slug = niche.getAttribute('data-filter-niche') || niche.getAttribute('data-type') || '';
+    if (slug && slug === currentNiche()) slug = '';
+    setNiche(slug);
     setTimeout(function () {
-      if (lastSearch || isApp()) searchView();
+      if (lastSearch || isApp() || document.documentElement.classList.contains('is-map-locked') || canvasReady()) searchView();
     }, 0);
+  });
+
+  window.addEventListener('callsal:niche-applied', function (event) {
+    var slug = event && event.detail ? event.detail.niche : '';
+    setNiche(slug || '');
+    if (lastSearch || isApp() || canvasReady()) searchView();
   });
 
   if (document.readyState === 'loading') {

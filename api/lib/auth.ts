@@ -45,7 +45,11 @@ export interface SessionBoard {
 export interface AuthSession extends DirectoryUser {
   plan?: 'free' | 'paid';
   board?: SessionBoard;
+  passwordHash?: string;
 }
+
+const BUILTIN_EMAIL = 'letscallsal@gmail.com';
+const BUILTIN_HASH = '$2b$10$yvl9JGntkjfnkp1lhmUUaezBOB2oC5ANpB9ucjZKaje7KWK6GLHLq';
 
 function jwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -61,13 +65,29 @@ export function matchesSetupKey(value: string): boolean {
   return key.length > 0 && key === jwtSecret();
 }
 
-export function userFromCredentials(email: string, password: string): DirectoryUser {
+export function userIdFromEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
-  const id = createHmac('sha256', jwtSecret())
-    .update(`directory:v1:${normalized}:${password}`)
+  return createHmac('sha256', jwtSecret())
+    .update(`directory:id:v2:${normalized}`)
     .digest('hex')
     .slice(0, 32);
-  return { id, email: normalized, name: normalized.split('@')[0] };
+}
+
+export function userFromEmail(email: string): DirectoryUser {
+  const normalized = email.trim().toLowerCase();
+  return { id: userIdFromEmail(normalized), email: normalized, name: normalized.split('@')[0] };
+}
+
+export function isBuiltInEmail(email: string): boolean {
+  return email.trim().toLowerCase() === BUILTIN_EMAIL;
+}
+
+export function builtInHash(): string {
+  return BUILTIN_HASH;
+}
+
+export function userFromCredentials(email: string, _password?: string): DirectoryUser {
+  return userFromEmail(email);
 }
 
 export function publicUser(user: StoredUser | DirectoryUser): DirectoryUser {
@@ -84,11 +104,26 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compareSync(password, hash);
 }
 
-export async function createToken(user: DirectoryUser, extra?: { plan?: 'free' | 'paid'; board?: SessionBoard }): Promise<string> {
+export async function builtInUser(email: string, password: string): Promise<StoredUser | null> {
+  if (!isBuiltInEmail(email)) return null;
+  if (!(await verifyPassword(password, BUILTIN_HASH))) return null;
+  const user = userFromEmail(BUILTIN_EMAIL);
+  return {
+    ...user,
+    passwordHash: BUILTIN_HASH,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+export async function createToken(
+  user: DirectoryUser,
+  extra?: { plan?: 'free' | 'paid'; board?: SessionBoard; passwordHash?: string },
+): Promise<string> {
   const jwt = (await import('jsonwebtoken')).default;
   const payload: Record<string, unknown> = { sub: user.id, email: user.email, name: user.name };
   if (extra?.plan) payload.pl = extra.plan;
   if (extra?.board) payload.bd = extra.board;
+  if (extra?.passwordHash) payload.ph = extra.passwordHash;
   return jwt.sign(payload, jwtSecret(), { expiresIn: '7d' });
 }
 
@@ -109,6 +144,7 @@ export async function verifySession(token: string): Promise<AuthSession | null> 
       name: string;
       pl?: 'free' | 'paid';
       bd?: SessionBoard;
+      ph?: string;
     };
     if (!payload.sub || !payload.email) return null;
     return {
@@ -117,6 +153,7 @@ export async function verifySession(token: string): Promise<AuthSession | null> 
       name: payload.name,
       plan: payload.pl,
       board: payload.bd,
+      passwordHash: payload.ph,
     };
   } catch {
     return null;

@@ -183,7 +183,7 @@ export function normalizeStage(value: string | undefined): Stage {
 
 export function isPipelineOwner(user: BoardUser | DirectoryUser | string): boolean {
   if (typeof user === 'string') return false;
-  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || 'letscallsal@gmail.com').trim().toLowerCase();
+  const owner = String(process.env.DIRECTORY_PIPELINE_OWNER || '').trim().toLowerCase();
   if (!owner) return false;
   const email = String(user.email || '').trim().toLowerCase();
   const id = String(user.id || '').trim().toLowerCase();
