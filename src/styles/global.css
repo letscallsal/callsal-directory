@@ -11,12 +11,12 @@
   --void: #000000;
   --lime: #CCFF00;
   --cyan: #00F0FF;
-  --sidebar: 19rem;
-  --chrome: 3.5rem;
-  --gutter: clamp(1.25rem, 3vw, 2.5rem);
+  --sidebar: 16.5rem;
+  --chrome: 3rem;
+  --gutter: clamp(1rem, 2.4vw, 1.75rem);
   --display: "Syne", ui-sans-serif, system-ui, sans-serif;
   --ui: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --ease: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  --ease: 160ms cubic-bezier(0.22, 1, 0.36, 1);
   --font-display: "Syne", sans-serif;
   --font-body: "Inter", sans-serif;
 }
@@ -209,13 +209,13 @@ img {
 
 .sleek-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #CCFF00 transparent;
+  scrollbar-color: rgba(204, 255, 0, 0.45) transparent;
 }
 
 .sleek-scroll::-webkit-scrollbar {
   display: block;
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 .sleek-scroll::-webkit-scrollbar-track {
@@ -223,16 +223,13 @@ img {
 }
 
 .sleek-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #CCFF00, #00F0FF);
-  border-radius: 4px;
-  border-right: 6px solid transparent;
-  background-clip: padding-box;
+  background: rgba(204, 255, 0, 0.45);
+  border-radius: 99px;
+  border: 0;
 }
 
 .sleek-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #CCFF00, #00F0FF);
-  border-right: 6px solid transparent;
-  background-clip: padding-box;
+  background: rgba(204, 255, 0, 0.7);
 }
 
 .sleek-scroll::-webkit-scrollbar-corner {
@@ -259,15 +256,13 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0 1rem 0 0.85rem;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  gap: 0.75rem;
+  padding: 0 0.85rem 0 0.7rem;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
   z-index: 30;
 }
 
@@ -355,7 +350,7 @@ img {
 }
 
 .sidebar-search {
-  padding: 1rem 1.25rem 0.7rem;
+  padding: 0.65rem 0.85rem 0.45rem;
 }
 
 .sidebar-search label {
@@ -381,7 +376,7 @@ img {
 .sidebar-index {
   flex: 1;
   overflow: auto;
-  padding: 0.4rem 0.65rem 1rem 1.25rem;
+  padding: 0.25rem 0.45rem 0.75rem 0.85rem;
 }
 
 .cat {
@@ -399,9 +394,9 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.55rem 0.6rem 0.55rem 0;
+  padding: 0.38rem 0.4rem 0.38rem 0;
   color: var(--ink);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -999,7 +994,7 @@ html.intro-done .scroll-hint.intro-trace-up { animation-name: intro-arrive-up-ce
 .intro-d10 { --d: 820ms; }
 
 .hover-lift {
-  transition: filter 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: filter var(--ease), transform var(--ease);
 }
 
 .glass, .glass-strong, .glass-nav, .card, .app-chrome, .sidebar {
@@ -1010,9 +1005,9 @@ html.intro-done .scroll-hint.intro-trace-up { animation-name: intro-arrive-up-ce
 
 button, a, input, textarea, select,
 .btn-primary, .btn-glass, .visit, .brand-pill {
-  transition-property: color, background-color, border-color, opacity, filter, transform, box-shadow;
+  transition-property: color, background-color, border-color, opacity, filter, box-shadow;
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  transition-duration: 280ms;
+  transition-duration: 160ms;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1034,8 +1029,8 @@ textarea::placeholder {
     .btn-primary:hover,
     .btn-glass:hover,
     .visit:hover {
-      filter: brightness(1.08);
-      transform: translateY(-1px) scale(1.015);
+      filter: brightness(1.06);
+      transform: none;
     }
     .btn-primary:hover,
     .visit:hover {
@@ -1135,6 +1130,46 @@ html.is-map-locked .app-chrome {
   position: sticky;
   top: 0;
   z-index: 40;
+}
+
+html.is-leads main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0.7rem 0.85rem 0.9rem;
+}
+
+html.is-leads .leads-app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+html.is-leads .leads-app .page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 1rem;
+  margin: 0 0 0.55rem;
+  max-width: none;
+}
+
+html.is-leads .leads-app .page-kicker {
+  display: none;
+}
+
+html.is-leads .leads-app .page-title {
+  font-size: 0.92rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+html.is-leads .leads-app .page-tag {
+  margin: 0;
+  font-size: 0.72rem;
+  max-width: none;
+  color: var(--ink-faint);
 }
 
 /* Guest leads: pin past the 3D room, scroll the sale page in the pane. */

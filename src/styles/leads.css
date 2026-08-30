@@ -2,13 +2,13 @@
 .soft-pill {
   display: inline-flex;
   align-items: center;
-  padding: 0.4rem 0.75rem;
+  padding: 0.32rem 0.62rem;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   color: #fff;
   font-family: Syne, ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -26,78 +26,99 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin: 0 0 1.5rem;
+  gap: 0.45rem 0.75rem;
+  margin: 0 0 0.55rem;
 }
 
 .leads-usage {
   margin: 0;
-  color: #c0c0c0;
-  max-width: 28rem;
+  color: #8a8a8a;
+  font-size: 0.72rem;
+  max-width: none;
 }
 
 .leads-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 
 .oracle-panel {
-  margin: 0 0 1.5rem;
-  padding: 1.15rem 1.2rem;
+  margin: 0 0 0.55rem;
+  padding: 0.7rem 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
+  border-radius: 0.4rem;
   background: rgba(0, 0, 0, 0.55);
-}
-
-.oracle-panel ul {
-  margin: 0.6rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.oracle-draft {
-  margin: 0.75rem 0 0.5rem;
-  color: #fff;
 }
 
 .kanban {
   display: grid;
-  grid-template-columns: repeat(6, minmax(14rem, 1fr));
-  gap: 0.9rem;
-  overflow-x: auto;
+  grid-template-columns: repeat(6, minmax(11.5rem, 1fr));
+  gap: 0.45rem;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  align-content: stretch;
 }
 
 .kanban-col {
-  min-width: 14rem;
-  min-height: 18rem;
-  padding: 0.85rem;
+  min-width: 11.5rem;
+  min-height: 0;
+  padding: 0.45rem 0.4rem 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
-  background: rgba(0, 0, 0, 0.45);
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
 }
 
 .kanban-col.is-drop {
   border-color: #CCFF00;
+  background: rgba(204, 255, 0, 0.04);
 }
 
 .kanban-col h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.4rem;
   font-family: Syne, ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.92rem;
-  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: #8a8a8a;
+}
+
+.kanban-col h2 span {
+  color: #CCFF00;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-col-cards] {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .lead-card {
-  margin: 0 0 0.75rem;
-  padding: 0.9rem 1rem 0.85rem;
+  margin: 0 0 0.32rem;
+  padding: 0.42rem 0.55rem 0.45rem;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: 3px solid #CCFF00;
-  border-radius: 1rem;
-  background: rgba(0, 0, 0, 0.85);
+  border-left: 2px solid rgba(204, 255, 0, 0.55);
+  border-radius: 0.35rem;
+  background: rgba(12, 12, 12, 0.92);
   cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.lead-card:last-child {
+  margin-bottom: 0;
+}
+
+.lead-card:hover,
+.lead-card:focus-within {
+  background: rgba(22, 22, 22, 0.98);
+  border-color: rgba(204, 255, 0, 0.28);
+  border-left-color: #CCFF00;
 }
 
 .lead-card[draggable="true"] {
@@ -105,33 +126,63 @@
 }
 
 .lead-card.is-drag {
-  opacity: 0.55;
+  opacity: 0.5;
+}
+
+.lead-type,
+.listings-track .lead-type {
+  margin: 0 0 0.18rem;
+  color: #8a8a8a;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lead-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.lead-copy {
+  min-width: 0;
+  flex: 1;
 }
 
 .lead-card h3 {
-  margin: 0.4rem 0 0;
+  margin: 0;
   font-family: Syne, ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.05rem;
+  font-size: 0.78rem;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  text-transform: uppercase;
-}
-
-.lead-type {
-  margin: 0.28rem 0 0;
-  color: #8a8a8a;
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lead-phone {
-  margin: 0.45rem 0 0;
-  color: #ffffff;
-  font-size: 0.98rem;
-  line-height: 1.3;
+  margin: 0.12rem 0 0;
+  color: #d4d4d4;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.25;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
+}
+
+.lead-phone-empty {
+  color: #5a5a5a;
+  font-size: 0.68rem;
 }
 
 .lead-phone[data-lead-act] {
@@ -144,14 +195,14 @@
   content: attr(data-tip);
   position: absolute;
   left: 0;
-  bottom: calc(100% + 0.35rem);
+  bottom: calc(100% + 0.28rem);
   z-index: 8;
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.45rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 0.28rem;
   background: #111;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   letter-spacing: 0;
   text-transform: none;
   white-space: nowrap;
@@ -166,27 +217,29 @@
 .lead-acts {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  margin: 0.7rem 0 0;
+  gap: 0.18rem;
+  margin: 0;
+  flex: 0 0 auto;
 }
 
 .lead-act {
   position: relative;
-  width: 2rem;
-  height: 2rem;
+  width: 1.45rem;
+  height: 1.45rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  color: #c0c0c0;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.28rem;
+  color: #8a8a8a;
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 
 .lead-act svg {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.78rem;
+  height: 0.78rem;
   display: block;
 }
 
@@ -202,17 +255,17 @@
   content: attr(data-tip);
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 0.45rem);
+  bottom: calc(100% + 0.35rem);
   transform: translateX(-50%);
   z-index: 8;
-  min-width: 7rem;
-  max-width: 14rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.45rem;
+  min-width: 0;
+  max-width: 12rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 0.28rem;
   background: #111;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   line-height: 1.3;
   letter-spacing: 0;
   text-transform: none;
@@ -221,7 +274,6 @@
   text-overflow: ellipsis;
   opacity: 0;
   pointer-events: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 .lead-act.is-tip::after {
@@ -232,6 +284,17 @@
   .lead-act:hover::after {
     opacity: 1;
   }
+}
+
+.oracle-panel ul {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oracle-draft {
+  margin: 0.75rem 0 0.5rem;
+  color: #fff;
 }
 
 .lead-fields {
@@ -298,7 +361,7 @@
 
 @media (max-width: 980px) {
   .kanban {
-    grid-template-columns: repeat(2, minmax(12.5rem, 1fr));
+    grid-template-columns: repeat(2, minmax(11.5rem, 1fr));
   }
 }
 
@@ -312,40 +375,28 @@
     min-width: 0;
     min-height: 0;
   }
-
-  .lead-card h3 {
-    font-size: 1.16rem;
-  }
-
-  .lead-phone {
-    font-size: 1.12rem;
-  }
-
-  .lead-act {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
 }
 
 .add-lead-btn {
   position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
+  top: 0.32rem;
+  right: 0.32rem;
   z-index: 2;
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 1.45rem;
+  height: 1.45rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  border-radius: 0.28rem;
   color: #CCFF00;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(204, 255, 0, 0.4);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 
 .add-lead-btn svg {
-  width: 15px;
-  height: 15px;
+  width: 12px;
+  height: 12px;
   display: block;
 }
 
@@ -365,6 +416,13 @@
 
 .add-lead-btn.is-on .add-lead-check {
   display: block;
+}
+
+.add-lead-btn:hover,
+.add-lead-btn:focus-visible {
+  color: #111;
+  background: #CCFF00;
+  border-color: #CCFF00;
 }
 
 .shop-filters {
@@ -462,7 +520,7 @@
 .sidebar .shop-filters {
   margin: 0;
   max-width: none;
-  padding: 0.85rem 1.1rem 0.45rem;
+  padding: 0.55rem 0.85rem 0.35rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -595,12 +653,13 @@ body.leads-drawer-open .scrim {
 
 .kanban-preview {
   pointer-events: none;
-  margin: 0 0 2.4rem;
-  grid-template-columns: repeat(6, minmax(14rem, 1fr));
+  margin: 0 0 1.6rem;
+  grid-template-columns: repeat(6, minmax(11.5rem, 1fr));
+  flex: none;
 }
 
 .kanban-preview .kanban-col {
-  min-height: 12rem;
+  min-height: 8.5rem;
 }
 
 .preview-hint {

@@ -167,11 +167,15 @@
       + ' data-shop-hours="' + esc(hours) + '"'
       + ' data-shop-lat="' + esc(shop.lat || '') + '"'
       + ' data-shop-lng="' + esc(shop.lng || '') + '">'
-      + '<div class="card lead-card hover-lift">'
-      + '<span class="card-cat">' + esc(cat) + '</span>'
+      + '<div class="lead-card">'
+      + '<p class="lead-type">' + esc(cat) + '</p>'
+      + '<div class="lead-main">'
+      + '<div class="lead-copy">'
       + '<h3>' + esc(shop.name) + '</h3>'
       + phoneLine
+      + '</div>'
       + cardActs(shop)
+      + '</div>'
       + '</div>'
       + '<button type="button" class="add-lead-btn" data-add-lead="' + esc(shop.slug) + '" aria-label="Add ' + esc(shop.name) + ' to leads" aria-pressed="false">'
       + '<svg class="add-lead-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>'
