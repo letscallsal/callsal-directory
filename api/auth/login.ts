@@ -48,14 +48,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    const session = await getAuthSession(req);
+
     if (builtin) {
       const user = publicUser(builtin);
-      const token = await createToken(user, { plan: 'free', passwordHash: builtin.passwordHash });
+      const same = session?.email === user.email;
+      const token = await createToken(user, {
+        plan: same && session.plan === 'paid' ? 'paid' : 'free',
+        board: same ? session.board : undefined,
+        passwordHash: builtin.passwordHash,
+      });
       setAuthCookie(res, token, origin);
       return res.status(200).json({ success: true, user });
     }
 
-    const session = await getAuthSession(req);
     if (session?.email === email && session.passwordHash) {
       const ok = await verifyPassword(password, session.passwordHash);
       if (!ok) return res.status(401).json({ error: 'INVALID CREDENTIALS' });
