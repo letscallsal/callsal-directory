@@ -7,6 +7,7 @@ import {
   type AuthSession,
 } from './lib/auth.js';
 import {
+  FREE_CAP,
   PRICE,
   addShop,
   hydrateBoard,
@@ -96,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'FREE CAP',
         upgrade: true,
         price: PRICE,
-        message: `Free accounts can save 25 leads. Paid Directory is ${PRICE}.`,
+        message: `Free accounts can save ${FREE_CAP} leads. Paid Directory is unlimited at ${PRICE}. Import one niche in one city, or all niches in that city.`,
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),
@@ -133,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'PAID',
         upgrade: true,
         price: PRICE,
-        message: `Bulk import is on Paid Directory at ${PRICE}. Free accounts add shops with plus.`,
+        message: `Bulk import is on Paid Directory at ${PRICE}. Import one niche in one city, or all niches in that city. Free accounts add shops with plus.`,
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),
@@ -142,7 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (result.reason === 'city-required') {
       return res.status(400).json({
         error: 'CITY REQUIRED',
-        message: 'Pick one city. Bulk import is one city at a time. All niches is fine.',
+        message: 'Pick one city. Import one niche in that city, or all niches.',
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),
@@ -151,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (result.reason === 'scan-wait') {
       return res.status(429).json({
         error: 'SCAN WAIT',
-        message: 'That city already imported today. Try again after 8am.',
+        message: 'That city and niche already imported today. Try again after 8am.',
         plan,
         leads: board.leads,
         usage: usage(board, plan, owner),

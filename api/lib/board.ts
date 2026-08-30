@@ -48,8 +48,8 @@ const LEGACY_STAGE: Record<string, Stage> = {
 const CRM_LEADS_KEY = 'callsal:crm:leads';
 const HEAVY_FIELDS = ['research_data', 'ai_summary', 'cold_call_script', 'dm_script', 'email_script'] as const;
 
-export const FREE_CAP = 25;
-export const PAID_CAP = 1000;
+export const FREE_CAP = 100;
+export const PAID_CAP = Number.MAX_SAFE_INTEGER;
 export const ORACLE_PER_DAY = 3;
 export const PRICE = '$999 a month';
 
@@ -599,8 +599,8 @@ export function torontoDate(now = new Date()): string {
 }
 
 export function capFor(plan: Plan, owner = false): number {
-  if (owner) return Number.MAX_SAFE_INTEGER;
-  return plan === 'paid' ? PAID_CAP : FREE_CAP;
+  if (owner || plan === 'paid') return Number.MAX_SAFE_INTEGER;
+  return FREE_CAP;
 }
 
 export function leadKey(lead: Lead | StoredLead): string {
@@ -874,10 +874,10 @@ export function usage(board: BoardState, plan: Plan, owner = false) {
     scan: {
       allowed: plan === 'paid' && !scanned,
       message: plan !== 'paid'
-        ? `Scan is on Paid Directory at ${PRICE}.`
+        ? `Import is on Paid Directory at ${PRICE}. Free accounts add shops with plus.`
         : scanned
-          ? 'Scan can run again after 8am.'
-          : 'Scan can fill shops from the Directory index that are not already on the board.',
+          ? 'That city already imported today. Try again after 8am.'
+          : 'Import one niche in one city, or all niches in that city.',
     },
     oracle: {
       remaining: plan === 'paid' ? Math.max(0, ORACLE_PER_DAY - oracleUsed) : 0,

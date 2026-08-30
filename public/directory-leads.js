@@ -696,8 +696,8 @@
     const usageEl = document.querySelector('[data-leads-usage]');
     if (usageEl && usage) {
       usageEl.textContent = lastLeads.plan === 'paid'
-        ? 'Paid sandbox. ' + usage.leadCount + ' of ' + usage.leadCap + ' leads.'
-        : 'Free account. ' + usage.leadCount + ' of 25 leads.';
+        ? 'Paid. ' + usage.leadCount + ' leads. No cap.'
+        : 'Free. ' + usage.leadCount + ' of ' + (usage.leadCap || 100) + ' leads.';
     }
     const leads = lastLeads.leads || [];
     STAGES.forEach((stage) => {
@@ -868,23 +868,36 @@
         return;
       }
       if (lastLeads.plan !== 'paid') {
-        openPremium('Bulk import is paid. Free accounts add one shop at a time with plus.');
+        openPremium('Bulk import is paid. Import one niche in one city, or all niches in that city. Free accounts add one shop at a time with plus.');
         return;
       }
-      const cityBtn = document.querySelector('[data-filter-city].is-on') || document.querySelector('[data-leads-filter-city].is-on');
-      const city = cityBtn ? (cityBtn.getAttribute('data-filter-city') || cityBtn.getAttribute('data-leads-filter-city') || '') : (selectedCity() || boardCity());
+      const cityBtn = document.querySelector('[data-leads-filter-city].is-on') || document.querySelector('[data-filter-city].is-on') || document.querySelector('[data-city-pick].is-on');
+      let city = cityBtn ? (cityBtn.getAttribute('data-leads-filter-city') || cityBtn.getAttribute('data-filter-city') || cityBtn.getAttribute('data-city-pick') || '') : (boardCity() || selectedCity() || '');
+      let region = cityBtn ? (cityBtn.getAttribute('data-city-region') || '') : '';
+      let country = cityBtn ? (cityBtn.getAttribute('data-city-country') || '') : '';
+      if (!city) {
+        try {
+          const raw = sessionStorage.getItem('directory:guest-city');
+          if (raw) {
+            const saved = raw.charAt(0) === '{' ? JSON.parse(raw) : { city: raw };
+            city = saved.city || '';
+            region = saved.region || region;
+            country = saved.country || country;
+          }
+        } catch (err) { /* private */ }
+      }
       if (!city) {
         const usageEl = document.querySelector('[data-leads-usage]');
-        if (usageEl) usageEl.textContent = 'Pick one city first. Bulk import is one city at a time.';
+        if (usageEl) usageEl.textContent = 'Pick one city first. Import one niche in that city, or all niches.';
         return;
       }
-      const nicheBtn = document.querySelector('[data-filter-niche].is-on') || document.querySelector('[data-leads-filter-niche].is-on');
-      const niche = nicheBtn ? (nicheBtn.getAttribute('data-filter-niche') || nicheBtn.getAttribute('data-leads-filter-niche') || '') : (selectedNiche() || '');
+      const nicheBtn = document.querySelector('[data-leads-filter-niche].is-on') || document.querySelector('[data-filter-niche].is-on') || document.querySelector('[data-sidebar] [data-type][aria-pressed="true"]');
+      const niche = nicheBtn ? (nicheBtn.getAttribute('data-leads-filter-niche') || nicheBtn.getAttribute('data-filter-niche') || nicheBtn.getAttribute('data-type') || '') : (boardNiche() || selectedNiche() || '');
       void postLeads({
         action: 'scan',
         city: city,
-        region: cityBtn ? (cityBtn.getAttribute('data-city-region') || '') : '',
-        country: cityBtn ? (cityBtn.getAttribute('data-city-country') || '') : '',
+        region: region,
+        country: country,
         category: niche,
       });
       return;
