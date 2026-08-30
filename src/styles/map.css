@@ -299,3 +299,19 @@ button.sidebar-saved[aria-pressed="true"] {
     bottom: 0;
   }
 }
+
+html:has(#app-chrome.is-stuck):not(.is-leads) #hero-stage,
+html:has(#app-chrome.is-stuck):not(.is-leads) .room-canvas {
+  display: none !important;
+}
+html:has(#app-chrome.is-stuck):not(.is-leads).has-room .stage-scroll { overflow: hidden; }
+html:has(#app-chrome.is-stuck):not(.is-leads).has-room .app {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .map-search-here { top: auto; bottom: calc(38vh + 0.85rem); }
+  .map-status { bottom: calc(38vh + 0.85rem); }
+}

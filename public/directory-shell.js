@@ -233,6 +233,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           if (!stuck) {
             stuck = true;
             chrome.classList.add('is-stuck');
+            lockMapStage();
           }
           return;
         }
@@ -241,6 +242,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         if (next === stuck) return;
         stuck = next;
         chrome.classList.toggle('is-stuck', stuck);
+        if (stuck) lockMapStage();
       }
 
       function syncChromeLock() {
@@ -806,6 +808,16 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           stage.addEventListener('scroll', onStageScroll, { passive: true });
           onStageScroll();
           window.addEventListener('callsal:intro-complete', applyLandingFade);
+          if ('IntersectionObserver' in window) {
+            const stageEl = document.getElementById('directory-stage');
+            if (stageEl) {
+              const io = new IntersectionObserver((entries) => {
+                const hit = entries[0];
+                if (hit && hit.intersectionRatio >= 0.45) lockMapStage();
+              }, { threshold: [0.45, 0.7] });
+              io.observe(stageEl);
+            }
+          }
         }
       }
 

@@ -542,6 +542,26 @@ function mapPhotonFeature(feature: PhotonFeature, metro: Metro, fallbackCategory
   };
 }
 
+async function searchPhotonArea(
+  lat: number,
+  lng: number,
+  niche: (typeof NICHE_QUERIES)[number],
+): Promise<Shop[]> {
+  const metro: Metro = {
+    city: 'Map',
+    region: '',
+    country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
+    lat,
+    lng,
+  };
+  const features = await photonGet(
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(niche.query)}&lat=${lat}&lon=${lng}&limit=12&lang=en&osm_tag=${encodeURIComponent(niche.osmTag)}`,
+  );
+  return features
+    .map((feature) => mapPhotonFeature(feature, metro, niche.category))
+    .filter((shop): shop is Shop => Boolean(shop));
+}
+
 async function searchPhotonNiche(metro: Metro, niche: (typeof NICHE_QUERIES)[number]): Promise<Shop[]> {
   const query = `${niche.query} ${metro.city} ${metro.region}`;
   const features = await photonGet(
@@ -646,7 +666,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v2:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v3:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
@@ -761,6 +781,11 @@ export async function listAreaShops(opts: {
     lat,
     lng,
     radius,
+    shops: live.slice(0, 160),
+  };
+  if (live.length) await writeCache(key, result);
+  return result;
+}
     shops: live.slice(0, 160),
   };
   if (live.length) await writeCache(key, result);
