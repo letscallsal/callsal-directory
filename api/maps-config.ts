@@ -1,21 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { setCorsHeaders } from './lib/auth.js';
+import { resolveGoogleKey } from './lib/google-key.js';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const key = (
-    process.env.GOOGLE_MAPS_API_KEY ||
-    process.env.GOOGLE_PLACES_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.GEMINI_API_KEY ||
-    ''
-  ).trim();
-
-  res.setHeader('Cache-Control', 'public, max-age=60');
-  return res.status(200).json({ key: key || null, tiles: key ? 'google' : 'osm' });
+  const key = await resolveGoogleKey();
+  if (!key) return res.status(500).json({ error: 'Google Maps is not configured' });
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  return res.status(200).json({ key });
 }

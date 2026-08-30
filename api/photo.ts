@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { setCorsHeaders } from './lib/auth.js';
-import { placesApiKey } from './lib/places.js';
+import { resolveGoogleKey } from './lib/google-key.js';
 
 const CACHE_HIT = 'public, s-maxage=86400, stale-while-revalidate=604800';
 const CACHE_MISS = 'public, s-maxage=3600';
@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const key = placesApiKey();
+  const key = await resolveGoogleKey();
   if (!key) return res.status(500).json({ error: 'Server configuration error' });
 
   const placeId = normalizePlaceId(queryValue(req.query.placeId));

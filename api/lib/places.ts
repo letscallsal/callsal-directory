@@ -1,5 +1,6 @@
 import seed from './milton-seed.js';
 import { findMetro, type Metro } from './metros.js';
+import { resolveGoogleKey } from './google-key.js';
 
 export type ShopCategory =
   | 'dental'
@@ -96,15 +97,6 @@ const USER_AGENT = 'CallsalDirectory/1.0 (https://directory.callsal.app)';
 
 export function typeLabel(slug: string): string {
   return TYPE_LABELS[slug] || 'Local';
-}
-
-export function placesApiKey(): string | undefined {
-  const key =
-    process.env.GOOGLE_PLACES_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.GEMINI_API_KEY;
-  const trimmed = key?.trim();
-  return trimmed || undefined;
 }
 
 export function seedShops(): Shop[] {
@@ -619,7 +611,7 @@ export async function listCityShops(
   if (cached) return cached;
 
   const wanted = NICHE_QUERIES.filter((item) => !niche || item.category === niche);
-  const googleKey = placesApiKey();
+  const googleKey = await resolveGoogleKey();
   let source: PlacesResult['source'] = 'listings';
   let live: Shop[] = [];
 
@@ -642,15 +634,9 @@ export async function listCityShops(
     }
   }
 
-  if (!live.length) {
-    const groups = await Promise.all(wanted.map((item) => searchPhotonNiche(metro, item)));
-    live = mergeShops(groups);
-    source = live.length ? 'listings' : 'seed';
-  }
-
-  const shops = live.length ? live : seedForCity(metro.city);
+  const shops = live;
   const result: PlacesResult = {
-    source: shops.length ? (live.length ? source : 'seed') : 'seed',
+    source: live.length ? 'places' : 'seed',
     city: metro.city,
     region: metro.region,
     country: metro.country,
@@ -666,7 +652,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v3:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v4:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
@@ -739,7 +725,7 @@ export async function listAreaShops(opts: {
   const cached = await readCache(key);
   if (cached) return cached;
 
-  const googleKey = placesApiKey();
+  const googleKey = await resolveGoogleKey();
   let live: Shop[] = [];
   if (googleKey) {
     const typed = NICHE_QUERIES.find((item) => item.category === niche);
@@ -774,24 +760,8 @@ export async function listAreaShops(opts: {
     }
   }
 
-  if (!live.length) {
-    const wanted = niche
-      ? NICHE_QUERIES.filter((item) => item.category === niche)
-      : NICHE_QUERIES;
-    try {
-      const groups = await Promise.all(wanted.map((item) => searchPhotonArea(lat, lng, item)));
-      live = mergeShops(groups);
-    } catch {
-      live = [];
-    }
-  }
-
   const result: PlacesResult = {
-    source: live.some((shop) => shop.placeId && !String(shop.placeId).startsWith('osm:'))
-      ? 'places'
-      : live.length
-        ? 'listings'
-        : 'seed',
+    source: live.length ? 'places' : 'seed',
     city: '',
     country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
     lat,

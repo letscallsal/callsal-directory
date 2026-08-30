@@ -411,15 +411,6 @@
     return map;
   }
 
-  function startLeaflet() {
-    loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
-    var ready = window.L ? Promise.resolve() : loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
-    return ready.then(function () {
-      engine = 'leaflet';
-      ensureLeaflet();
-    });
-  }
-
   function startGoogle(key) {
     return loadScript('https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&v=weekly').then(function () {
       if (!window.google || !window.google.maps) throw new Error('no maps');
@@ -431,14 +422,12 @@
   function bootMap() {
     if (mapsBoot) return mapsBoot;
     mapsBoot = fetch('/api/maps-config', { credentials: 'same-origin' })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data && data.key) {
-          return startGoogle(data.key).catch(function () { return startLeaflet(); });
-        }
-        return startLeaflet();
-      })
-      .catch(function () { return startLeaflet(); });
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok || !data || !data.key) throw new Error((data && data.error) || 'Google Maps is not configured');
+          return startGoogle(data.key);
+        });
+      });
     return mapsBoot;
   }
 
@@ -496,8 +485,8 @@
     bootMap().then(function () {
       resizeMap();
       if (!shops.length) searchView();
-    }).catch(function () {
-      setStatus('Map could not load.');
+    }).catch(function (err) {
+      setStatus((err && err.message) || 'Google Maps could not load.');
     });
   }
 
