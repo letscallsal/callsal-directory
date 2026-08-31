@@ -46,9 +46,10 @@
   gap: 0.5rem;
   color: #000;
   font-family: var(--ui);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
 }
 
 .hero-kicker-mark {
@@ -61,9 +62,7 @@
 .hero-kicker-text {
   background: #CCFF00;
   color: #000;
-  padding: 0.2rem 0.5rem;
-  line-height: 1.3;
-  text-wrap: balance;
+  padding: 0.125rem 0.5rem;
 }
 
 .hero-title {
@@ -83,14 +82,22 @@
 
 .hero-sub {
   margin: 1.15rem 0 0;
-  max-width: 26rem;
-  color: #111;
+  max-width: 28rem;
+  color: #000;
   font-family: var(--ui);
-  font-size: clamp(0.95rem, 2.6vw, 1.12rem);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.45;
-  text-wrap: pretty;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.55;
+  text-transform: uppercase;
+}
+
+.hero-sub-hl {
+  background: #CCFF00;
+  color: #000;
+  padding: 0.125rem 0.5rem;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .hero-ctas {
@@ -100,15 +107,6 @@
   gap: 0.75rem;
   margin-top: 1.75rem;
   pointer-events: auto;
-}
-
-.hero-ctas .btn-primary,
-.hero-ctas .btn-glass {
-  text-transform: none;
-  letter-spacing: -0.015em;
-  min-height: 2.85rem;
-  padding: 0.7rem 1.35rem;
-  font-size: 0.95rem;
 }
 
 .hero-ctas .btn-glass {
