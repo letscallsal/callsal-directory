@@ -32,6 +32,57 @@
   var WORLD = { lat: 20, lng: 0, zoom: 2 };
   var MIN_HITS = 5;
   var RADII = [900, 1800, 3500, 7000, 12000, 20000];
+  var salePlace = null;
+  var DEMO_CITIES = [
+    { city: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+    { city: 'Seoul', lat: 37.5665, lng: 126.978 },
+    { city: 'Singapore', lat: 1.3521, lng: 103.8198 },
+    { city: 'Sydney', lat: -33.8688, lng: 151.2093 },
+    { city: 'Melbourne', lat: -37.8136, lng: 144.9631 },
+    { city: 'Auckland', lat: -36.8509, lng: 174.7645 },
+    { city: 'London', lat: 51.5074, lng: -0.1278 },
+    { city: 'Manchester', lat: 53.4808, lng: -2.2426 },
+    { city: 'Paris', lat: 48.8566, lng: 2.3522 },
+    { city: 'Berlin', lat: 52.52, lng: 13.405 },
+    { city: 'Madrid', lat: 40.4168, lng: -3.7038 },
+    { city: 'Barcelona', lat: 41.3874, lng: 2.1686 },
+    { city: 'Rome', lat: 41.9028, lng: 12.4964 },
+    { city: 'Amsterdam', lat: 52.3676, lng: 4.9041 },
+    { city: 'Lisbon', lat: 38.7223, lng: -9.1393 },
+    { city: 'Dublin', lat: 53.3498, lng: -6.2603 },
+    { city: 'Stockholm', lat: 59.3293, lng: 18.0686 },
+    { city: 'Warsaw', lat: 52.2297, lng: 21.0122 },
+    { city: 'Prague', lat: 50.0755, lng: 14.4378 },
+    { city: 'Vienna', lat: 48.2082, lng: 16.3738 },
+    { city: 'Athens', lat: 37.9838, lng: 23.7275 },
+    { city: 'Istanbul', lat: 41.0082, lng: 28.9784 },
+    { city: 'Dubai', lat: 25.2048, lng: 55.2708 },
+    { city: 'Tel Aviv', lat: 32.0853, lng: 34.7818 },
+    { city: 'Mumbai', lat: 19.076, lng: 72.8777 },
+    { city: 'Bangkok', lat: 13.7563, lng: 100.5018 },
+    { city: 'Jakarta', lat: -6.2088, lng: 106.8456 },
+    { city: 'Manila', lat: 14.5995, lng: 120.9842 },
+    { city: 'Taipei', lat: 25.033, lng: 121.5654 },
+    { city: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+    { city: 'Cape Town', lat: -33.9249, lng: 18.4241 },
+    { city: 'Lagos', lat: 6.5244, lng: 3.3792 },
+    { city: 'Nairobi', lat: -1.2921, lng: 36.8219 },
+    { city: 'Johannesburg', lat: -26.2041, lng: 28.0473 },
+    { city: 'New York', region: 'NY', lat: 40.7128, lng: -74.006 },
+    { city: 'Los Angeles', region: 'CA', lat: 34.0522, lng: -118.2437 },
+    { city: 'Chicago', region: 'IL', lat: 41.8781, lng: -87.6298 },
+    { city: 'Miami', region: 'FL', lat: 25.7617, lng: -80.1918 },
+    { city: 'Austin', region: 'TX', lat: 30.2672, lng: -97.7431 },
+    { city: 'Seattle', region: 'WA', lat: 47.6062, lng: -122.3321 },
+    { city: 'Toronto', region: 'ON', lat: 43.6532, lng: -79.3832 },
+    { city: 'Vancouver', region: 'BC', lat: 49.2827, lng: -123.1207 },
+    { city: 'Mexico City', lat: 19.4326, lng: -99.1332 },
+    { city: 'São Paulo', lat: -23.5558, lng: -46.6396 },
+    { city: 'Buenos Aires', lat: -34.6037, lng: -58.3816 },
+    { city: 'Santiago', lat: -33.4489, lng: -70.6693 },
+    { city: 'Lima', lat: -12.0464, lng: -77.0428 },
+    { city: 'Bogotá', lat: 4.711, lng: -74.0721 },
+  ];
 
   function esc(value) {
     var map = Object.create(null);
@@ -347,6 +398,7 @@
     if (count) count.textContent = shops.length ? String(shops.length) : '0';
     if (typeof window.__dirPaintAddLeads === 'function') window.__dirPaintAddLeads();
     if (typeof window.__dirApplyShopFilters === 'function') window.__dirApplyShopFilters();
+    if (saleMode()) paintSaleBoard();
   }
 
   function markerLatLng(marker) {
@@ -549,7 +601,8 @@
       };
       paintList();
       paintPins();
-      setSalePlace(data && data.city ? String(data.city) : '');
+      if (salePlace) setSalePlace(placeLabel(salePlace));
+      else setSalePlace(data && data.city ? String(data.city) : '');
       if (fly && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
         setCenter(Number(data.lat), Number(data.lng), Math.max(getZoom(), 13));
       }
@@ -565,6 +618,54 @@
     var el = document.querySelector('[data-sale-place]');
     if (!el) return;
     el.textContent = text || 'Anywhere on earth';
+  }
+
+  function placeLabel(pick) {
+    if (!pick || !pick.city) return 'Anywhere on earth';
+    return pick.city + (pick.region ? ', ' + pick.region : '') + ' — live';
+  }
+
+  function pickDemoCity() {
+    var next = DEMO_CITIES[Math.floor(Math.random() * DEMO_CITIES.length)];
+    if (salePlace && DEMO_CITIES.length > 1 && next.city === salePlace.city) return pickDemoCity();
+    return next;
+  }
+
+  function bootSaleCity() {
+    salePlace = pickDemoCity();
+    setSalePlace(placeLabel(salePlace));
+    searchAround(salePlace.lat, salePlace.lng);
+  }
+
+  function paintSaleBoard() {
+    var root = document.querySelector('[data-sale-board]');
+    if (!root) return;
+    if (!shops.length) {
+      root.innerHTML = '<p class="listings-empty">Live cards from the city above land here.</p>';
+      return;
+    }
+    var cols = [
+      { label: 'New', n: 3 },
+      { label: 'Contacted', n: 2 },
+      { label: 'Won', n: 1 },
+    ];
+    var i = 0;
+    root.innerHTML = cols.map(function (col) {
+      var items = shops.slice(i, i + col.n);
+      i += col.n;
+      return '<section class="kanban-col"><h2>' + esc(col.label) + ' <span>' + items.length + '</span></h2>'
+        + items.map(function (shop) {
+          var type = shop.primaryType || TYPE_LABELS[shop.category] || 'Local';
+          var phone = String(shop.phone || '').trim();
+          return '<article class="lead-card">'
+            + '<p class="lead-type">' + esc(type) + (shop.city ? ' · ' + esc(shop.city) : '') + '</p>'
+            + '<div class="lead-main"><div class="lead-copy">'
+            + '<h3 dir="auto">' + esc(shop.name) + '</h3>'
+            + (phone ? '<p class="lead-phone">' + esc(phone) + '</p>' : '')
+            + '</div></div></article>';
+        }).join('')
+        + '</section>';
+    }).join('');
   }
 
   function idleList() {
@@ -647,6 +748,7 @@
   }
 
   function searchCity(detail) {
+    salePlace = null;
     var lat = Number(detail && detail.lat);
     var lng = Number(detail && detail.lng);
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -703,8 +805,11 @@
     bootMap().then(function () {
       resizeMap();
       if (!shops.length) {
-        setCenter(WORLD.lat, WORLD.lng, WORLD.zoom);
-        idleList();
+        if (saleMode()) bootSaleCity();
+        else {
+          setCenter(WORLD.lat, WORLD.lng, WORLD.zoom);
+          idleList();
+        }
       }
     }).catch(function (err) {
       setStatus((err && err.message) || 'Google Maps could not load.');
@@ -719,6 +824,12 @@
   }
 
   document.addEventListener('click', function (event) {
+    var reroll = event.target && event.target.closest && event.target.closest('[data-sale-reroll]');
+    if (reroll) {
+      event.preventDefault();
+      bootSaleCity();
+      return;
+    }
     var here = event.target && event.target.closest && event.target.closest('[data-search-here]');
     if (here) {
       event.preventDefault();

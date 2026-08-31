@@ -1,20 +1,5 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
-import milton from '../data/milton-leads.json';
-import { typeLabel } from '../lib/shops';
-
-const shops = (milton.shops as Array<{
-  name: string;
-  city?: string;
-  phone?: string;
-  category?: string;
-}>).filter((shop) => shop.phone);
-
-const boardPreview = [
-  { label: 'New', items: shops.slice(0, 3) },
-  { label: 'Contacted', items: shops.slice(3, 5) },
-  { label: 'Won', items: shops.slice(5, 6) },
-];
 ---
 
 <AppShell title="Directory" description="Turn Google Business listings into a calling board. Search any place on earth. Free for 100 leads. No credit card." withRoom>
@@ -34,7 +19,10 @@ const boardPreview = [
     <figure class="sale-window" data-sale-window>
       <figcaption class="sale-window-bar">
         <span>Directory</span>
-        <span data-sale-place>Anywhere on earth</span>
+        <span class="sale-place-row">
+          <span data-sale-place>Opening a market…</span>
+          <button type="button" class="sale-reroll" data-sale-reroll>Another city</button>
+        </span>
       </figcaption>
       <div class="sale-window-body">
         <aside class="sale-rail" aria-label="Listings in view">
@@ -43,7 +31,7 @@ const boardPreview = [
             <span class="listings-count" data-sale-count>0</span>
           </div>
           <div class="listings-track sleek-scroll" data-sale-list>
-            <p class="listings-empty">Search a city, or zoom in and search this area.</p>
+            <p class="listings-empty">Opening a live market…</p>
           </div>
         </aside>
         <div class="sale-map-stage">
@@ -57,9 +45,9 @@ const boardPreview = [
       </div>
     </figure>
     <p class="sale-caption">
-      This is the product. The map starts on the globe. Search any place on earth —
-      a city, a street, an address — and the pins drop. Every lime pin is a Google
-      Business profile with a number on the card.
+      This is a live city, picked at random. The pins and the cards are real Google
+      Business listings — name and phone, ready to dial. Refresh, or tap Another city,
+      and you land somewhere else on earth. Join free and search your own market.
     </p>
 
     <div class="sale-block">
@@ -110,28 +98,13 @@ const boardPreview = [
       </li>
     </ol>
 
-    <figure class="sale-window sale-window-board" aria-hidden="true">
+    <figure class="sale-window sale-window-board">
       <figcaption class="sale-window-bar">
         <span>Leads</span>
         <span>The same cards, on a board</span>
       </figcaption>
-      <div class="sale-board">
-        {boardPreview.map((col) => (
-          <section class="kanban-col">
-            <h2>{col.label} <span>{col.items.length}</span></h2>
-            {col.items.map((shop) => (
-              <article class="lead-card">
-                <p class="lead-type">{typeLabel(shop.category || '')}</p>
-                <div class="lead-main">
-                  <div class="lead-copy">
-                    <h3 dir="auto">{shop.name}</h3>
-                    <p class="lead-phone">{shop.phone}</p>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </section>
-        ))}
+      <div class="sale-board" data-sale-board>
+        <p class="listings-empty">Live cards from the city above land here.</p>
       </div>
     </figure>
 
