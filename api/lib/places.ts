@@ -81,7 +81,7 @@ const NICHE_QUERIES: Array<{
   osmTag: string;
 }> = [
   { category: 'food', query: 'restaurants', includedType: 'restaurant', osmTag: 'amenity:restaurant' },
-  { category: 'barber', query: 'barber shops', includedType: 'hair_care', osmTag: 'shop:hairdresser' },
+  { category: 'barber', query: 'barber shops', includedType: 'barber_shop', osmTag: 'shop:hairdresser' },
   { category: 'dental', query: 'dentists', includedType: 'dentist', osmTag: 'amenity:dentist' },
   { category: 'legal', query: 'lawyers', includedType: 'lawyer', osmTag: 'office:lawyer' },
   { category: 'salon', query: 'hair salons', includedType: 'beauty_salon', osmTag: 'shop:beauty' },
@@ -254,7 +254,7 @@ function isLeadWorthy(types: string[]): boolean {
 
 function cacheKey(city: string, region: string, country: string, category: string): string {
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `directory:places:v5:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
+  return `directory:places:v6:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
 }
 
 async function readCache(key: string): Promise<PlacesResult | null> {
@@ -300,34 +300,47 @@ async function searchGoogleNiche(
   niche: (typeof NICHE_QUERIES)[number],
   key: string,
   radius = 18000,
+  pages = 2,
 ): Promise<Shop[]> {
   const inPlace = metro.city && metro.city !== 'Map' ? ` in ${metro.city} ${metro.region}` : '';
-  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask':
-        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.photos,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions,places.location',
-    },
-    body: JSON.stringify({
+  const shops: Shop[] = [];
+  let pageToken = '';
+  for (let page = 0; page < pages; page += 1) {
+    const body: Record<string, unknown> = {
       textQuery: `${niche.query}${inPlace}`,
       pageSize: 20,
       languageCode: 'en',
       regionCode: metro.country,
+      includedType: niche.includedType,
       locationBias: {
         circle: {
           center: { latitude: metro.lat, longitude: metro.lng },
           radius,
         },
       },
-    }),
-  });
-  if (!res.ok) return [];
-  const data = (await res.json()) as { places?: GooglePlace[] };
-  return (data.places || [])
-    .map((place) => mapGooglePlace(place, metro, niche.category))
-    .filter((shop): shop is Shop => Boolean(shop));
+    };
+    if (pageToken) body.pageToken = pageToken;
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask':
+          'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.photos,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions,places.location,nextPageToken',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) break;
+    const data = (await res.json()) as { places?: GooglePlace[]; nextPageToken?: string };
+    for (const place of data.places || []) {
+      if (!isLeadWorthy(place.types || [])) continue;
+      const shop = mapGooglePlace(place, metro, niche.category);
+      if (shop) shops.push(shop);
+    }
+    if (!data.nextPageToken) break;
+    pageToken = data.nextPageToken;
+  }
+  return shops;
 }
 
 function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: ShopCategory): Shop | null {
@@ -742,19 +755,20 @@ export async function listCityShops(
 
   if (googleKey) {
     try {
-      const groups = await Promise.all(wanted.map((item) => searchLegacyNiche(metro, item, googleKey)));
-      live = mergeShops(groups);
+      const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey)));
+      live = mergeShops(groups).filter((shop) => !isFranchise(shop.name));
       if (live.length) source = 'places';
     } catch {
       live = [];
     }
-    if (!live.length) {
+    const phones = live.filter((shop) => shop.phone).length;
+    if (!live.length || phones < Math.min(8, live.length)) {
       try {
-        const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey)));
-        live = mergeShops(groups).filter((shop) => !isFranchise(shop.name));
+        const groups = await Promise.all(wanted.map((item) => searchLegacyNiche(metro, item, googleKey)));
+        live = mergeShops([live, ...groups]);
         if (live.length) source = 'places';
       } catch {
-        live = [];
+        /* keep what new returned */
       }
     }
   }
@@ -777,7 +791,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v7:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v8:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
@@ -895,11 +909,38 @@ export async function listAreaShops(opts: {
     try {
       metro = (await reverseGeocode(lat, lng, googleKey)) || metro;
       if (typed) {
-        live = await searchLegacyNiche(metro, typed, googleKey, radius);
+        const cells = areaCells(lat, lng, radius);
+        const nearby = await Promise.all(
+          cells.map((cell) =>
+            searchGoogleNearby(
+              { ...metro, lat: cell.lat, lng: cell.lng },
+              googleKey,
+              cell.radius,
+              typed.includedType,
+            ),
+          ),
+        );
+        live = mergeShops(nearby).filter((shop) => !isFranchise(shop.name));
+        const nearbyPhones = live.filter((shop) => shop.phone).length;
+        if (!live.length || nearbyPhones < Math.min(6, live.length)) {
+          const text = await searchGoogleNiche(metro, typed, googleKey, radius, 1);
+          live = mergeShops([live, text]).filter((shop) => !isFranchise(shop.name));
+        }
         live = live.filter((shop) => {
           if (!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))) return true;
           return haversineMeters({ lat, lng }, { lat: Number(shop.lat), lng: Number(shop.lng) }) <= radius * 1.25;
         });
+        const phones = live.filter((shop) => shop.phone).length;
+        if (!live.length || phones < Math.min(6, live.length)) {
+          const fallback = await searchLegacyNiche(metro, typed, googleKey, radius);
+          live = mergeShops([
+            live,
+            fallback.filter((shop) => {
+              if (!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))) return true;
+              return haversineMeters({ lat, lng }, { lat: Number(shop.lat), lng: Number(shop.lng) }) <= radius * 1.25;
+            }),
+          ]);
+        }
       } else {
         const cells = areaCells(lat, lng, radius);
         const modern = await Promise.all(
