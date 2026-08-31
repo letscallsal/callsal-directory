@@ -10,7 +10,6 @@ const shops = (milton.shops as Array<{
   category?: string;
 }>).filter((shop) => shop.phone);
 
-const rail = shops.slice(0, 8);
 const boardPreview = [
   { label: 'New', items: shops.slice(0, 3) },
   { label: 'Contacted', items: shops.slice(3, 5) },
@@ -35,26 +34,16 @@ const boardPreview = [
     <figure class="sale-window" data-sale-window>
       <figcaption class="sale-window-bar">
         <span>Directory</span>
-        <span>Milton, ON — live</span>
+        <span data-sale-place>Anywhere on earth</span>
       </figcaption>
       <div class="sale-window-body">
         <aside class="sale-rail" aria-label="Listings in view">
           <div class="listings-head">
             <p>In view</p>
-            <span class="listings-count" data-sale-count>{rail.length}</span>
+            <span class="listings-count" data-sale-count>0</span>
           </div>
           <div class="listings-track sleek-scroll" data-sale-list>
-            {rail.map((shop) => (
-              <article class="lead-card">
-                <p class="lead-type">{typeLabel(shop.category || '')} · {shop.city || 'Milton'}</p>
-                <div class="lead-main">
-                  <div class="lead-copy">
-                    <h3 dir="auto">{shop.name}</h3>
-                    <p class="lead-phone">{shop.phone}</p>
-                  </div>
-                </div>
-              </article>
-            ))}
+            <p class="listings-empty">Search a city, or zoom in and search this area.</p>
           </div>
         </aside>
         <div class="sale-map-stage">
@@ -68,9 +57,9 @@ const boardPreview = [
       </div>
     </figure>
     <p class="sale-caption">
-      This is the product, opened on Milton so you can see it working. Every lime pin
-      is a Google Business profile with a number on the card. After you join, the map
-      starts on the globe. Search any place on earth.
+      This is the product. The map starts on the globe. Search any place on earth —
+      a city, a street, an address — and the pins drop. Every lime pin is a Google
+      Business profile with a number on the card.
     </p>
 
     <div class="sale-block">

@@ -30,7 +30,6 @@
   var engine = 'none';
   var mapsBoot = null;
   var WORLD = { lat: 20, lng: 0, zoom: 2 };
-  var MILTON = { lat: 43.5081, lng: -79.8829, zoom: 14 };
   var MIN_HITS = 5;
   var RADII = [900, 1800, 3500, 7000, 12000, 20000];
 
@@ -340,9 +339,7 @@
     var rail = listEl();
     if (!rail) return;
     if (!shops.length) {
-      rail.innerHTML = saleMode()
-        ? '<p class="listings-empty">No listings in this view.</p>'
-        : '<p class="listings-empty">Search a city, street, or address. The map will drop you close enough to start calling.</p>';
+      rail.innerHTML = '<p class="listings-empty">Search a city, or zoom in and search this area.</p>';
     } else {
       rail.innerHTML = shops.map(listingHtml).join('');
     }
@@ -431,6 +428,10 @@
   function bindMove() {
     if (!map) return;
     var onMove = function () {
+      if (getZoom() < 11) {
+        showSearchHere(false);
+        return;
+      }
       if (!lastSearch) {
         showSearchHere(true);
         return;
@@ -454,8 +455,8 @@
     var el = canvas();
     if (!el) return null;
     map = new window.google.maps.Map(el, {
-      center: saleMode() ? { lat: MILTON.lat, lng: MILTON.lng } : { lat: WORLD.lat, lng: WORLD.lng },
-      zoom: saleMode() ? MILTON.zoom : WORLD.zoom,
+      center: { lat: WORLD.lat, lng: WORLD.lng },
+      zoom: WORLD.zoom,
       minZoom: 2,
       disableDefaultUI: true,
       zoomControl: false,
@@ -497,8 +498,8 @@
       tap: !saleMode(),
       minZoom: 2,
     }).setView(
-      saleMode() ? [MILTON.lat, MILTON.lng] : [WORLD.lat, WORLD.lng],
-      saleMode() ? MILTON.zoom : WORLD.zoom,
+      [WORLD.lat, WORLD.lng],
+      WORLD.zoom,
     );
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -548,6 +549,7 @@
       };
       paintList();
       paintPins();
+      setSalePlace(data && data.city ? String(data.city) : '');
       if (fly && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
         setCenter(Number(data.lat), Number(data.lng), Math.max(getZoom(), 13));
       }
@@ -559,12 +561,19 @@
     resizeMap();
   }
 
+  function setSalePlace(text) {
+    var el = document.querySelector('[data-sale-place]');
+    if (!el) return;
+    el.textContent = text || 'Anywhere on earth';
+  }
+
   function idleList() {
     shops = [];
     lastSearch = null;
     clearPins();
     paintList();
     setStatus('');
+    setSalePlace('');
     showSearchHere(false);
   }
 
@@ -694,11 +703,8 @@
     bootMap().then(function () {
       resizeMap();
       if (!shops.length) {
-        if (saleMode()) searchCity({ city: 'Milton', region: 'ON', country: 'CA' });
-        else {
-          setCenter(WORLD.lat, WORLD.lng, WORLD.zoom);
-          idleList();
-        }
+        setCenter(WORLD.lat, WORLD.lng, WORLD.zoom);
+        idleList();
       }
     }).catch(function (err) {
       setStatus((err && err.message) || 'Google Maps could not load.');
