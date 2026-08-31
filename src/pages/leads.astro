@@ -1,52 +1,74 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
+import milton from '../data/milton-leads.json';
+import { typeLabel } from '../lib/shops';
+
+const PREVIEW_COLS = [
+  { label: 'NEW', n: 4 },
+  { label: 'CONTACTED', n: 3 },
+  { label: 'RESPONDED', n: 3 },
+  { label: 'MEETING', n: 2 },
+  { label: 'PROPOSAL', n: 2 },
+  { label: 'WON', n: 1 },
+];
+
+const previewShops = (milton.shops as Array<{
+  name: string;
+  city?: string;
+  phone?: string;
+  category?: string;
+}>).filter((shop) => shop.phone);
+
+let cursor = 0;
+const previewCols = PREVIEW_COLS.map((col) => {
+  const items = previewShops.slice(cursor, cursor + col.n);
+  cursor += col.n;
+  return { ...col, items };
+});
 ---
 
-<AppShell title="Leads" description="A local Google Business index you can turn into a lead board.">
+<AppShell title="Leads" description="Search a city of Google Business listings, tap plus, and call from a board.">
   <div class="leads-sale" data-leads-guest>
     <header class="page-head">
       <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
       <h1 class="page-title">Leads</h1>
-      <p class="page-tag">A local Google Business index you can turn into a lead board.</p>
+      <p class="page-tag">Search a city. Tap plus. Call the board. Listings are live Google Business profiles — name and phone, ready to dial.</p>
     </header>
 
-    <div class="kanban kanban-preview">
-      <section class="kanban-col">
-        <h2>NEW</h2>
-        <p class="preview-hint">Add a shop from Directory.</p>
-      </section>
-      <section class="kanban-col">
-        <h2>CONTACTED</h2>
-      </section>
-      <section class="kanban-col">
-        <h2>RESPONDED</h2>
-      </section>
-      <section class="kanban-col">
-        <h2>MEETING</h2>
-      </section>
-      <section class="kanban-col">
-        <h2>PROPOSAL</h2>
-      </section>
-      <section class="kanban-col">
-        <h2>WON</h2>
-      </section>
+    <div class="kanban kanban-preview" aria-hidden="true">
+      {previewCols.map((col) => (
+        <section class="kanban-col">
+          <h2>{col.label} <span>{col.items.length}</span></h2>
+          {col.items.map((shop) => (
+            <article class="lead-card">
+              <p class="lead-type">{typeLabel(shop.category || '')} · {shop.city || 'Milton'}</p>
+              <div class="lead-main">
+                <div class="lead-copy">
+                  <h3>{shop.name}</h3>
+                  <p class="lead-phone">{shop.phone}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
+      ))}
     </div>
 
     <div class="leads-steps">
       <article class="leads-step">
         <p class="leads-step-num">01</p>
-        <h2>Add from Directory</h2>
-        <p>Tap plus on a listing and it lands in NEW.</p>
+        <h2>Plus from Directory</h2>
+        <p>Open a city on the map. Tap plus on a listing. It lands in NEW.</p>
       </article>
       <article class="leads-step">
         <p class="leads-step-num">02</p>
-        <h2>Move the card</h2>
-        <p>Drag across the six stages, or tap a stage on the card.</p>
+        <h2>Work the board</h2>
+        <p>Drag across six stages. Name and phone stay on the card so you can call.</p>
       </article>
       <article class="leads-step">
         <p class="leads-step-num">03</p>
-        <h2>Keep a log</h2>
-        <p>Open a card for the timeline. Oracle can draft a note and it never sends, posts, or calls.</p>
+        <h2>Import a city</h2>
+        <p>Paid fills one city every 24 hours — one niche, or all niches. Free adds one at a time.</p>
       </article>
     </div>
 
@@ -54,14 +76,14 @@ import AppShell from '../layouts/AppShell.astro';
       <article class="leads-plan">
         <p class="page-kicker">Free</p>
         <h2>Free</h2>
-        <p>Browse Directory and tap plus. Your board starts empty and holds up to 100 leads. No bulk import. No Oracle.</p>
+        <p>Join, browse Directory, tap plus. Board starts empty and holds 100 leads. No bulk import. No Oracle.</p>
         <button type="button" class="btn-glass hover-lift" data-leads-pick="free">JOIN</button>
       </article>
       <article class="leads-plan is-paid">
         <p class="page-kicker">$999 a month</p>
-        <h2>Paid Directory</h2>
-        <p>Paid Directory is $999 a month. No lead cap. Import one city every 24 hours — one niche, or all niches in that city. Your board stays yours. The CRM holds the full pile. Oracle drafts never send. This form does not take payment.</p>
-        <button type="button" class="btn-primary hover-lift" data-leads-pick="paid">USE THE PAID BOARD IN SANDBOX</button>
+        <h2>Paid</h2>
+        <p>No lead cap. Import one city every 24 hours — one niche, or all niches in that city. Your board stays yours. Oracle drafts never send.</p>
+        <button type="button" class="btn-primary hover-lift" data-leads-pick="paid">JOIN PAID</button>
       </article>
     </div>
   </div>
@@ -80,6 +102,11 @@ import AppShell from '../layouts/AppShell.astro';
         <button type="button" class="soft-pill" data-ask-oracle>ORACLE</button>
       </div>
     </div>
+
+    <p class="leads-empty" data-leads-empty hidden>
+      <span>Board starts empty. Open Directory and tap plus on a listing.</span>
+      <a href="/" class="soft-pill">DIRECTORY</a>
+    </p>
 
     <aside class="oracle-panel" data-oracle-panel hidden></aside>
 

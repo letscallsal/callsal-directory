@@ -1151,6 +1151,16 @@ html.is-leads .leads-app .page-head {
   display: none;
 }
 
+html.is-leads:not(.is-app) main {
+  flex: none;
+  overflow: visible;
+  padding: 0.7rem 0.85rem 1.6rem;
+}
+
+html.is-leads:not(.is-app) .viewport {
+  overflow: auto;
+}
+
 /* Guest leads: pin past the 3D room, scroll the sale page in the pane. */
 html.has-room.is-leads:not(.is-app) .stage-scroll {
   overflow: hidden;

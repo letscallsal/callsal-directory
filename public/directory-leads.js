@@ -717,6 +717,8 @@
       }
     });
     applyBoardFilters();
+    const empty = document.querySelector('[data-leads-empty]');
+    if (empty) empty.hidden = leads.length > 0;
     const panel = document.querySelector('[data-oracle-panel]');
     if (panel) {
       const oracle = lastLeads.oracle;
@@ -777,7 +779,7 @@
       if (sessionStorage.getItem('directory:leads-pick') !== 'paid') return;
       sessionStorage.removeItem('directory:leads-pick');
       if (lastLeads.plan === 'paid') return;
-      await postLeads({ action: 'sandbox-upgrade' });
+      openPremium('Paid Directory is $999 a month. No lead cap. Import one city every 24 hours — one niche, or all niches in that city. Free holds 100 leads with plus.');
     } catch {
       /* keep free board */
     }
