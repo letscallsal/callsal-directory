@@ -634,21 +634,54 @@ input[type="text"]::placeholder {
 .sale-window-body {
   display: flex;
   flex-direction: column;
-  pointer-events: none;
+  height: min(38rem, 78vh);
+  min-height: 28rem;
+}
+
+.sale-map-stage {
+  position: relative;
+  order: -1;
+  flex: 1.2 1 0;
+  min-height: 16rem;
+  background: #111;
+}
+
+.sale-map-stage .map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.sale-map-stage .map-zoom {
+  right: 0.55rem;
+  bottom: 0.55rem;
+}
+
+.sale-map-stage .map-search-here {
+  top: 0.55rem;
 }
 
 .sale-rail {
-  position: relative;
-  max-height: 15.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 42%;
+  min-height: 0;
   overflow: hidden;
-  padding: 0.35rem 0.45rem 1.4rem;
-  mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #050505;
+}
+
+.sale-rail .listings-track {
+  mask-image: none;
+}
+
+.sale-window-board {
+  margin-top: 0;
 }
 
 .sale-board {
   display: flex;
   gap: 0.4rem;
-  padding: 0 0.5rem 0.7rem;
+  padding: 0.55rem 0.55rem 0.7rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
@@ -664,7 +697,7 @@ input[type="text"]::placeholder {
   flex: 0 0 11.5rem;
   scroll-snap-align: start;
   min-height: 0;
-  max-height: 13rem;
+  max-height: 14rem;
   overflow: hidden;
 }
 
@@ -846,27 +879,39 @@ html.has-room:not(.is-app):not(.is-leads):has(#app-chrome.is-stuck) .chrome-slot
   .sale-window-body {
     display: grid;
     grid-template-columns: minmax(15rem, 16.5rem) 1fr;
-    min-height: 22rem;
+    height: 32rem;
+    min-height: 32rem;
+  }
+
+  .sale-map-stage {
+    order: 0;
+    grid-column: 2;
+    grid-row: 1;
+    flex: none;
+    min-height: 0;
+    height: 100%;
   }
 
   .sale-rail {
-    max-height: none;
+    grid-column: 1;
+    grid-row: 1;
+    flex: none;
     height: 100%;
+    border-top: 0;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
-    mask-image: linear-gradient(to bottom, #000 82%, transparent);
   }
 
   .sale-board {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     overflow: hidden;
-    padding: 0.55rem;
+    padding: 0.7rem;
   }
 
   .sale-board .kanban-col {
     flex: none;
     width: auto;
-    max-height: none;
+    max-height: 16rem;
   }
 
   .sale-beats {

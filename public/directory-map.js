@@ -46,16 +46,23 @@
   }
 
   function isApp() {
-    return document.documentElement.classList.contains('is-app')
-      || document.documentElement.classList.contains('is-map-locked');
+    return document.documentElement.classList.contains('is-app');
+  }
+
+  function saleMode() {
+    return !isApp() && Boolean(document.querySelector('[data-sale-map]'));
   }
 
   function canvas() {
-    return document.querySelector('[data-map]');
+    return saleMode()
+      ? document.querySelector('[data-sale-map]')
+      : document.querySelector('[data-map]');
   }
 
   function listEl() {
-    return document.querySelector('[data-map-list]');
+    return saleMode()
+      ? document.querySelector('[data-sale-list]')
+      : document.querySelector('[data-map-list]');
   }
 
   function statusEl() {
@@ -63,11 +70,14 @@
   }
 
   function searchBtn() {
-    return document.querySelector('[data-search-here]');
+    if (saleMode()) return document.querySelector('[data-sale-window] [data-search-here]');
+    return document.querySelector('[data-map-stage] [data-search-here]');
   }
 
   function countEl() {
-    return document.querySelector('[data-map-count]');
+    return saleMode()
+      ? document.querySelector('[data-sale-count]')
+      : document.querySelector('[data-map-count]');
   }
 
   function setStatus(text) {
@@ -410,7 +420,7 @@
       streetViewControl: false,
       fullscreenControl: false,
       clickableIcons: false,
-      gestureHandling: 'greedy',
+      gestureHandling: saleMode() ? 'cooperative' : 'greedy',
       backgroundColor: '#111111',
       styles: [
         { elementType: 'geometry', stylers: [{ color: '#111111' }] },
@@ -436,7 +446,13 @@
     if (map) return map;
     var el = canvas();
     if (!el || !window.L) return null;
-    map = window.L.map(el, { zoomControl: false, attributionControl: true }).setView([43.5081, -79.8829], 14);
+    map = window.L.map(el, {
+      zoomControl: false,
+      attributionControl: true,
+      scrollWheelZoom: !saleMode(),
+      dragging: true,
+      tap: !saleMode(),
+    }).setView([43.5081, -79.8829], 14);
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
@@ -528,21 +544,40 @@
     return Boolean(el && el.offsetWidth >= 24 && el.offsetHeight >= 24);
   }
 
+  function mapHost() {
+    if (engine === 'google' && map && typeof map.getDiv === 'function') return map.getDiv();
+    if (engine === 'leaflet' && map && typeof map.getContainer === 'function') return map.getContainer();
+    return null;
+  }
+
   function mapShouldLive() {
     if (isLeads()) return false;
-    return document.documentElement.classList.contains('is-app');
+    if (isApp()) return true;
+    return saleMode();
   }
 
   function syncMode() {
     if (isLeads()) return;
     if (!mapShouldLive()) return;
+    var el = canvas();
+    if (map && el && mapHost() && mapHost() !== el) {
+      map = null;
+      mapsBoot = null;
+      markers = {};
+      engine = 'none';
+      shops = [];
+      lastSearch = null;
+    }
     if (!canvasReady()) {
       window.setTimeout(syncMode, 80);
       return;
     }
     bootMap().then(function () {
       resizeMap();
-      if (!shops.length) searchView();
+      if (!shops.length) {
+        if (saleMode()) searchCity({ city: 'Milton', region: 'ON', country: 'CA' });
+        else searchView();
+      }
     }).catch(function (err) {
       setStatus((err && err.message) || 'Google Maps could not load.');
     });
@@ -618,5 +653,19 @@
     document.addEventListener('DOMContentLoaded', function () { syncMode(); });
   } else {
     syncMode();
+  }
+
+  var saleMap = document.querySelector('[data-sale-map]');
+  if (saleMap && typeof IntersectionObserver === 'function') {
+    var seen = false;
+    var io = new IntersectionObserver(function (entries) {
+      if (!entries[0] || !entries[0].isIntersecting) return;
+      if (!seen) {
+        seen = true;
+        syncMode();
+      }
+      resizeMap();
+    }, { threshold: 0.2 });
+    io.observe(saleMap);
   }
 })();

@@ -7,12 +7,10 @@ const shops = (milton.shops as Array<{
   name: string;
   city?: string;
   phone?: string;
-  website?: string;
-  address?: string;
   category?: string;
 }>).filter((shop) => shop.phone);
 
-const rail = shops.slice(0, 5);
+const rail = shops.slice(0, 8);
 const boardPreview = [
   { label: 'New', items: shops.slice(0, 3) },
   { label: 'Contacted', items: shops.slice(3, 5) },
@@ -24,54 +22,46 @@ const boardPreview = [
   <section class="guest-sale" data-guest-sale>
     <header class="sale-intro">
       <p class="sale-kicker">For people who call local businesses</p>
-      <h1>The businesses around you, ready to call.</h1>
+      <h1>The map is the list. The list is the board.</h1>
       <p class="sale-lede">
-        Directory is a map of Google Business listings and a simple calling board.
-        Search a city, tap a listing, and the number is already there.
+        Search a city. Every pin is a Google Business listing — name, phone, hours.
+        Tap plus and that same card is on your board, ready to call.
         Free for 100 leads. No credit card.
       </p>
     </header>
 
-    <figure class="sale-window" aria-hidden="true">
+    <figure class="sale-window" data-sale-window>
       <figcaption class="sale-window-bar">
         <span>Directory</span>
         <span>Milton, ON</span>
       </figcaption>
       <div class="sale-window-body">
-        <div class="sale-rail">
+        <aside class="sale-rail" aria-label="Listings in view">
           <div class="listings-head">
             <p>In view</p>
-            <span class="listings-count">{rail.length}</span>
+            <span class="listings-count" data-sale-count>{rail.length}</span>
           </div>
-          {rail.map((shop) => (
-            <article class="lead-card">
-              <p class="lead-type">{typeLabel(shop.category || '')} · {shop.city || 'Milton'}</p>
-              <div class="lead-main">
-                <div class="lead-copy">
-                  <h3>{shop.name}</h3>
-                  <p class="lead-phone">{shop.phone}</p>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-        <div class="sale-board">
-          {boardPreview.map((col) => (
-            <section class="kanban-col">
-              <h2>{col.label} <span>{col.items.length}</span></h2>
-              {col.items.map((shop) => (
-                <article class="lead-card">
-                  <p class="lead-type">{typeLabel(shop.category || '')}</p>
-                  <div class="lead-main">
-                    <div class="lead-copy">
-                      <h3>{shop.name}</h3>
-                      <p class="lead-phone">{shop.phone}</p>
-                    </div>
+          <div class="listings-track sleek-scroll" data-sale-list>
+            {rail.map((shop) => (
+              <article class="lead-card">
+                <p class="lead-type">{typeLabel(shop.category || '')} · {shop.city || 'Milton'}</p>
+                <div class="lead-main">
+                  <div class="lead-copy">
+                    <h3>{shop.name}</h3>
+                    <p class="lead-phone">{shop.phone}</p>
                   </div>
-                </article>
-              ))}
-            </section>
-          ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </aside>
+        <div class="sale-map-stage">
+          <div class="map-canvas" data-sale-map></div>
+          <div class="map-zoom">
+            <button type="button" class="map-zoom-btn" data-map-zoom-in aria-label="Zoom in">+</button>
+            <button type="button" class="map-zoom-btn" data-map-zoom-out aria-label="Zoom out">−</button>
+          </div>
+          <button type="button" class="map-search-here" data-search-here hidden>Search this area</button>
         </div>
       </div>
     </figure>
@@ -80,12 +70,12 @@ const boardPreview = [
       <li>
         <span>01</span>
         <h2>Search a city</h2>
-        <p>Open anywhere in Canada or the United States. Every pin is a real Google Business profile — name, phone, hours, and website.</p>
+        <p>Open anywhere in Canada or the United States. The map only shows real Google Business profiles — not every pin on Google Maps.</p>
       </li>
       <li>
         <span>02</span>
         <h2>Save the ones you want</h2>
-        <p>Tap plus. The same card lands on your board in New. Nothing to copy. Nothing to paste.</p>
+        <p>Tap plus on a listing. The same card lands on your board in New, number already there.</p>
       </li>
       <li>
         <span>03</span>
@@ -93,6 +83,31 @@ const boardPreview = [
         <p>Move people through six stages as you work. Paid accounts can import a whole city once a day.</p>
       </li>
     </ol>
+
+    <figure class="sale-window sale-window-board" aria-hidden="true">
+      <figcaption class="sale-window-bar">
+        <span>Leads</span>
+        <span>Your board</span>
+      </figcaption>
+      <div class="sale-board">
+        {boardPreview.map((col) => (
+          <section class="kanban-col">
+            <h2>{col.label} <span>{col.items.length}</span></h2>
+            {col.items.map((shop) => (
+              <article class="lead-card">
+                <p class="lead-type">{typeLabel(shop.category || '')}</p>
+                <div class="lead-main">
+                  <div class="lead-copy">
+                    <h3>{shop.name}</h3>
+                    <p class="lead-phone">{shop.phone}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        ))}
+      </div>
+    </figure>
 
     <div class="sale-plans">
       <article class="sale-plan is-free">
