@@ -84,6 +84,10 @@
       rating: card.getAttribute('data-shop-rating') || '',
       reviews: card.getAttribute('data-shop-reviews') || '',
       openNow: card.getAttribute('data-shop-open') || '',
+      serviceArea: card.getAttribute('data-service-area') === '1',
+      openingDate: card.getAttribute('data-shop-opening') || '',
+      flagged: card.getAttribute('data-flagged') === '1',
+      priceRange: card.getAttribute('data-shop-price-range') || '',
     };
   }
 
@@ -383,6 +387,10 @@
     if (on('price-2') && price !== '$$') return false;
     if (on('price-3') && price !== '$$$') return false;
     if (on('price-4') && price !== '$$$$') return false;
+    if (on('storefront') && card.getAttribute('data-service-area') === '1') return false;
+    if (on('service-area') && card.getAttribute('data-service-area') !== '1') return false;
+    if (on('opening-soon') && card.getAttribute('data-opening-soon') !== '1') return false;
+    if (on('flagged') && card.getAttribute('data-flagged') !== '1') return false;
     return true;
   }
 
@@ -405,7 +413,7 @@
     const nicheBtn = bar.querySelector('[data-filter-niche].is-on');
     const nicheNow = bar.querySelector('[data-filter-now="niche"]');
     if (nicheNow) nicheNow.textContent = nicheBtn && nicheBtn.textContent ? nicheBtn.textContent.trim() : 'All niches';
-    ['listing', 'open', 'rating', 'reviews', 'price'].forEach((group) => paintFlagNow(bar, 'data-filter-now', group));
+    ['listing', 'signal', 'open', 'rating', 'reviews', 'price'].forEach((group) => paintFlagNow(bar, 'data-filter-now', group));
   }
 
   function syncGuestCity(city) {
@@ -565,7 +573,7 @@
     const nicheNow = bar.querySelector('[data-leads-filter-now="niche"]');
     if (cityNow) cityNow.textContent = cityBtn && cityBtn.textContent ? cityBtn.textContent.trim() : 'All cities';
     if (nicheNow) nicheNow.textContent = nicheBtn && nicheBtn.textContent ? nicheBtn.textContent.trim() : 'All niches';
-    ['listing', 'open', 'rating', 'reviews', 'price'].forEach((group) => paintFlagNow(bar, 'data-leads-filter-now', group));
+    ['listing', 'signal', 'open', 'rating', 'reviews', 'price'].forEach((group) => paintFlagNow(bar, 'data-leads-filter-now', group));
   }
 
   function applyBoardFilters() {
@@ -724,6 +732,10 @@
       + ' data-shop-rating="' + esc(rating) + '"'
       + ' data-shop-reviews="' + esc(reviews) + '"'
       + ' data-shop-price="' + esc(lead.priceLevel || '') + '"'
+      + ' data-shop-price-range="' + esc(lead.priceRange || '') + '"'
+      + ' data-service-area="' + (lead.serviceArea ? '1' : '0') + '"'
+      + ' data-opening-soon="' + (lead.openingDate ? '1' : '0') + '"'
+      + ' data-flagged="' + (lead.flagged ? '1' : '0') + '"'
       + ' data-lead-stage="' + esc(stage) + '">'
       + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
       + '<div class="lead-main">'

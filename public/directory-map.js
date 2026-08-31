@@ -151,7 +151,7 @@
     var rating = shop.rating ? Number(shop.rating).toFixed(1) : '';
     var reviews = shop.reviews ? String(shop.reviews) : '';
     var open = shop.openNow === true ? 'Open' : shop.openNow === false ? 'Closed' : '';
-    var cat = [type, shop.city, rating ? rating + '★' : '', open].filter(Boolean).join(' · ');
+    var cat = [type, shop.city, rating ? rating + '★' : '', open, shop.openingDate ? 'Opens ' + shop.openingDate : '', shop.flagged ? 'Flagged' : '', shop.serviceArea ? 'Mobile' : ''].filter(Boolean).join(' · ');
     var hours = Array.isArray(shop.hours) ? shop.hours.join(' | ') : (shop.hours || '');
     var phone = String(shop.phone || '').trim();
     var email = String(shop.email || '').trim();
@@ -189,6 +189,11 @@
       + ' data-shop-open="' + esc(open) + '"'
       + ' data-shop-summary="' + esc(shop.summary || '') + '"'
       + ' data-shop-price="' + esc(shop.priceLevel || '') + '"'
+      + ' data-shop-price-range="' + esc(shop.priceRange || '') + '"'
+      + ' data-service-area="' + (shop.serviceArea ? '1' : '0') + '"'
+      + ' data-opening-soon="' + (shop.openingDate ? '1' : '0') + '"'
+      + ' data-shop-opening="' + esc(shop.openingDate || '') + '"'
+      + ' data-flagged="' + (shop.flagged ? '1' : '0') + '"'
       + ' data-shop-lat="' + esc(shop.lat || '') + '"'
       + ' data-shop-lng="' + esc(shop.lng || '') + '">'
       + '<div class="lead-card">'

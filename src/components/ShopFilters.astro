@@ -23,6 +23,13 @@ const listingFlags = [
   { v: 'photo', set: 'photo', l: 'Has photo' },
   { v: 'no-photo', set: 'photo', l: 'No photo' },
   { v: 'email', set: 'email', l: 'Has email' },
+  { v: 'storefront', set: 'place', l: 'Storefront' },
+  { v: 'service-area', set: 'place', l: 'Service area' },
+];
+
+const signalFlags = [
+  { v: 'opening-soon', set: 'signal', l: 'Opening soon' },
+  { v: 'flagged', set: 'signal', l: 'Flagged' },
 ];
 
 const openFlags = [
@@ -86,6 +93,17 @@ const priceFlags = [
         </summary>
         <div class="filter-pills" data-filter-group="listing">
           {listingFlags.map((item) => (
+            <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" {...{ [accord]: 'signal' }}>
+        <summary class="filter-summary">
+          <span class="filter-label">Signal</span>
+          <span class="filter-now" {...{ [now]: 'signal' }}>Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="signal">
+          {signalFlags.map((item) => (
             <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
           ))}
         </div>
@@ -166,6 +184,17 @@ const priceFlags = [
         </summary>
         <div class="filter-pills" data-filter-group="listing">
           {listingFlags.map((item) => (
+            <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" data-filter-accord="signal">
+        <summary class="filter-summary">
+          <span class="filter-label">Signal</span>
+          <span class="filter-now" data-filter-now="signal">Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="signal">
+          {signalFlags.map((item) => (
             <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
           ))}
         </div>

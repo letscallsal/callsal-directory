@@ -50,6 +50,10 @@ export interface Shop {
   summary?: string;
   primaryType?: string;
   priceLevel?: string;
+  priceRange?: string;
+  serviceArea?: boolean;
+  openingDate?: string;
+  flagged?: boolean;
   category: ShopCategory;
   verified: ShopVerified;
 }
@@ -259,7 +263,7 @@ function isLeadWorthy(types: string[]): boolean {
 
 function cacheKey(city: string, region: string, country: string, category: string): string {
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `directory:places:v7:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
+  return `directory:places:v8:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
 }
 
 async function readCache(key: string): Promise<PlacesResult | null> {
@@ -307,8 +311,11 @@ type GooglePlace = {
   currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
   editorialSummary?: { text?: string };
   priceLevel?: string;
+  priceRange?: { startPrice?: { currencyCode?: string; units?: string }; endPrice?: { currencyCode?: string; units?: string } };
   pureServiceAreaBusiness?: boolean;
   location?: { latitude?: number; longitude?: number };
+  openingDate?: { year?: number; month?: number; day?: number };
+  consumerAlert?: { overview?: string };
 };
 
 const PLACE_CORE_FIELDS = [
@@ -333,8 +340,11 @@ const PLACE_CORE_FIELDS = [
   'currentOpeningHours.openNow',
   'currentOpeningHours.weekdayDescriptions',
   'priceLevel',
+  'priceRange',
   'pureServiceAreaBusiness',
   'location',
+  'openingDate',
+  'consumerAlert',
 ];
 
 const PLACE_DETAILS_MASK = [...PLACE_CORE_FIELDS, 'editorialSummary'].join(',');
@@ -405,6 +415,31 @@ function parseAddressComponents(
   return { city: city.trim() || fallback.city, region, country };
 }
 
+function priceRangeLabel(range?: GooglePlace['priceRange']): string | undefined {
+  if (!range?.startPrice && !range?.endPrice) return undefined;
+  const money = (row?: { currencyCode?: string; units?: string }) => {
+    if (!row || row.units == null) return '';
+    const n = Number(row.units);
+    if (!Number.isFinite(n)) return '';
+    try {
+      return new Intl.NumberFormat('en', { style: 'currency', currency: row.currencyCode || 'USD', maximumFractionDigits: 0 }).format(n);
+    } catch {
+      return String(row.units);
+    }
+  };
+  const start = money(range.startPrice);
+  const end = money(range.endPrice);
+  if (start && end) return start + '–' + end;
+  return start || end || undefined;
+}
+
+function openingDateLabel(date?: GooglePlace['openingDate']): string | undefined {
+  if (!date?.year || !date?.month) return undefined;
+  const month = String(date.month).padStart(2, '0');
+  const day = date.day ? String(date.day).padStart(2, '0') : '';
+  return day ? `${date.year}-${month}-${day}` : `${date.year}-${month}`;
+}
+
 function priceLabel(level?: string): string | undefined {
   if (!level) return undefined;
   const map: Record<string, string> = {
@@ -453,6 +488,10 @@ function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: Shop
     summary: place.editorialSummary?.text,
     primaryType: place.primaryTypeDisplayName?.text || place.primaryType,
     priceLevel: priceLabel(place.priceLevel),
+    priceRange: priceRangeLabel(place.priceRange),
+    serviceArea: place.pureServiceAreaBusiness === true,
+    openingDate: openingDateLabel(place.openingDate),
+    flagged: Boolean(place.consumerAlert),
     category: pickCategory(place.types || [], fallbackCategory),
     verified: {
       phone: Boolean(phone),
@@ -904,7 +943,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v9:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v10:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {

@@ -95,6 +95,10 @@ export interface StoredLead {
   rating?: number;
   reviews?: number;
   openNow?: boolean;
+  serviceArea?: boolean;
+  openingDate?: string;
+  flagged?: boolean;
+  priceRange?: string;
 }
 
 export interface Lead extends StoredLead {
@@ -119,6 +123,10 @@ export interface Lead extends StoredLead {
   rating?: number;
   reviews?: number;
   openNow?: boolean;
+  serviceArea?: boolean;
+  openingDate?: string;
+  flagged?: boolean;
+  priceRange?: string;
   verified: {
     phone: boolean;
     website: boolean;
@@ -290,6 +298,12 @@ function toTiny(lead: Lead | StoredLead): StoredLead {
     if (rating) tiny.rating = rating;
     if (reviews) tiny.reviews = reviews;
     if (typeof openNow === 'boolean') tiny.openNow = openNow;
+    if (full.serviceArea || (lead as StoredLead).serviceArea) tiny.serviceArea = true;
+    const openingDate = clip(full.openingDate || (lead as StoredLead).openingDate, 16);
+    if (openingDate) tiny.openingDate = openingDate;
+    if (full.flagged || (lead as StoredLead).flagged) tiny.flagged = true;
+    const priceRange = clip(full.priceRange || (lead as StoredLead).priceRange, 32);
+    if (priceRange) tiny.priceRange = priceRange;
   }
   return tiny;
 }
@@ -377,6 +391,10 @@ function hydrateFromShop(record: StoredLead, shop?: Shop): Lead {
     rating: shop.rating,
     reviews: shop.reviews,
     openNow: shop.openNow,
+    serviceArea: shop.serviceArea,
+    openingDate: shop.openingDate,
+    flagged: shop.flagged,
+    priceRange: shop.priceRange,
     verified: { ...shop.verified, photo: Boolean((shop.verified.photo && shop.photo) || listingPhotoSrc(shop.placeId)) },
   };
 }
@@ -405,6 +423,10 @@ function hydrateFromSnapshot(record: StoredLead): Lead {
     rating: record.rating || undefined,
     reviews: record.reviews || undefined,
     openNow: typeof record.openNow === 'boolean' ? record.openNow : undefined,
+    serviceArea: record.serviceArea || undefined,
+    openingDate: clip(record.openingDate, 16) || undefined,
+    flagged: record.flagged || undefined,
+    priceRange: clip(record.priceRange, 32) || undefined,
     verified: {
       phone: Boolean(record.phone),
       website: Boolean(record.website),
@@ -697,6 +719,10 @@ export interface ListingInput {
   rating?: number | string;
   reviews?: number | string;
   openNow?: boolean | string;
+  serviceArea?: boolean;
+  openingDate?: string;
+  flagged?: boolean;
+  priceRange?: string;
 }
 
 function slugify(value: string): string {
@@ -762,6 +788,10 @@ export function shopFromListing(input: ListingInput | string | null | undefined)
       if (v === false || String(v).toLowerCase() === 'closed') return false;
       return undefined;
     })(),
+    serviceArea: raw.serviceArea === true,
+    openingDate: clip(raw.openingDate, 16) || undefined,
+    flagged: raw.flagged === true,
+    priceRange: clip(raw.priceRange, 32) || undefined,
     category,
     verified: {
       phone: Boolean(phone),
