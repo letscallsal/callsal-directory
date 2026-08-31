@@ -150,6 +150,49 @@ html.is-leads .page-foot {
   letter-spacing: 0.04em;
 }
 
+.map-zoom {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.78);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.map-zoom-btn {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ccff00;
+  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.map-zoom-btn + .map-zoom-btn {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.map-zoom-btn:hover,
+.map-zoom-btn:focus-visible {
+  background: rgba(204, 255, 0, 0.14);
+  outline: none;
+}
+
+.gm-bundled-control,
+.leaflet-control-zoom {
+  display: none !important;
+}
+
 .listings-head {
   display: flex;
   align-items: baseline;
@@ -387,4 +430,5 @@ html:has(#app-chrome.is-stuck):not(.is-leads) .viewport {
 
   .map-search-here { top: auto; bottom: calc(32vh + 0.7rem); }
   .map-status { bottom: calc(32vh + 0.7rem); }
+  .map-zoom { bottom: calc(32vh + 0.7rem); }
 }

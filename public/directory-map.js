@@ -400,7 +400,7 @@
       center: { lat: 43.5081, lng: -79.8829 },
       zoom: 14,
       disableDefaultUI: true,
-      zoomControl: true,
+      zoomControl: false,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
@@ -431,7 +431,7 @@
     if (map) return map;
     var el = canvas();
     if (!el || !window.L) return null;
-    map = window.L.map(el, { zoomControl: true, attributionControl: true }).setView([43.5081, -79.8829], 14);
+    map = window.L.map(el, { zoomControl: false, attributionControl: true }).setView([43.5081, -79.8829], 14);
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
@@ -547,11 +547,30 @@
     });
   }
 
+  function bumpZoom(delta) {
+    if (!map) return;
+    var next = getZoom() + delta;
+    if (engine === 'google') map.setZoom(next);
+    else if (engine === 'leaflet') map.setZoom(next);
+  }
+
   document.addEventListener('click', function (event) {
     var here = event.target && event.target.closest && event.target.closest('[data-search-here]');
     if (here) {
       event.preventDefault();
       searchView();
+      return;
+    }
+    var zoomIn = event.target && event.target.closest && event.target.closest('[data-map-zoom-in]');
+    if (zoomIn) {
+      event.preventDefault();
+      bumpZoom(1);
+      return;
+    }
+    var zoomOut = event.target && event.target.closest && event.target.closest('[data-map-zoom-out]');
+    if (zoomOut) {
+      event.preventDefault();
+      bumpZoom(-1);
       return;
     }
     var card = event.target && event.target.closest && event.target.closest('[data-map-card]');
