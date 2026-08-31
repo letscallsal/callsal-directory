@@ -134,10 +134,11 @@
   }
 
   function listingHtml(shop) {
-    var type = TYPE_LABELS[shop.category] || 'Local';
+    var type = shop.primaryType || TYPE_LABELS[shop.category] || 'Local';
     var rating = shop.rating ? Number(shop.rating).toFixed(1) : '';
-    var cat = [type, shop.city, rating ? rating + '★' : ''].filter(Boolean).join(' · ');
-    var hours = Array.isArray(shop.hours) ? shop.hours.join(' | ') : '';
+    var open = shop.openNow === true ? 'Open' : shop.openNow === false ? 'Closed' : '';
+    var cat = [type, shop.city, rating ? rating + '★' : '', open].filter(Boolean).join(' · ');
+    var hours = Array.isArray(shop.hours) ? shop.hours.join(' | ') : (shop.hours || '');
     var phone = String(shop.phone || '').trim();
     var email = String(shop.email || '').trim();
     var web = String(shop.website || '').trim();
@@ -165,6 +166,10 @@
       + ' data-shop-rating="' + esc(rating) + '"'
       + ' data-shop-maps="' + esc(shop.mapsUrl || '') + '"'
       + ' data-shop-hours="' + esc(hours) + '"'
+      + ' data-shop-status="' + esc(shop.status || '') + '"'
+      + ' data-shop-open="' + esc(open) + '"'
+      + ' data-shop-summary="' + esc(shop.summary || '') + '"'
+      + ' data-shop-price="' + esc(shop.priceLevel || '') + '"'
       + ' data-shop-lat="' + esc(shop.lat || '') + '"'
       + ' data-shop-lng="' + esc(shop.lng || '') + '">'
       + '<div class="lead-card">'

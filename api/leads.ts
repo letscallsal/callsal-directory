@@ -89,6 +89,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       photo: String(body.photo || '').trim(),
       mapsUrl: String(body.mapsUrl || '').trim(),
       instagram: String(body.instagram || '').trim(),
+      hours: String(body.hours || '').trim(),
+      status: String(body.status || '').trim(),
+      summary: String(body.summary || '').trim(),
+      priceLevel: String(body.priceLevel || '').trim(),
     };
     const result = await addShop(board, listing, plan, owner);
     if (result.reason === 'missing') return res.status(404).json({ error: 'SHOP NOT FOUND' });

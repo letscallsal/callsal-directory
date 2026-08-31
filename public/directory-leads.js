@@ -77,6 +77,10 @@
       photo: card.getAttribute('data-shop-photo') || '',
       mapsUrl: card.getAttribute('data-shop-maps') || '',
       instagram: card.getAttribute('data-shop-ig') || '',
+      hours: card.getAttribute('data-shop-hours') || '',
+      status: card.getAttribute('data-shop-status') || '',
+      summary: card.getAttribute('data-shop-summary') || '',
+      priceLevel: card.getAttribute('data-shop-price') || '',
     };
   }
 
@@ -165,6 +169,12 @@
     if (data.owner) rows.push('<li><span>Owner</span> <span>' + esc(data.owner) + '</span></li>');
     if (data.ig) rows.push('<li><span>Instagram</span> <span>' + esc(data.ig) + '</span></li>');
     if (data.hours) rows.push('<li><span>Hours</span> <span>' + esc(data.hours) + '</span></li>');
+    if (data.open) rows.push('<li><span>Now</span> <span>' + esc(data.open) + '</span></li>');
+    if (data.status && String(data.status).toUpperCase() !== 'OPERATIONAL') {
+      rows.push('<li><span>Status</span> <span>' + esc(String(data.status).replace(/_/g, ' ')) + '</span></li>');
+    }
+    if (data.price) rows.push('<li><span>Price</span> <span>' + esc(data.price) + '</span></li>');
+    if (data.summary) rows.push('<li><span>About</span> <span>' + esc(data.summary) + '</span></li>');
     if (data.maps) {
       rows.push('<li><span>Google Business</span> <span><a href="' + esc(safeHref(data.maps)) + '" target="_blank" rel="noopener noreferrer">Open listing</a></span></li>');
     }
@@ -260,6 +270,10 @@
       photo: card.getAttribute('data-shop-photo') || '',
       hours: card.getAttribute('data-shop-hours') || '',
       maps: card.getAttribute('data-shop-maps') || '',
+      status: card.getAttribute('data-shop-status') || '',
+      open: card.getAttribute('data-shop-open') || '',
+      summary: card.getAttribute('data-shop-summary') || '',
+      price: card.getAttribute('data-shop-price') || '',
     });
   }
 

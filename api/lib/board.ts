@@ -651,6 +651,10 @@ export interface ListingInput {
   photo?: string;
   mapsUrl?: string;
   instagram?: string;
+  hours?: string;
+  status?: string;
+  summary?: string;
+  priceLevel?: string;
 }
 
 function slugify(value: string): string {
@@ -686,6 +690,9 @@ export function shopFromListing(input: ListingInput | string | null | undefined)
   const category = asCategory(raw.category);
   const region = clip(raw.region, 8) || '';
   const country = clip(raw.country, 2).toUpperCase() || 'CA';
+  const hours = clip(raw.hours, 400)
+    ? clip(raw.hours, 400).split(' | ').map((part) => part.trim()).filter(Boolean)
+    : undefined;
   return {
     name,
     slug,
@@ -701,6 +708,10 @@ export function shopFromListing(input: ListingInput | string | null | undefined)
     photo,
     placeId,
     mapsUrl,
+    hours,
+    status: clip(raw.status, 40) || undefined,
+    summary: clip(raw.summary, 280) || undefined,
+    priceLevel: clip(raw.priceLevel, 8) || undefined,
     category,
     verified: {
       phone: Boolean(phone),

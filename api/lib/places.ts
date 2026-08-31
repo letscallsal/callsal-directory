@@ -45,6 +45,11 @@ export interface Shop {
   hours?: string[];
   lat?: number;
   lng?: number;
+  status?: string;
+  openNow?: boolean;
+  summary?: string;
+  primaryType?: string;
+  priceLevel?: string;
   category: ShopCategory;
   verified: ShopVerified;
 }
@@ -254,7 +259,7 @@ function isLeadWorthy(types: string[]): boolean {
 
 function cacheKey(city: string, region: string, country: string, category: string): string {
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `directory:places:v6:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
+  return `directory:places:v7:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
 }
 
 async function readCache(key: string): Promise<PlacesResult | null> {
@@ -284,16 +289,58 @@ type GooglePlace = {
   id?: string;
   displayName?: { text?: string };
   formattedAddress?: string;
+  shortFormattedAddress?: string;
+  addressComponents?: Array<{ longText?: string; shortText?: string; types?: string[] }>;
   nationalPhoneNumber?: string;
+  internationalPhoneNumber?: string;
   websiteUri?: string;
   types?: string[];
+  primaryType?: string;
+  primaryTypeDisplayName?: { text?: string };
+  businessStatus?: string;
   photos?: Array<{ name?: string }>;
   rating?: number;
   userRatingCount?: number;
   googleMapsUri?: string;
+  googleMapsLinks?: { placeUri?: string; directionsUri?: string };
   regularOpeningHours?: { weekdayDescriptions?: string[] };
+  currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
+  editorialSummary?: { text?: string };
+  priceLevel?: string;
+  pureServiceAreaBusiness?: boolean;
   location?: { latitude?: number; longitude?: number };
 };
+
+const PLACE_CORE_FIELDS = [
+  'id',
+  'displayName',
+  'formattedAddress',
+  'shortFormattedAddress',
+  'addressComponents',
+  'nationalPhoneNumber',
+  'internationalPhoneNumber',
+  'websiteUri',
+  'types',
+  'primaryType',
+  'primaryTypeDisplayName',
+  'businessStatus',
+  'photos',
+  'rating',
+  'userRatingCount',
+  'googleMapsUri',
+  'googleMapsLinks',
+  'regularOpeningHours.weekdayDescriptions',
+  'currentOpeningHours.openNow',
+  'currentOpeningHours.weekdayDescriptions',
+  'priceLevel',
+  'pureServiceAreaBusiness',
+  'location',
+];
+
+const PLACE_DETAILS_MASK = [...PLACE_CORE_FIELDS, 'editorialSummary'].join(',');
+
+const PLACE_SEARCH_MASK =
+  PLACE_CORE_FIELDS.map((field) => 'places.' + field).join(',') + ',nextPageToken';
 
 async function searchGoogleNiche(
   metro: Metro,
@@ -325,8 +372,7 @@ async function searchGoogleNiche(
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': key,
-        'X-Goog-FieldMask':
-          'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.photos,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions,places.location,nextPageToken',
+        'X-Goog-FieldMask': PLACE_SEARCH_MASK,
       },
       body: JSON.stringify(body),
     });
@@ -343,37 +389,76 @@ async function searchGoogleNiche(
   return shops;
 }
 
+function parseAddressComponents(
+  components: GooglePlace['addressComponents'],
+  fallback: { city: string; region: string; country: string },
+): { city: string; region: string; country: string } {
+  if (!components?.length) return fallback;
+  const pick = (type: string, short = false) => {
+    const hit = components.find((item) => (item.types || []).includes(type));
+    return (short ? hit?.shortText : hit?.longText) || '';
+  };
+  const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || fallback.city;
+  const region = pick('administrative_area_level_1', true) || fallback.region;
+  const countryRaw = pick('country', true) || fallback.country;
+  const country = countryRaw === 'CA' || countryRaw === 'US' ? countryRaw : fallback.country;
+  return { city: city.trim() || fallback.city, region, country };
+}
+
+function priceLabel(level?: string): string | undefined {
+  if (!level) return undefined;
+  const map: Record<string, string> = {
+    PRICE_LEVEL_FREE: 'Free',
+    PRICE_LEVEL_INEXPENSIVE: '$',
+    PRICE_LEVEL_MODERATE: '$$',
+    PRICE_LEVEL_EXPENSIVE: '$$$',
+    PRICE_LEVEL_VERY_EXPENSIVE: '$$$$',
+  };
+  return map[level];
+}
+
 function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: ShopCategory): Shop | null {
+  if (String(place.businessStatus || '').toUpperCase() === 'CLOSED_PERMANENTLY') return null;
   const name = place.displayName?.text?.trim();
   if (!name) return null;
-  const parsed = parseFormattedAddress(place.formattedAddress, metro);
+  const fromParts = parseAddressComponents(place.addressComponents, metro);
+  const parsed = parseFormattedAddress(place.formattedAddress || place.shortFormattedAddress, fromParts);
   const slug = `${slugify(name)}-${slugify(parsed.city)}`;
+  const phone = (place.nationalPhoneNumber || place.internationalPhoneNumber || '').trim() || undefined;
+  const website = place.websiteUri;
+  const hours = place.currentOpeningHours?.weekdayDescriptions || place.regularOpeningHours?.weekdayDescriptions;
   const photo = place.id && place.photos?.length
     ? `/api/photo?placeId=${encodeURIComponent(place.id)}`
     : undefined;
+  const openNow = typeof place.currentOpeningHours?.openNow === 'boolean' ? place.currentOpeningHours.openNow : undefined;
   return {
     name,
     slug,
     city: parsed.city,
     region: parsed.region,
     country: parsed.country,
-    address: parsed.address,
-    phone: place.nationalPhoneNumber,
-    website: place.websiteUri,
+    address: parsed.address || place.shortFormattedAddress,
+    phone,
+    website,
     placeId: place.id,
     photo,
-    mapsUrl: place.googleMapsUri || mapsSearchUrl(name, parsed.address),
+    mapsUrl: place.googleMapsLinks?.placeUri || place.googleMapsUri || mapsSearchUrl(name, parsed.address),
     rating: place.rating,
     reviews: place.userRatingCount,
-    hours: place.regularOpeningHours?.weekdayDescriptions,
+    hours,
     lat: place.location?.latitude,
     lng: place.location?.longitude,
+    status: place.businessStatus,
+    openNow,
+    summary: place.editorialSummary?.text,
+    primaryType: place.primaryTypeDisplayName?.text || place.primaryType,
+    priceLevel: priceLabel(place.priceLevel),
     category: pickCategory(place.types || [], fallbackCategory),
     verified: {
-      phone: Boolean(place.nationalPhoneNumber),
-      website: Boolean(place.websiteUri),
+      phone: Boolean(phone),
+      website: Boolean(website),
       email: false,
-      address: Boolean(place.formattedAddress),
+      address: Boolean(place.formattedAddress || place.shortFormattedAddress),
       ownerName: false,
       socials: false,
       photo: Boolean(photo),
@@ -444,12 +529,36 @@ async function reverseGeocode(lat: number, lng: number, key: string): Promise<Me
   return { city, region, country: countryRaw, lat, lng };
 }
 
+async function fetchGooglePlace(placeId: string, key: string): Promise<GooglePlace | null> {
+  const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+    headers: {
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': PLACE_DETAILS_MASK,
+    },
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as GooglePlace;
+  if (!data.id) data.id = placeId;
+  return data;
+}
+
 async function enrichWithDetails(shops: Shop[], metro: Metro, key: string, limit = 32): Promise<Shop[]> {
   const head = shops.slice(0, limit);
   const tail = shops.slice(limit);
   const filled = await Promise.all(
     head.map(async (shop) => {
       if (!shop.placeId) return shop;
+      const modern = await fetchGooglePlace(shop.placeId, key);
+      if (modern) {
+        const mapped = mapGooglePlace(modern, metro, shop.category);
+        if (!mapped) return shop;
+        return {
+          ...shop,
+          ...mapped,
+          slug: shop.slug,
+          category: shop.category,
+        };
+      }
       const payload = await fetchLegacyJson<{ status?: string; result?: LegacyDetails }>(
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(shop.placeId)}` +
           `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url,geometry&key=${key}`,
@@ -791,7 +900,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v8:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:area:v9:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
@@ -869,8 +978,7 @@ async function searchGoogleNearby(
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask':
-        'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.types,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.regularOpeningHours.weekdayDescriptions',
+      'X-Goog-FieldMask': PLACE_SEARCH_MASK,
     },
     body: JSON.stringify(body),
   });
