@@ -777,7 +777,7 @@
     });
     const data = await res.json().catch(() => ({}));
     if (data.upgrade) {
-      openPremium(data.message || 'Paid Directory is $999 a month.');
+      openPremium(data.message || 'Paid Directory is $9 a month.');
       return data;
     }
     if (res.ok) await applyLeadsPayload(data);
@@ -793,7 +793,7 @@
       if (sessionStorage.getItem('directory:leads-pick') !== 'paid') return;
       sessionStorage.removeItem('directory:leads-pick');
       if (lastLeads.plan === 'paid') return;
-      openPremium('Paid Directory is $999 a month. No lead cap. Import one city every 24 hours — one niche, or all niches in that city. Free holds 100 leads with plus.');
+      openPremium('Paid Directory is $9 a month. No lead cap. Import one city every 24 hours — one niche, or all niches in that city. Free holds 100 leads with plus.');
     } catch {
       /* keep free board */
     }

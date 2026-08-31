@@ -51,7 +51,7 @@ const HEAVY_FIELDS = ['research_data', 'ai_summary', 'cold_call_script', 'dm_scr
 export const FREE_CAP = 100;
 export const PAID_CAP = Number.MAX_SAFE_INTEGER;
 export const ORACLE_PER_DAY = 3;
-export const PRICE = '$999 a month';
+export const PRICE = '$9 a month';
 export const SCAN_WAIT_MS = 24 * 60 * 60 * 1000;
 
 export interface BoardUser {
