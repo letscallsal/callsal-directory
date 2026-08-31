@@ -1,7 +1,7 @@
 export interface Metro {
   city: string;
   region: string;
-  country: "CA" | "US";
+  country: string;
   lat: number;
   lng: number;
   popular?: boolean;

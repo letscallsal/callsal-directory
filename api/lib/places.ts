@@ -401,7 +401,7 @@ function parseAddressComponents(
   const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || fallback.city;
   const region = pick('administrative_area_level_1', true) || fallback.region;
   const countryRaw = pick('country', true) || fallback.country;
-  const country = countryRaw === 'CA' || countryRaw === 'US' ? countryRaw : fallback.country;
+  const country = countryRaw || fallback.country;
   return { city: city.trim() || fallback.city, region, country };
 }
 
@@ -522,11 +522,17 @@ async function reverseGeocode(lat: number, lng: number, key: string): Promise<Me
     const hit = comps.find((item) => (item.types || []).includes(type));
     return (short ? hit?.short_name : hit?.long_name) || '';
   };
-  const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3');
+  const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || pick('administrative_area_level_2');
   const region = pick('administrative_area_level_1', true);
   const countryRaw = pick('country', true);
-  if (!city || (countryRaw !== 'CA' && countryRaw !== 'US')) return undefined;
-  return { city, region, country: countryRaw, lat, lng };
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+  return {
+    city: city || 'Map',
+    region,
+    country: countryRaw || '',
+    lat,
+    lng,
+  };
 }
 
 async function fetchGooglePlace(placeId: string, key: string): Promise<GooglePlace | null> {
@@ -703,7 +709,7 @@ async function photonGet(url: string): Promise<PhotonFeature[]> {
 
 async function geocodeCity(query: string): Promise<Metro | undefined> {
   const known = findMetro(query);
-  if (known) return known;
+  if (known && !/,/.test(query)) return known;
   const googleKey = await resolveGoogleKey();
   if (googleKey) {
     const data = await fetchLegacyJson<{
@@ -714,8 +720,7 @@ async function geocodeCity(query: string): Promise<Metro | undefined> {
         address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }>;
       }>;
     }>(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}` +
-        `&components=country:CA|country:US&key=${googleKey}`,
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleKey}`,
     );
     if (data?.status === 'OK' && data.results?.length) {
       const hit = data.results[0];
@@ -729,10 +734,10 @@ async function geocodeCity(query: string): Promise<Metro | undefined> {
       const countryRaw = pick('country', true);
       const lat = hit.geometry?.location?.lat;
       const lng = hit.geometry?.location?.lng;
-      if (city && (countryRaw === 'CA' || countryRaw === 'US') && Number.isFinite(lat) && Number.isFinite(lng)) {
+      if (city && Number.isFinite(lat) && Number.isFinite(lng)) {
         const catalogHit = findMetro(city, region, countryRaw);
         if (catalogHit) return catalogHit;
-        return { city, region, country: countryRaw, lat: lat as number, lng: lng as number };
+        return { city, region, country: countryRaw || '', lat: lat as number, lng: lng as number };
       }
     }
   }
@@ -743,8 +748,7 @@ function mapPhotonFeature(feature: PhotonFeature, metro: Metro, fallbackCategory
   const props = feature.properties || {};
   const name = props.name?.trim();
   if (!name) return null;
-  const code = (props.countrycode || metro.country).toUpperCase();
-  if (code !== 'CA' && code !== 'US') return null;
+  const code = (props.countrycode || metro.country || '').toUpperCase();
   const city = (props.city || metro.city).trim();
   const stateRaw = String(props.state || metro.region).trim();
   const region = /^[A-Za-z]{2}$/.test(stateRaw) ? stateRaw.toUpperCase() : metro.region;
@@ -789,7 +793,7 @@ async function searchPhotonArea(
   const metro: Metro = {
     city: 'Map',
     region: '',
-    country: lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US',
+    country: '',
     lat,
     lng,
   };
@@ -843,7 +847,7 @@ export async function listCityShops(
 ): Promise<PlacesResult> {
   const rawCity = city.trim();
   if (!rawCity) {
-    return { source: 'seed', city: 'Milton', region: 'ON', country: 'CA', shops: seedShops() };
+    return { source: 'places', city: '', shops: [] };
   }
 
   const metro = findMetro(rawCity, region, country) || (await geocodeCity([rawCity, region, country].filter(Boolean).join(' ')));
@@ -1010,7 +1014,7 @@ export async function listAreaShops(opts: {
 
   const googleKey = await resolveGoogleKey();
   let live: Shop[] = [];
-  const guessedCountry: 'CA' | 'US' = lat >= 41.6 && lng <= -52 && lng >= -141 && lat <= 83.2 ? 'CA' : 'US';
+  const guessedCountry = '';
   let metro: Metro = { city: '', region: '', country: guessedCountry, lat, lng };
   if (googleKey) {
     const typed = NICHE_QUERIES.find((item) => item.category === niche);
@@ -1088,4 +1092,141 @@ export async function listAreaShops(opts: {
   };
   if (live.length) await writeCache(key, result);
   return result;
+}
+
+export type PlaceSuggestion = {
+  id: string;
+  label: string;
+  main: string;
+  secondary: string;
+};
+
+export type ResolvedPlace = {
+  lat: number;
+  lng: number;
+  city: string;
+  region: string;
+  country: string;
+  label: string;
+};
+
+export async function suggestPlaces(query: string): Promise<PlaceSuggestion[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const key = await resolveGoogleKey();
+  if (!key) return [];
+
+  const modern = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+    },
+    body: JSON.stringify({ input: q, languageCode: 'en' }),
+  });
+  if (modern.ok) {
+    const data = (await modern.json()) as {
+      suggestions?: Array<{
+        placePrediction?: {
+          placeId?: string;
+          text?: { text?: string };
+          structuredFormat?: { mainText?: { text?: string }; secondaryText?: { text?: string } };
+        };
+      }>;
+    };
+    const rows = (data.suggestions || [])
+      .map((row) => {
+        const pred = row.placePrediction;
+        if (!pred?.placeId) return null;
+        const label = pred.text?.text || '';
+        const main = pred.structuredFormat?.mainText?.text || label;
+        const secondary = pred.structuredFormat?.secondaryText?.text || '';
+        if (!label) return null;
+        return { id: pred.placeId, label, main, secondary };
+      })
+      .filter((row): row is PlaceSuggestion => Boolean(row));
+    if (rows.length) return rows.slice(0, 8);
+  }
+
+  const legacy = await fetchLegacyJson<{
+    status?: string;
+    predictions?: Array<{
+      place_id?: string;
+      description?: string;
+      structured_formatting?: { main_text?: string; secondary_text?: string };
+    }>;
+  }>(`https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${key}`);
+  if (legacy?.status !== 'OK' || !legacy.predictions?.length) return [];
+  return legacy.predictions
+    .slice(0, 8)
+    .map((row) => ({
+      id: row.place_id || '',
+      label: row.description || '',
+      main: row.structured_formatting?.main_text || row.description || '',
+      secondary: row.structured_formatting?.secondary_text || '',
+    }))
+    .filter((row) => row.id && row.label);
+}
+
+export async function resolvePlace(placeId: string): Promise<ResolvedPlace | undefined> {
+  const id = placeId.replace(/^places\//, '').trim();
+  if (!id) return undefined;
+  const key = await resolveGoogleKey();
+  if (!key) return undefined;
+  const modern = await fetchGooglePlace(id, key);
+  if (modern?.location && Number.isFinite(modern.location.latitude) && Number.isFinite(modern.location.longitude)) {
+    const parsed = parseAddressComponents(modern.addressComponents, { city: '', region: '', country: '' });
+    return {
+      lat: modern.location.latitude as number,
+      lng: modern.location.longitude as number,
+      city: parsed.city,
+      region: parsed.region,
+      country: parsed.country,
+      label: modern.formattedAddress || modern.displayName?.text || parsed.city,
+    };
+  }
+  const payload = await fetchLegacyJson<{
+    status?: string;
+    result?: { formatted_address?: string; geometry?: { location?: { lat?: number; lng?: number } }; address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }> };
+  }>(
+    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(id)}` +
+      `&fields=formatted_address,geometry,address_component&key=${key}`,
+  );
+  const loc = payload?.result?.geometry?.location;
+  if (payload?.status === 'OK' && loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+    const comps = payload.result?.address_components || [];
+    const pick = (type: string, short = false) => {
+      const row = comps.find((item) => (item.types || []).includes(type));
+      return (short ? row?.short_name : row?.long_name) || '';
+    };
+    return {
+      lat: loc.lat as number,
+      lng: loc.lng as number,
+      city: pick('locality') || pick('postal_town') || '',
+      region: pick('administrative_area_level_1', true),
+      country: pick('country', true),
+      label: payload.result?.formatted_address || '',
+    };
+  }
+  return undefined;
+}
+
+export async function resolveQuery(query: string): Promise<ResolvedPlace | undefined> {
+  const q = query.trim();
+  if (!q) return undefined;
+  const suggestions = await suggestPlaces(q);
+  if (suggestions[0]?.id) {
+    const hit = await resolvePlace(suggestions[0].id);
+    if (hit) return hit;
+  }
+  const geo = await geocodeCity(q);
+  if (!geo) return undefined;
+  return {
+    lat: geo.lat,
+    lng: geo.lng,
+    city: geo.city,
+    region: geo.region,
+    country: geo.country,
+    label: [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || q,
+  };
 }

@@ -1,14 +1,11 @@
 ---
 import '../styles/city-select.css';
-import { labeledMetros } from '../data/metros';
-
-const metros = labeledMetros();
 ---
 
 <div class="guest-city" data-guest-city>
   <div class="guest-city-combo">
     <label class="guest-city-field">
-      <span class="guest-city-sr">Search city</span>
+      <span class="guest-city-sr">Search a place</span>
       <svg class="guest-city-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
         <circle cx="11" cy="11" r="6.5"></circle>
         <path d="M16 16l5 5"></path>
@@ -16,7 +13,7 @@ const metros = labeledMetros();
       <input
         type="search"
         data-city-input
-        placeholder="SEARCH CITY"
+        placeholder="SEARCH A PLACE"
         autocomplete="off"
         spellcheck="false"
         role="combobox"
@@ -26,30 +23,10 @@ const metros = labeledMetros();
       />
     </label>
 
-    <ul class="guest-city-list" id="guest-city-list" data-city-list role="listbox" hidden>
-      <li>
-        <button type="button" class="guest-city-opt is-on" data-city-pick="" data-city-popular="1" role="option">All cities</button>
-      </li>
-      {metros.map((metro) => (
-        <li hidden={!metro.popular}>
-          <button
-            type="button"
-            class="guest-city-opt"
-            data-city-pick={metro.city}
-            data-city-region={metro.region}
-            data-city-country={metro.country}
-            data-city-label={metro.label}
-            data-city-popular={metro.popular ? '1' : '0'}
-            role="option"
-          >
-            {metro.label}
-          </button>
-        </li>
-      ))}
-    </ul>
+    <ul class="guest-city-list" id="guest-city-list" data-city-list role="listbox" hidden></ul>
   </div>
 
-  <p class="guest-city-hint">Canada and the United States. Type a city, then pick it.</p>
+  <p class="guest-city-hint">City, street, or address. Anywhere on earth.</p>
   <p class="guest-city-status" data-city-status hidden></p>
-  <p class="guest-city-miss" data-city-miss hidden>No city match. Pick one from the list.</p>
+  <p class="guest-city-miss" data-city-miss hidden>No match. Try a city or a street.</p>
 </div>

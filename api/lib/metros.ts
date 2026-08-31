@@ -1,7 +1,7 @@
 export interface Metro {
   city: string;
   region: string;
-  country: "CA" | "US";
+  country: string;
   lat: number;
   lng: number;
   popular?: boolean;
@@ -304,7 +304,8 @@ export function findMetro(city: string, region = "", country = ""): Metro | unde
     });
   }
   const byCountry = countryN ? matches.filter((item) => item.country.toLowerCase() === countryN) : matches;
-  const pool = byCountry.length ? byCountry : matches;
+  const pool = countryN ? byCountry : matches;
+  if (!pool.length) return undefined;
   if (regionN) {
     const hit = pool.find((item) => item.region.toLowerCase() === regionN);
     if (hit) return hit;

@@ -19,7 +19,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const result = Number.isFinite(lat) && Number.isFinite(lng)
     ? await listAreaShops({ lat, lng, radius, category })
-    : await listCityShops(city || 'milton', region, country, category);
+    : city
+      ? await listCityShops(city, region, country, category)
+      : { city: '', shops: [], source: 'places' as const };
 
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
   return res.status(200).json({

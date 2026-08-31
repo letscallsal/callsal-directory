@@ -26,10 +26,13 @@
   var shops = [];
   var lastSearch = null;
   var loading = false;
-  var pendingLoad = null;
   var moved = false;
   var engine = 'none';
   var mapsBoot = null;
+  var WORLD = { lat: 20, lng: 0, zoom: 2 };
+  var MILTON = { lat: 43.5081, lng: -79.8829, zoom: 14 };
+  var MIN_HITS = 5;
+  var RADII = [900, 1800, 3500, 7000, 12000, 20000];
 
   function esc(value) {
     var map = Object.create(null);
@@ -238,7 +241,7 @@
       var lc = map.getCenter();
       return { lat: lc.lat, lng: lc.lng };
     }
-    return { lat: 43.5081, lng: -79.8829 };
+    return { lat: WORLD.lat, lng: WORLD.lng };
   }
 
   function getZoom() {
@@ -277,7 +280,7 @@
 
   function showSearchHere(on) {
     var btn = searchBtn();
-    if (btn) btn.hidden = !on;
+    if (btn) btn.hidden = !(on && getZoom() >= 11);
     moved = on;
   }
 
@@ -326,7 +329,9 @@
     var rail = listEl();
     if (!rail) return;
     if (!shops.length) {
-      rail.innerHTML = '<p class="listings-empty">No listings in view. Move the map, then search this area.</p>';
+      rail.innerHTML = saleMode()
+        ? '<p class="listings-empty">No listings in this view.</p>'
+        : '<p class="listings-empty">Search a city, street, or address. The map will drop you close enough to start calling.</p>';
     } else {
       rail.innerHTML = shops.map(listingHtml).join('');
     }
@@ -412,8 +417,9 @@
     var el = canvas();
     if (!el) return null;
     map = new window.google.maps.Map(el, {
-      center: { lat: 43.5081, lng: -79.8829 },
-      zoom: 14,
+      center: saleMode() ? { lat: MILTON.lat, lng: MILTON.lng } : { lat: WORLD.lat, lng: WORLD.lng },
+      zoom: saleMode() ? MILTON.zoom : WORLD.zoom,
+      minZoom: 2,
       disableDefaultUI: true,
       zoomControl: false,
       mapTypeControl: false,
@@ -452,7 +458,11 @@
       scrollWheelZoom: !saleMode(),
       dragging: true,
       tap: !saleMode(),
-    }).setView([43.5081, -79.8829], 14);
+      minZoom: 2,
+    }).setView(
+      saleMode() ? [MILTON.lat, MILTON.lng] : [WORLD.lat, WORLD.lng],
+      saleMode() ? MILTON.zoom : WORLD.zoom,
+    );
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
@@ -484,8 +494,8 @@
 
   async function loadShops(query, fly) {
     if (loading) {
-      pendingLoad = { query: query, fly: fly };
-      return;
+      await waitIdle();
+      return loadShops(query, fly);
     }
     loading = true;
     setStatus('Scanning this area…');
@@ -510,14 +520,63 @@
     }
     loading = false;
     resizeMap();
-    if (pendingLoad) {
-      var next = pendingLoad;
-      pendingLoad = null;
-      loadShops(next.query, next.fly);
+  }
+
+  function idleList() {
+    shops = [];
+    lastSearch = null;
+    clearPins();
+    paintList();
+    setStatus('');
+    showSearchHere(false);
+  }
+
+  function zoomForRadius(radius) {
+    if (radius <= 1000) return 16;
+    if (radius <= 2000) return 15;
+    if (radius <= 4000) return 14;
+    if (radius <= 8000) return 13;
+    if (radius <= 14000) return 12;
+    return 11;
+  }
+
+  function fitShops(fallbackZoom) {
+    var pts = shops.filter(function (shop) {
+      return Number.isFinite(Number(shop.lat)) && Number.isFinite(Number(shop.lng));
+    });
+    if (pts.length >= 2 && map) {
+      if (engine === 'google' && window.google) {
+        var bounds = new window.google.maps.LatLngBounds();
+        pts.forEach(function (shop) {
+          bounds.extend({ lat: Number(shop.lat), lng: Number(shop.lng) });
+        });
+        map.fitBounds(bounds, 56);
+        if (getZoom() > 16) map.setZoom(16);
+        if (getZoom() < 11) map.setZoom(11);
+        return;
+      }
+      if (engine === 'leaflet') {
+        map.fitBounds(pts.map(function (shop) {
+          return [Number(shop.lat), Number(shop.lng)];
+        }), { padding: [40, 40], maxZoom: 16 });
+        return;
+      }
     }
+    var here = getCenter();
+    setCenter(here.lat, here.lng, fallbackZoom || 14);
+  }
+
+  function waitIdle() {
+    return new Promise(function (resolve) {
+      (function tick() {
+        if (!loading) resolve();
+        else window.setTimeout(tick, 40);
+      })();
+    });
   }
 
   function searchView() {
+    if (getZoom() < 11) return;
     var c = getCenter();
     var niche = currentNiche();
     var q = 'lat=' + encodeURIComponent(c.lat) + '&lng=' + encodeURIComponent(c.lng) + '&radius=' + encodeURIComponent(Math.round(radiusMeters()));
@@ -525,11 +584,34 @@
     loadShops(q, false);
   }
 
+  async function searchAround(lat, lng) {
+    setCenter(lat, lng, 15);
+    await waitIdle();
+    var used = RADII[0];
+    var i;
+    for (i = 0; i < RADII.length; i += 1) {
+      used = RADII[i];
+      var niche = currentNiche();
+      var q = 'lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng) + '&radius=' + encodeURIComponent(used);
+      if (niche) q += '&category=' + encodeURIComponent(niche);
+      await loadShops(q, false);
+      if (shops.length >= MIN_HITS) break;
+    }
+    fitShops(zoomForRadius(used));
+  }
+
   function searchCity(detail) {
+    var lat = Number(detail && detail.lat);
+    var lng = Number(detail && detail.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      searchAround(lat, lng);
+      return;
+    }
     var city = (detail && detail.city) || '';
     var niche = currentNiche();
     if (!city) {
-      searchView();
+      idleList();
+      setCenter(WORLD.lat, WORLD.lng, WORLD.zoom);
       return;
     }
     var q = 'city=' + encodeURIComponent(city);
@@ -576,7 +658,10 @@
       resizeMap();
       if (!shops.length) {
         if (saleMode()) searchCity({ city: 'Milton', region: 'ON', country: 'CA' });
-        else searchView();
+        else {
+          setCenter(WORLD.lat, WORLD.lng, WORLD.zoom);
+          idleList();
+        }
       }
     }).catch(function (err) {
       setStatus((err && err.message) || 'Google Maps could not load.');

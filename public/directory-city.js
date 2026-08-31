@@ -3,6 +3,8 @@
   window.__dirCityBound = true;
 
   var KEY = 'directory:guest-city';
+  var timer = 0;
+  var lastQuery = '';
 
   function wrap() {
     return document.querySelector('[data-guest-city]');
@@ -20,31 +22,9 @@
     return document.querySelector('[data-city-miss]');
   }
 
-  function cityButtons() {
-    return Array.prototype.slice.call(document.querySelectorAll('[data-city-pick]'));
-  }
-
-  function catalogCities() {
-    return cityButtons()
-      .map(function (el) {
-        return {
-          city: (el.getAttribute('data-city-pick') || '').trim(),
-          region: (el.getAttribute('data-city-region') || '').trim(),
-          country: (el.getAttribute('data-city-country') || '').trim(),
-          label: (el.getAttribute('data-city-label') || el.textContent || '').trim(),
-        };
-      })
-      .filter(function (item) { return item.city; });
-  }
-
   function setMiss(on) {
     var miss = missEl();
     if (miss) miss.hidden = !on;
-  }
-
-  function isOpen() {
-    var root = wrap();
-    return Boolean(root && root.classList.contains('is-open'));
   }
 
   function setOpen(on) {
@@ -52,32 +32,16 @@
     var list = listEl();
     var input = inputEl();
     if (!root || !list) return;
-    root.classList.toggle('is-open', on);
-    list.hidden = !on;
-    if (input) input.setAttribute('aria-expanded', on ? 'true' : 'false');
-    if (on) {
-      filterSuggestions(input ? input.value : '');
-    } else {
-      cityButtons().forEach(function (el) { el.classList.remove('is-hi'); });
-    }
-  }
-
-  function markActive(city) {
-    var want = (city || '').toLowerCase();
-    cityButtons().forEach(function (el) {
-      var val = (el.getAttribute('data-city-pick') || '').toLowerCase();
-      el.classList.toggle('is-on', val === want);
-    });
+    var has = Boolean(list.children.length);
+    root.classList.toggle('is-open', on && has);
+    list.hidden = !(on && has);
+    if (input) input.setAttribute('aria-expanded', on && has ? 'true' : 'false');
   }
 
   function visibleButtons() {
     var list = listEl();
     if (!list) return [];
-    return Array.prototype.slice.call(list.querySelectorAll('li')).filter(function (li) {
-      return !li.hidden;
-    }).map(function (li) {
-      return li.querySelector('[data-city-pick]');
-    }).filter(Boolean);
+    return Array.prototype.slice.call(list.querySelectorAll('[data-city-pick]'));
   }
 
   function highlightAt(index) {
@@ -95,150 +59,101 @@
     return document.querySelector('[data-city-list] [data-city-pick].is-hi');
   }
 
-  function filterSuggestions(query) {
-    var q = (query || '').trim().toLowerCase();
+  function renderSuggestions(rows) {
     var list = listEl();
-    if (!list) return 0;
-
-    var items = Array.prototype.slice.call(list.querySelectorAll('li'));
-    var allItem = null;
-    var starts = [];
-    var contains = [];
-    var hidden = [];
-    var shown = 0;
-
-    items.forEach(function (li) {
-      var btn = li.querySelector('[data-city-pick]');
-      var city = ((btn && btn.getAttribute('data-city-pick')) || '').trim();
-      var label = ((btn && (btn.getAttribute('data-city-label') || btn.textContent)) || city).trim();
-      var popular = btn && btn.getAttribute('data-city-popular') === '1';
-      if (!city) {
-        allItem = li;
-        var showAll = !q || 'all cities'.indexOf(q) === 0 || q === 'all';
-        li.hidden = !showAll;
-        if (showAll) shown += 1;
-        return;
-      }
-      if (!q) {
-        li.hidden = !popular;
-        if (popular) {
-          starts.push(li);
-          shown += 1;
-        } else {
-          hidden.push(li);
-        }
-        return;
-      }
-      var name = (label + ' ' + city).toLowerCase();
-      if (name.indexOf(q) === 0 || city.toLowerCase().indexOf(q) === 0) {
-        li.hidden = false;
-        starts.push(li);
-        shown += 1;
-      } else if (name.indexOf(q) !== -1) {
-        li.hidden = false;
-        contains.push(li);
-        shown += 1;
-      } else {
-        li.hidden = true;
-        hidden.push(li);
-      }
-    });
-
-    function byName(a, b) {
-      var ca = ((a.querySelector('[data-city-pick]') && a.querySelector('[data-city-pick]').getAttribute('data-city-label')) || '').toLowerCase();
-      var cb = ((b.querySelector('[data-city-pick]') && b.querySelector('[data-city-pick]').getAttribute('data-city-label')) || '').toLowerCase();
-      return ca.localeCompare(cb);
-    }
-    starts.sort(byName);
-    contains.sort(byName);
-
-    var ordered = (allItem ? [allItem] : []).concat(starts, contains, hidden);
-    ordered.forEach(function (li) { list.appendChild(li); });
-    cityButtons().forEach(function (el) { el.classList.remove('is-hi'); });
+    if (!list) return;
+    list.innerHTML = (rows || []).map(function (row) {
+      var label = row.label || '';
+      var main = row.main || label;
+      var secondary = row.secondary || '';
+      var text = secondary ? main + ' — ' + secondary : main;
+      return '<li><button type="button" class="guest-city-opt" data-city-pick="' +
+        escapeAttr(row.id || '') +
+        '" data-city-label="' + escapeAttr(label) +
+        '" role="option">' + escapeHtml(text) + '</button></li>';
+    }).join('');
     var first = visibleButtons()[0];
-    if (first && q) first.classList.add('is-hi');
-    return shown;
+    if (first) first.classList.add('is-hi');
   }
 
-  function matchCity(query) {
-    var typed = (query || '').trim().toLowerCase();
-    if (!typed || typed === 'all cities' || typed === 'all') return { city: '', region: '', country: '', label: '' };
-    var list = catalogCities();
-    for (var i = 0; i < list.length; i += 1) {
-      var item = list[i];
-      var city = item.city.toLowerCase();
-      var label = (item.label || '').toLowerCase();
-      var combo = (item.city + ' ' + item.region).toLowerCase();
-      var comma = (item.city + ', ' + item.region).toLowerCase();
-      if (city === typed || label === typed || combo === typed || comma === typed) return item;
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;' })[ch];
+    });
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value);
+  }
+
+  function fetchSuggestions(query) {
+    var q = (query || '').trim();
+    lastQuery = q;
+    if (q.length < 2) {
+      renderSuggestions([]);
+      setMiss(false);
+      setOpen(false);
+      return;
     }
-    return null;
-  }
-
-  function setSidebarCity(city) {
-    var want = (city || '').toLowerCase();
-    document.querySelectorAll('[data-filter-city]').forEach(function (btn) {
-      var val = (btn.getAttribute('data-filter-city') || '').toLowerCase();
-      btn.classList.toggle('is-on', val === want);
-    });
-  }
-
-  function applyCityCards(city) {
-    var chosen = (city || '').trim();
-    document.querySelectorAll('[data-card-slug]').forEach(function (card) {
-      if (!chosen) {
-        card.hidden = false;
-        return;
-      }
-      var shopCity = (card.getAttribute('data-shop-city') || '').toLowerCase();
-      card.hidden = shopCity !== chosen.toLowerCase();
-    });
-    document.querySelectorAll('[data-shop-row]').forEach(function (row) {
-      var visible = Array.prototype.slice.call(row.querySelectorAll('[data-card-slug]')).some(function (card) {
-        return !card.hidden;
+    fetch('/api/suggest?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (q !== lastQuery) return;
+        var rows = (data && data.suggestions) || [];
+        renderSuggestions(rows);
+        setMiss(!rows.length);
+        setOpen(Boolean(rows.length));
+      })
+      .catch(function () {
+        if (q !== lastQuery) return;
+        setMiss(true);
+        setOpen(false);
       });
-      row.hidden = !visible;
-    });
   }
 
-  function emitCity(city, region, country) {
+  function emitPlace(place) {
     window.dispatchEvent(new CustomEvent('callsal:city-applied', {
-      detail: { city: city || '', region: region || '', country: country || '' },
+      detail: {
+        city: (place && place.city) || '',
+        region: (place && place.region) || '',
+        country: (place && place.country) || '',
+        label: (place && place.label) || '',
+        lat: place && place.lat,
+        lng: place && place.lng,
+      },
     }));
   }
 
-  function applyCity(city, persist, meta) {
-    var chosen = (city || '').trim();
-    var region = (meta && meta.region) || '';
-    var country = (meta && meta.country) || '';
-    var label = (meta && meta.label) || chosen;
+  function applyPlace(place) {
     var input = inputEl();
-    if (input) input.value = chosen ? label : '';
-    markActive(chosen);
+    var label = (place && (place.label || place.city)) || '';
+    if (input) input.value = label;
     setMiss(false);
-    setSidebarCity(chosen);
-    if (typeof window.__dirApplyShopFilters === 'function') {
-      window.__dirApplyShopFilters();
-    } else {
-      applyCityCards(chosen);
-    }
-    emitCity(chosen, region, country);
-    if (persist !== false) {
-      try {
-        if (chosen) sessionStorage.setItem(KEY, JSON.stringify({ city: chosen, region: region, country: country, label: label }));
-        else sessionStorage.removeItem(KEY);
-      } catch (err) { /* private mode */ }
-    }
     setOpen(false);
+    emitPlace(place);
+    try {
+      if (place && place.lat) sessionStorage.setItem(KEY, JSON.stringify(place));
+      else sessionStorage.removeItem(KEY);
+    } catch (err) { /* private mode */ }
   }
 
   function pickFromButton(pick) {
     if (!pick) return;
-    var city = pick.getAttribute('data-city-pick') || '';
-    var region = pick.getAttribute('data-city-region') || '';
-    var country = pick.getAttribute('data-city-country') || '';
-    var label = pick.getAttribute('data-city-label') || (city ? pick.textContent : '');
-    applyCity(city, true, { region: region, country: country, label: label });
+    var id = pick.getAttribute('data-city-pick') || '';
+    var label = pick.getAttribute('data-city-label') || pick.textContent || '';
+    if (!id) return;
+    fetch('/api/suggest?placeId=' + encodeURIComponent(id), { credentials: 'same-origin' })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (payload) {
+        if (!payload.ok || !payload.data || !payload.data.place) {
+          setMiss(true);
+          return;
+        }
+        applyPlace(payload.data.place);
+      })
+      .catch(function () { setMiss(true); });
+    if (inputEl()) inputEl().value = label;
+    setOpen(false);
   }
 
   function tryApplyFromBar() {
@@ -248,55 +163,36 @@
       return;
     }
     var input = inputEl();
-    if (!input) return;
-    var typed = (input.value || '').trim();
-    var match = matchCity(typed);
-    if (match) {
-      applyCity(match.city, true, match);
-      return;
-    }
-    var first = visibleButtons()[0];
-    if (first && typed) {
-      pickFromButton(first);
-      return;
-    }
-    setMiss(true);
-    setOpen(true);
-  }
-
-  async function hideIfAuthed() {
-    var root = wrap();
-    if (!root) return true;
-    root.hidden = false;
-    return false;
-  }
-
-  async function restore() {
-    var hidden = await hideIfAuthed();
-    var root = wrap();
-    if (!root || hidden) return;
-    var saved = '';
-    try { saved = sessionStorage.getItem(KEY) || ''; } catch (err) { saved = ''; }
-    var parsed = null;
-    try { parsed = saved.charAt(0) === '{' ? JSON.parse(saved) : { city: saved }; } catch (err) { parsed = { city: saved }; }
-    var match = matchCity((parsed && parsed.city) || '');
-    if (match && match.city) applyCity(match.city, false, match);
-    else applyCity('', false);
-    setOpen(false);
+    var typed = input ? (input.value || '').trim() : '';
+    if (!typed) return;
+    fetch('/api/suggest?q=' + encodeURIComponent(typed) + '&resolve=1', { credentials: 'same-origin' })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (payload) {
+        if (!payload.ok || !payload.data || !payload.data.place) {
+          setMiss(true);
+          setOpen(true);
+          return;
+        }
+        applyPlace(payload.data.place);
+      })
+      .catch(function () {
+        setMiss(true);
+        setOpen(true);
+      });
   }
 
   document.addEventListener('input', function (event) {
     var input = event.target && event.target.closest && event.target.closest('[data-city-input]');
     if (!input) return;
     setMiss(false);
-    setOpen(true);
-    var shown = filterSuggestions(input.value);
-    setMiss(Boolean((input.value || '').trim()) && shown === 0);
+    window.clearTimeout(timer);
+    timer = window.setTimeout(function () { fetchSuggestions(input.value); }, 220);
   });
 
   document.addEventListener('focusin', function (event) {
     if (event.target && event.target.closest && event.target.closest('[data-city-input]')) {
-      setOpen(true);
+      var val = event.target.value || '';
+      if (val.trim().length >= 2) fetchSuggestions(val);
     }
   });
 
@@ -343,20 +239,4 @@
       tryApplyFromBar();
     }
   });
-
-  window.addEventListener('callsal:page-applied', function () {
-    void restore();
-  });
-
-  if (typeof MutationObserver === 'function') {
-    new MutationObserver(function () {
-      void hideIfAuthed();
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { void restore(); });
-  } else {
-    void restore();
-  }
 })();
