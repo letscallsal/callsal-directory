@@ -17,7 +17,6 @@ interface Props {
 
 const { title, description = 'A live Google Business index you turn into a calling board. Search anywhere. Free to start.', withRoom = false } = Astro.props;
 const shops = await getShops();
-const cities = [...new Set(shops.map((shop) => shop.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const pageTitle = title === 'Directory' ? 'DIRECTORY | AI-Powered Business Directory' : `${title} | DIRECTORY`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
@@ -222,7 +221,7 @@ const ogImage = 'https://callsal.app/og-image.webp?v=20260824e';
             <div class="listings-track sleek-scroll" data-map-list></div>
           </aside>
           <aside class="sidebar sleek-scroll" id="leads-menu" data-leads-menu aria-label="Leads menu">
-            <ShopFilters cities={cities} scope="board" />
+            <ShopFilters cities={[]} scope="board" />
           </aside>
           <div class="scrim" data-scrim hidden></div>
           <div class="viewport sleek-scroll" data-viewport>
