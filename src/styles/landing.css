@@ -549,3 +549,126 @@ input[type="search"]::placeholder,
 input[type="text"]::placeholder {
   font-size: 16px;
 }
+
+.auth-note {
+  margin: 0.7rem 0 0;
+  color: #8a8a8a;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auth-note[hidden] {
+  display: none;
+}
+
+.guest-sale {
+  max-width: 58rem;
+  margin: 0 auto;
+}
+
+.guest-sale .page-head {
+  margin: 0 0 1.1rem;
+  max-width: 38rem;
+}
+
+.guest-sale .page-title {
+  font-size: clamp(1.55rem, 3.6vw, 2.35rem);
+  letter-spacing: -0.045em;
+}
+
+.guest-sale .page-tag {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  max-width: 36rem;
+}
+
+.sale-demo {
+  display: grid;
+  grid-template-columns: minmax(14rem, 16.5rem) 1fr;
+  gap: 0.45rem;
+  margin: 0 0 0.7rem;
+  min-height: 18rem;
+  max-height: 22rem;
+  pointer-events: none;
+}
+
+.sale-rail {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.45rem 0.4rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sale-rail .listings-head {
+  margin: 0 0 0.35rem;
+}
+
+.sale-board {
+  margin: 0;
+  max-height: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sale-payload {
+  margin: 0 0 1.15rem;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  border: 1px solid rgba(204, 255, 0, 0.22);
+  border-radius: 0.35rem;
+  background: #070707;
+  color: #d8d8d8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.sale-payload code {
+  color: inherit;
+}
+
+.leads-plan.is-free {
+  border-color: #CCFF00;
+  background: rgba(204, 255, 0, 0.04);
+}
+
+.guest-sale .leads-plan.is-paid {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.has-room:not(.is-app):not(.is-leads) .viewport {
+  overflow: visible;
+  height: auto;
+}
+
+html.has-room:not(.is-app):not(.is-leads) main {
+  display: block;
+  flex: none;
+  padding: 1.05rem 0.9rem 2.4rem;
+}
+
+html.has-room:not(.is-app):not(.is-leads) .page-foot {
+  display: flex;
+}
+
+html.has-room:not(.is-app):not(.is-leads):has(#app-chrome.is-stuck) .chrome-slot {
+  height: var(--chrome);
+}
+
+@media (max-width: 860px) {
+  .sale-demo {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .sale-rail {
+    max-height: 14rem;
+  }
+
+  .sale-board {
+    grid-template-columns: repeat(3, minmax(8.5rem, 1fr));
+    max-height: 14rem;
+  }
+}

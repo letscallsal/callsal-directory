@@ -530,11 +530,7 @@
 
   function mapShouldLive() {
     if (isLeads()) return false;
-    if (document.documentElement.classList.contains('is-app')) return true;
-    if (document.documentElement.classList.contains('is-map-locked')) return true;
-    var chrome = document.getElementById('app-chrome');
-    if (chrome && chrome.classList.contains('is-stuck')) return true;
-    return canvasReady();
+    return document.documentElement.classList.contains('is-app');
   }
 
   function syncMode() {

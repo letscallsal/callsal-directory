@@ -1,11 +1,113 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
+import milton from '../data/milton-leads.json';
+import { typeLabel } from '../lib/shops';
+
+const shops = (milton.shops as Array<{
+  name: string;
+  city?: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  category?: string;
+  ownerName?: string;
+}>).filter((shop) => shop.phone);
+
+const rail = shops.slice(0, 7);
+const boardPreview = [
+  { label: 'NEW', items: shops.slice(0, 3) },
+  { label: 'CONTACTED', items: shops.slice(3, 5) },
+  { label: 'WON', items: shops.slice(5, 6) },
+];
+const sample = shops.find((shop) => shop.website && shop.address) || shops[0];
 ---
 
-<AppShell title="Directory" description="A live Google Business index for Canada and the United States." withRoom>
-  <div class="lede intro-hold intro-trace intro-d3" data-index-lede>
-    <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
-    <h1>THE INDEX</h1>
-    <p>Search any city in Canada or the United States. Listings are pulled from the public Google Business profile: name, address, phone, site, hours, rating.</p>
-  </div>
+<AppShell title="Directory" description="A live Google Business index you turn into a lead board. Free to start. No credit card." withRoom>
+  <section class="guest-sale" data-guest-sale>
+    <header class="page-head">
+      <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
+      <h1 class="page-title">Stop hunting Google Maps.</h1>
+      <p class="page-tag">Directory pulls targeted Google Business listings — name, phone, hours, site — and plus drops them on a call board. One tool. Free to start. No credit card. No trial.</p>
+    </header>
+
+    <div class="leads-steps">
+      <article class="leads-step">
+        <p class="leads-step-num">ROOM 01</p>
+        <h2>Directory</h2>
+        <p>Search a city. Every pin is a real Google Business profile. Pick a niche or take the whole view.</p>
+      </article>
+      <article class="leads-step">
+        <p class="leads-step-num">ROOM 02</p>
+        <h2>Pipeline</h2>
+        <p>Tap plus. The listing lands in NEW with the number ready. Drag six stages. Call from the card.</p>
+      </article>
+      <article class="leads-step">
+        <p class="leads-step-num">ROOM 03</p>
+        <h2>Import</h2>
+        <p>Paid fills one city every 24 hours — one niche, or every niche in that city. The board is already dialing.</p>
+      </article>
+    </div>
+
+    <div class="sale-demo" aria-hidden="true">
+      <div class="sale-rail">
+        <div class="listings-head">
+          <p>In view</p>
+          <span class="listings-count">{rail.length}</span>
+        </div>
+        {rail.map((shop) => (
+          <article class="lead-card">
+            <p class="lead-type">{typeLabel(shop.category || '')} · {shop.city || 'Milton'}</p>
+            <div class="lead-main">
+              <div class="lead-copy">
+                <h3>{shop.name}</h3>
+                <p class="lead-phone">{shop.phone}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="kanban kanban-preview sale-board">
+        {boardPreview.map((col) => (
+          <section class="kanban-col">
+            <h2>{col.label} <span>{col.items.length}</span></h2>
+            {col.items.map((shop) => (
+              <article class="lead-card">
+                <p class="lead-type">{typeLabel(shop.category || '')} · {shop.city || 'Milton'}</p>
+                <div class="lead-main">
+                  <div class="lead-copy">
+                    <h3>{shop.name}</h3>
+                    <p class="lead-phone">{shop.phone}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
+
+    <pre class="sale-payload"><code>{`plus({
+  name:     "${sample.name}",
+  phone:    "${sample.phone}",
+  address:  "${sample.address}",
+  website:  "${sample.website}",
+  stage:    "NEW"
+})
+// Same card. Map → board. Ready to dial.`}</code></pre>
+
+    <div class="leads-plans">
+      <article class="leads-plan is-free">
+        <p class="page-kicker">No card</p>
+        <h2>Free</h2>
+        <p>Join, open the map, tap plus. Board holds 100 leads. Starting out, or just want a cleaner call list — this is enough.</p>
+        <button type="button" class="btn-primary hover-lift" data-leads-pick="free">JOIN FREE</button>
+      </article>
+      <article class="leads-plan is-paid">
+        <p class="page-kicker">$999 a month</p>
+        <h2>Paid</h2>
+        <p>No cap. Import one city every 24 hours — one niche, or all of them. Agencies dump a market into the pipeline in one pass.</p>
+        <button type="button" class="btn-glass hover-lift" data-leads-pick="paid">JOIN PAID</button>
+      </article>
+    </div>
+  </section>
 </AppShell>

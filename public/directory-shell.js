@@ -27,6 +27,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       }
 
       function lockMapStage() {
+        if (!currentUser && !document.documentElement.classList.contains('is-app')) return;
         if (mapLocked) return;
         mapLocked = true;
         document.documentElement.classList.add('is-map-locked');
@@ -503,23 +504,25 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       function snapToDirectory() {
         const stage = document.getElementById('stage-scroll');
         const hero = document.getElementById('hero-stage');
+        const pin = () => {
+          if (currentUser || document.documentElement.classList.contains('is-app')) lockMapStage();
+        };
         if (!stage || !hero) {
-          lockMapStage();
+          pin();
           return;
         }
-        const done = () => lockMapStage();
         if (reduceMotion) {
           stage.scrollTop = hero.offsetHeight;
-          done();
+          pin();
           return;
         }
         const onEnd = () => {
           stage.removeEventListener('scrollend', onEnd);
-          done();
+          pin();
         };
         stage.addEventListener('scrollend', onEnd, { once: true });
         stage.scrollTo({ top: hero.offsetHeight, behavior: 'smooth' });
-        window.setTimeout(done, 700);
+        window.setTimeout(pin, 700);
       }
 
       let bookmarks = new Set();
@@ -591,13 +594,15 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
 
       function setAuthMode(mode) {
         authMode = mode;
-        if (authTitle) authTitle.textContent = mode === 'register' ? 'JOIN' : 'LOGIN';
+        if (authTitle) authTitle.textContent = mode === 'register' ? 'JOIN FREE' : 'LOGIN';
         if (authSubmit) authSubmit.textContent = mode === 'register' ? 'CREATE ACCOUNT' : 'LOG IN';
         if (authSwitch) {
           authSwitch.textContent = mode === 'register'
             ? 'ALREADY HAVE AN ACCOUNT? LOG IN'
             : 'NEED AN ACCOUNT? JOIN';
         }
+        const note = document.querySelector('[data-auth-note]');
+        if (note) note.hidden = mode !== 'register';
         if (authError) {
           authError.hidden = true;
           authError.textContent = '';
