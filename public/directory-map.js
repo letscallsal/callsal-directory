@@ -299,6 +299,14 @@
     });
   }
 
+  function revealCard(card) {
+    var rail = listEl();
+    if (!card || !rail) return;
+    var top = rail.scrollTop + card.getBoundingClientRect().top - rail.getBoundingClientRect().top;
+    if (typeof rail.scrollTo === 'function') rail.scrollTo({ top: top, behavior: 'smooth' });
+    else rail.scrollTop = top;
+  }
+
   function paintList() {
     var rail = listEl();
     if (!rail) return;
@@ -349,15 +357,13 @@
         });
         marker.addListener('click', function () {
           highlight(key);
-          var card = document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]');
-          if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          revealCard(document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]'));
         });
       } else {
         marker = window.L.marker([lat, lng], { icon: leafletPin(false), title: shop.name });
         marker.on('click', function () {
           highlight(key);
-          var card = document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]');
-          if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          revealCard(document.querySelector('[data-map-card="' + key.replace(/"/g, '') + '"]'));
         });
         marker.addTo(map);
       }
