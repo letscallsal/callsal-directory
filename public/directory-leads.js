@@ -81,6 +81,9 @@
       status: card.getAttribute('data-shop-status') || '',
       summary: card.getAttribute('data-shop-summary') || '',
       priceLevel: card.getAttribute('data-shop-price') || '',
+      rating: card.getAttribute('data-shop-rating') || '',
+      reviews: card.getAttribute('data-shop-reviews') || '',
+      openNow: card.getAttribute('data-shop-open') || '',
     };
   }
 
@@ -327,7 +330,68 @@
   }
 
   function selectedHas() {
-    return [...document.querySelectorAll('[data-filter-has].is-on')].map((btn) => btn.getAttribute('data-filter-has') || '');
+    return [...document.querySelectorAll('[data-shop-filters] [data-filter-has].is-on')]
+      .map((btn) => btn.getAttribute('data-filter-has') || '')
+      .filter(Boolean);
+  }
+
+  function toggleFilterFlag(bar, btn, attr) {
+    if (!bar || !btn) return;
+    const set = btn.getAttribute('data-filter-set') || '';
+    const wasOn = btn.classList.contains('is-on');
+    if (set) {
+      bar.querySelectorAll('[' + attr + '][data-filter-set="' + set + '"]').forEach((el) => {
+        el.classList.remove('is-on');
+        el.setAttribute('aria-pressed', 'false');
+      });
+      if (!wasOn) {
+        btn.classList.add('is-on');
+        btn.setAttribute('aria-pressed', 'true');
+      }
+      return;
+    }
+    btn.classList.toggle('is-on');
+    btn.setAttribute('aria-pressed', btn.classList.contains('is-on') ? 'true' : 'false');
+  }
+
+  function cardMatchesFlags(card, flags) {
+    const on = (key) => flags.indexOf(key) !== -1;
+    const bit = (name) => card.getAttribute(name) === '1';
+    const open = (card.getAttribute('data-shop-open') || card.getAttribute('data-lead-open') || '').toLowerCase();
+    const status = (card.getAttribute('data-shop-status') || card.getAttribute('data-lead-status') || '').toUpperCase();
+    const rating = Number(card.getAttribute('data-shop-rating') || card.getAttribute('data-lead-rating') || 0);
+    const reviews = Number(card.getAttribute('data-shop-reviews') || card.getAttribute('data-lead-reviews') || 0);
+    const price = card.getAttribute('data-shop-price') || card.getAttribute('data-lead-price') || '';
+    if (on('phone') && !bit('data-has-phone')) return false;
+    if (on('no-phone') && bit('data-has-phone')) return false;
+    if (on('website') && !bit('data-has-website')) return false;
+    if (on('no-website') && bit('data-has-website')) return false;
+    if (on('hours') && !bit('data-has-hours')) return false;
+    if (on('no-hours') && bit('data-has-hours')) return false;
+    if (on('photo') && !bit('data-has-photo')) return false;
+    if (on('no-photo') && bit('data-has-photo')) return false;
+    if (on('email') && !bit('data-has-email')) return false;
+    if (on('open') && open !== 'open') return false;
+    if (on('closed') && open !== 'closed') return false;
+    if (on('temp-closed') && status.indexOf('TEMPORAR') === -1) return false;
+    if (on('unrated') && rating > 0) return false;
+    if (on('rating-3') && !(rating >= 3)) return false;
+    if (on('rating-4') && !(rating >= 4)) return false;
+    if (on('no-reviews') && reviews > 0) return false;
+    if (on('reviews-low') && (reviews < 1 || reviews >= 20)) return false;
+    if (on('price-1') && price !== '$') return false;
+    if (on('price-2') && price !== '$$') return false;
+    if (on('price-3') && price !== '$$$') return false;
+    if (on('price-4') && price !== '$$$$') return false;
+    return true;
+  }
+
+  function paintFlagNow(bar, nowAttr, group) {
+    const now = bar.querySelector('[' + nowAttr + '="' + group + '"]');
+    if (!now) return;
+    const wrap = bar.querySelector('[data-filter-group="' + group + '"]');
+    const on = wrap ? [...wrap.querySelectorAll('.is-on')] : [];
+    now.textContent = on.length ? on.map((btn) => (btn.textContent || '').trim()).join(' · ') : 'Any';
   }
 
   function searchQuery() {
@@ -338,19 +402,10 @@
   function paintFilterNow() {
     const bar = document.querySelector('[data-shop-filters]');
     if (!bar) return;
-    const cityBtn = bar.querySelector('[data-filter-city].is-on');
     const nicheBtn = bar.querySelector('[data-filter-niche].is-on');
-    const hasOn = [...bar.querySelectorAll('[data-filter-has].is-on')];
-    const cityNow = bar.querySelector('[data-filter-now="city"]');
     const nicheNow = bar.querySelector('[data-filter-now="niche"]');
-    const readyNow = bar.querySelector('[data-filter-now="ready"]');
-    if (cityNow) cityNow.textContent = cityBtn && cityBtn.textContent ? cityBtn.textContent.trim() : 'All cities';
     if (nicheNow) nicheNow.textContent = nicheBtn && nicheBtn.textContent ? nicheBtn.textContent.trim() : 'All niches';
-    if (readyNow) {
-      readyNow.textContent = hasOn.length
-        ? hasOn.map((btn) => (btn.textContent || '').trim()).join(' · ')
-        : 'Any';
-    }
+    ['listing', 'open', 'rating', 'reviews', 'price'].forEach((group) => paintFlagNow(bar, 'data-filter-now', group));
   }
 
   function syncGuestCity(city) {
@@ -388,12 +443,9 @@
     cards.forEach((card) => {
       const okCity = !city || (card.getAttribute('data-shop-city') || '').toLowerCase() === city;
       const okNiche = !niche || (card.getAttribute('data-shop-type') || '') === niche;
-      const okEmail = needs.indexOf('email') === -1 || card.getAttribute('data-has-email') === '1';
-      const okPhone = needs.indexOf('phone') === -1 || card.getAttribute('data-has-phone') === '1';
-      const okSite = needs.indexOf('website') === -1 || card.getAttribute('data-has-website') === '1';
       const name = (card.getAttribute('data-shop-name') || '').toLowerCase();
       const okSearch = !q || name.indexOf(q) !== -1;
-      const show = okCity && okNiche && okEmail && okPhone && okSite && okSearch;
+      const show = okCity && okNiche && cardMatchesFlags(card, needs) && okSearch;
       card.hidden = !show;
       if (show) shown += 1;
     });
@@ -415,6 +467,7 @@
     }
     paintFilterNow();
     syncGuestCity(city);
+    if (typeof window.__dirFilterPins === 'function') window.__dirFilterPins();
   }
 
   window.__dirApplyShopFilters = applyShopFilters;
@@ -470,8 +523,7 @@
       }
       const hasBtn = hit.closest('[data-filter-has]');
       if (hasBtn) {
-        hasBtn.classList.toggle('is-on');
-        hasBtn.setAttribute('aria-pressed', hasBtn.classList.contains('is-on') ? 'true' : 'false');
+        toggleFilterFlag(bar, hasBtn, 'data-filter-has');
         applyShopFilters();
       }
     });
@@ -494,7 +546,9 @@
   }
 
   function boardHas() {
-    return [...document.querySelectorAll('[data-leads-filter-has].is-on')].map((btn) => btn.getAttribute('data-leads-filter-has') || '');
+    return [...document.querySelectorAll('[data-leads-filters] [data-leads-filter-has].is-on')]
+      .map((btn) => btn.getAttribute('data-leads-filter-has') || '')
+      .filter(Boolean);
   }
 
   function boardQuery() {
@@ -507,17 +561,11 @@
     if (!bar) return;
     const cityBtn = bar.querySelector('[data-leads-filter-city].is-on');
     const nicheBtn = bar.querySelector('[data-leads-filter-niche].is-on');
-    const hasOn = [...bar.querySelectorAll('[data-leads-filter-has].is-on')];
     const cityNow = bar.querySelector('[data-leads-filter-now="city"]');
     const nicheNow = bar.querySelector('[data-leads-filter-now="niche"]');
-    const readyNow = bar.querySelector('[data-leads-filter-now="ready"]');
     if (cityNow) cityNow.textContent = cityBtn && cityBtn.textContent ? cityBtn.textContent.trim() : 'All cities';
     if (nicheNow) nicheNow.textContent = nicheBtn && nicheBtn.textContent ? nicheBtn.textContent.trim() : 'All niches';
-    if (readyNow) {
-      readyNow.textContent = hasOn.length
-        ? hasOn.map((btn) => (btn.textContent || '').trim()).join(' · ')
-        : 'Any';
-    }
+    ['listing', 'open', 'rating', 'reviews', 'price'].forEach((group) => paintFlagNow(bar, 'data-leads-filter-now', group));
   }
 
   function applyBoardFilters() {
@@ -532,12 +580,9 @@
     cards.forEach((card) => {
       const okCity = !city || (card.getAttribute('data-lead-city') || '').toLowerCase() === city;
       const okNiche = !niche || (card.getAttribute('data-lead-niche') || '') === niche;
-      const okEmail = needs.indexOf('email') === -1 || card.getAttribute('data-has-email') === '1';
-      const okPhone = needs.indexOf('phone') === -1 || card.getAttribute('data-has-phone') === '1';
-      const okSite = needs.indexOf('website') === -1 || card.getAttribute('data-has-website') === '1';
       const name = (card.getAttribute('data-lead-name') || '').toLowerCase();
       const okSearch = !q || name.indexOf(q) !== -1;
-      const show = okCity && okNiche && okEmail && okPhone && okSite && okSearch;
+      const show = okCity && okNiche && cardMatchesFlags(card, needs) && okSearch;
       card.hidden = !show;
       if (show) shown += 1;
     });
@@ -581,8 +626,7 @@
       }
       const hasBtn = event.target && event.target.closest ? event.target.closest('[data-leads-filter-has]') : null;
       if (hasBtn) {
-        hasBtn.classList.toggle('is-on');
-        hasBtn.setAttribute('aria-pressed', hasBtn.classList.contains('is-on') ? 'true' : 'false');
+        toggleFilterFlag(bar, hasBtn, 'data-leads-filter-has');
         applyBoardFilters();
       }
     });
@@ -657,10 +701,14 @@
 
   function renderLeadCard(lead) {
     const stage = normalizeStage(lead.stage);
-    const v = lead.verified || {};
     const phone = String(lead.phone || '').trim();
     const email = String(lead.email || '').trim();
     const web = String(lead.website || '').trim();
+    const hours = Array.isArray(lead.hours) ? lead.hours.join(' | ') : String(lead.hours || '');
+    const photo = String(lead.photo || '').trim();
+    const open = lead.openNow === true ? 'Open' : lead.openNow === false ? 'Closed' : String(lead.openNow || '');
+    const rating = lead.rating ? Number(lead.rating).toFixed(1) : '';
+    const reviews = lead.reviews ? String(lead.reviews) : '';
     return '<article class="lead-card" draggable="true" data-lead-slug="' + esc(lead.slug) + '"'
       + ' data-lead-place-id="' + esc(lead.placeId || '') + '"'
       + ' data-lead-name="' + esc(lead.name || '') + '"'
@@ -669,6 +717,13 @@
       + ' data-has-email="' + (email ? '1' : '0') + '"'
       + ' data-has-phone="' + (phone ? '1' : '0') + '"'
       + ' data-has-website="' + (web ? '1' : '0') + '"'
+      + ' data-has-hours="' + (hours ? '1' : '0') + '"'
+      + ' data-has-photo="' + (photo ? '1' : '0') + '"'
+      + ' data-shop-open="' + esc(open) + '"'
+      + ' data-shop-status="' + esc(lead.status || '') + '"'
+      + ' data-shop-rating="' + esc(rating) + '"'
+      + ' data-shop-reviews="' + esc(reviews) + '"'
+      + ' data-shop-price="' + esc(lead.priceLevel || '') + '"'
       + ' data-lead-stage="' + esc(stage) + '">'
       + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
       + '<div class="lead-main">'

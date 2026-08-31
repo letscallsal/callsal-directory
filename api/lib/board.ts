@@ -88,6 +88,13 @@ export interface StoredLead {
   ownerName?: string;
   photo?: string;
   mapsUrl?: string;
+  hours?: string;
+  status?: string;
+  summary?: string;
+  priceLevel?: string;
+  rating?: number;
+  reviews?: number;
+  openNow?: boolean;
 }
 
 export interface Lead extends StoredLead {
@@ -105,6 +112,13 @@ export interface Lead extends StoredLead {
   socials?: { instagram?: string };
   photo?: string;
   mapsUrl?: string;
+  hours?: string[];
+  status?: string;
+  summary?: string;
+  priceLevel?: string;
+  rating?: number;
+  reviews?: number;
+  openNow?: boolean;
   verified: {
     phone: boolean;
     website: boolean;
@@ -264,6 +278,18 @@ function toTiny(lead: Lead | StoredLead): StoredLead {
     if (ownerName) tiny.ownerName = ownerName;
     if (mapsUrl) tiny.mapsUrl = mapsUrl;
     if (photo && (!lead.placeId || String(lead.placeId).startsWith('osm:'))) tiny.photo = photo;
+    const hours = Array.isArray(full.hours) ? full.hours.join(' | ') : clip(String((lead as StoredLead).hours || ''), 400);
+    const status = clip(full.status || (lead as StoredLead).status, 40);
+    const priceLevel = clip(full.priceLevel || (lead as StoredLead).priceLevel, 8);
+    const rating = Number(full.rating || (lead as StoredLead).rating || 0);
+    const reviews = Number(full.reviews || (lead as StoredLead).reviews || 0);
+    const openNow = typeof full.openNow === 'boolean' ? full.openNow : (lead as StoredLead).openNow;
+    if (hours) tiny.hours = hours;
+    if (status) tiny.status = status;
+    if (priceLevel) tiny.priceLevel = priceLevel;
+    if (rating) tiny.rating = rating;
+    if (reviews) tiny.reviews = reviews;
+    if (typeof openNow === 'boolean') tiny.openNow = openNow;
   }
   return tiny;
 }
@@ -344,6 +370,13 @@ function hydrateFromShop(record: StoredLead, shop?: Shop): Lead {
     socials: shop.socials,
     photo: shop.verified.photo ? shop.photo : listingPhotoSrc(shop.placeId, shop.photo),
     mapsUrl: shop.mapsUrl,
+    hours: shop.hours,
+    status: shop.status,
+    summary: shop.summary,
+    priceLevel: shop.priceLevel,
+    rating: shop.rating,
+    reviews: shop.reviews,
+    openNow: shop.openNow,
     verified: { ...shop.verified, photo: Boolean((shop.verified.photo && shop.photo) || listingPhotoSrc(shop.placeId)) },
   };
 }
@@ -366,6 +399,12 @@ function hydrateFromSnapshot(record: StoredLead): Lead {
     ownerName: clip(record.ownerName, 60) || undefined,
     photo,
     mapsUrl: clip(record.mapsUrl, 160) || undefined,
+    hours: record.hours ? String(record.hours).split(' | ').map((part) => part.trim()).filter(Boolean) : undefined,
+    status: clip(record.status, 40) || undefined,
+    priceLevel: clip(record.priceLevel, 8) || undefined,
+    rating: record.rating || undefined,
+    reviews: record.reviews || undefined,
+    openNow: typeof record.openNow === 'boolean' ? record.openNow : undefined,
     verified: {
       phone: Boolean(record.phone),
       website: Boolean(record.website),
@@ -655,6 +694,9 @@ export interface ListingInput {
   status?: string;
   summary?: string;
   priceLevel?: string;
+  rating?: number | string;
+  reviews?: number | string;
+  openNow?: boolean | string;
 }
 
 function slugify(value: string): string {
@@ -712,6 +754,14 @@ export function shopFromListing(input: ListingInput | string | null | undefined)
     status: clip(raw.status, 40) || undefined,
     summary: clip(raw.summary, 280) || undefined,
     priceLevel: clip(raw.priceLevel, 8) || undefined,
+    rating: Number(raw.rating) || undefined,
+    reviews: Number(raw.reviews) || undefined,
+    openNow: (() => {
+      const v = raw.openNow;
+      if (v === true || String(v).toLowerCase() === 'open') return true;
+      if (v === false || String(v).toLowerCase() === 'closed') return false;
+      return undefined;
+    })(),
     category,
     verified: {
       phone: Boolean(phone),

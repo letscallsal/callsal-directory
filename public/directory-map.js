@@ -149,12 +149,14 @@
   function listingHtml(shop) {
     var type = shop.primaryType || TYPE_LABELS[shop.category] || 'Local';
     var rating = shop.rating ? Number(shop.rating).toFixed(1) : '';
+    var reviews = shop.reviews ? String(shop.reviews) : '';
     var open = shop.openNow === true ? 'Open' : shop.openNow === false ? 'Closed' : '';
     var cat = [type, shop.city, rating ? rating + '★' : '', open].filter(Boolean).join(' · ');
     var hours = Array.isArray(shop.hours) ? shop.hours.join(' | ') : (shop.hours || '');
     var phone = String(shop.phone || '').trim();
     var email = String(shop.email || '').trim();
     var web = String(shop.website || '').trim();
+    var photo = String(shop.photo || '').trim();
     var phoneLine = phone
       ? '<p class="lead-phone" data-lead-act="copy" data-copy="' + esc(phone) + '" data-tip="' + esc(phone) + '">' + esc(phone) + '</p>'
       : '<p class="lead-phone lead-phone-empty">No phone</p>';
@@ -169,6 +171,8 @@
       + ' data-has-email="' + (email ? '1' : '0') + '"'
       + ' data-has-phone="' + (phone ? '1' : '0') + '"'
       + ' data-has-website="' + (web ? '1' : '0') + '"'
+      + ' data-has-hours="' + (hours ? '1' : '0') + '"'
+      + ' data-has-photo="' + (photo ? '1' : '0') + '"'
       + ' data-shop-address="' + esc(shop.address || '') + '"'
       + ' data-shop-phone="' + esc(phone) + '"'
       + ' data-shop-website="' + esc(web) + '"'
@@ -176,7 +180,9 @@
       + ' data-shop-owner="' + esc(shop.ownerName || '') + '"'
       + ' data-shop-ig="' + esc(shop.socials && shop.socials.instagram ? shop.socials.instagram : '') + '"'
       + ' data-shop-place-id="' + esc(shop.placeId || '') + '"'
+      + ' data-shop-photo="' + esc(photo) + '"'
       + ' data-shop-rating="' + esc(rating) + '"'
+      + ' data-shop-reviews="' + esc(reviews) + '"'
       + ' data-shop-maps="' + esc(shop.mapsUrl || '') + '"'
       + ' data-shop-hours="' + esc(hours) + '"'
       + ' data-shop-status="' + esc(shop.status || '') + '"'
@@ -390,6 +396,32 @@
       markers[key] = marker;
     });
   }
+
+  function filterPins() {
+    var shown = 0;
+    Object.keys(markers).forEach(function (key) {
+      var marker = markers[key];
+      var card = null;
+      var nodes = document.querySelectorAll('[data-map-card]');
+      for (var i = 0; i < nodes.length; i += 1) {
+        if (nodes[i].getAttribute('data-map-card') === key) {
+          card = nodes[i];
+          break;
+        }
+      }
+      var show = Boolean(card && !card.hidden);
+      if (show) shown += 1;
+      if (engine === 'google') {
+        marker.setMap(show ? map : null);
+      } else if (engine === 'leaflet' && map) {
+        if (show) marker.addTo(map);
+        else map.removeLayer(marker);
+      }
+    });
+    var count = countEl();
+    if (count) count.textContent = String(shown);
+  }
+  window.__dirFilterPins = filterPins;
 
   function bindMove() {
     if (!map) return;

@@ -9,15 +9,54 @@ interface Props {
 
 const { cities, showNiche = true, scope = 'directory' } = Astro.props;
 const isBoard = scope === 'board';
+const has = isBoard ? 'data-leads-filter-has' : 'data-filter-has';
+const accord = isBoard ? 'data-leads-filter-accord' : 'data-filter-accord';
+const now = isBoard ? 'data-leads-filter-now' : 'data-filter-now';
+
+const listingFlags = [
+  { v: 'phone', set: 'phone', l: 'Has phone' },
+  { v: 'no-phone', set: 'phone', l: 'No phone' },
+  { v: 'website', set: 'website', l: 'Has website' },
+  { v: 'no-website', set: 'website', l: 'No website' },
+  { v: 'hours', set: 'hours', l: 'Has hours' },
+  { v: 'no-hours', set: 'hours', l: 'No hours' },
+  { v: 'photo', set: 'photo', l: 'Has photo' },
+  { v: 'no-photo', set: 'photo', l: 'No photo' },
+  { v: 'email', set: 'email', l: 'Has email' },
+];
+
+const openFlags = [
+  { v: 'open', set: 'open', l: 'Open now' },
+  { v: 'closed', set: 'open', l: 'Closed now' },
+  { v: 'temp-closed', set: 'open', l: 'Temp closed' },
+];
+
+const ratingFlags = [
+  { v: 'unrated', set: 'rating', l: 'Unrated' },
+  { v: 'rating-3', set: 'rating', l: '3+ stars' },
+  { v: 'rating-4', set: 'rating', l: '4+ stars' },
+];
+
+const reviewFlags = [
+  { v: 'no-reviews', set: 'reviews', l: 'No reviews' },
+  { v: 'reviews-low', set: 'reviews', l: 'Under 20' },
+];
+
+const priceFlags = [
+  { v: 'price-1', set: 'price', l: '$' },
+  { v: 'price-2', set: 'price', l: '$$' },
+  { v: 'price-3', set: 'price', l: '$$$' },
+  { v: 'price-4', set: 'price', l: '$$$$' },
+];
 ---
 
 {isBoard ? (
   <div class="shop-filters" data-leads-filters>
     <div class="filter-accords">
-      <details class="filter-accord" data-leads-filter-accord="city">
+      <details class="filter-accord" {...{ [accord]: 'city' }}>
         <summary class="filter-summary">
           <span class="filter-label">City</span>
-          <span class="filter-now" data-leads-filter-now="city">All cities</span>
+          <span class="filter-now" {...{ [now]: 'city' }}>All cities</span>
         </summary>
         <div class="filter-pills" data-filter-group="city">
           <button type="button" class="soft-pill is-on" data-leads-filter-city="">All cities</button>
@@ -27,10 +66,10 @@ const isBoard = scope === 'board';
         </div>
       </details>
       {showNiche && (
-        <details class="filter-accord" data-leads-filter-accord="niche">
+        <details class="filter-accord" {...{ [accord]: 'niche' }}>
           <summary class="filter-summary">
             <span class="filter-label">Niche</span>
-            <span class="filter-now" data-leads-filter-now="niche">All niches</span>
+            <span class="filter-now" {...{ [now]: 'niche' }}>All niches</span>
           </summary>
           <div class="filter-pills" data-filter-group="niche">
             <button type="button" class="soft-pill is-on" data-leads-filter-niche="">All niches</button>
@@ -40,15 +79,59 @@ const isBoard = scope === 'board';
           </div>
         </details>
       )}
-      <details class="filter-accord" data-leads-filter-accord="ready">
+      <details class="filter-accord" {...{ [accord]: 'listing' }}>
         <summary class="filter-summary">
-          <span class="filter-label">Published</span>
-          <span class="filter-now" data-leads-filter-now="ready">Any</span>
+          <span class="filter-label">Listing</span>
+          <span class="filter-now" {...{ [now]: 'listing' }}>Any</span>
         </summary>
-        <div class="filter-pills" data-filter-group="ready">
-          <button type="button" class="soft-pill" data-leads-filter-has="email" aria-pressed="false">Has email</button>
-          <button type="button" class="soft-pill" data-leads-filter-has="phone" aria-pressed="false">Has phone</button>
-          <button type="button" class="soft-pill" data-leads-filter-has="website" aria-pressed="false">Has website</button>
+        <div class="filter-pills" data-filter-group="listing">
+          {listingFlags.map((item) => (
+            <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" {...{ [accord]: 'open' }}>
+        <summary class="filter-summary">
+          <span class="filter-label">Open</span>
+          <span class="filter-now" {...{ [now]: 'open' }}>Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="open">
+          {openFlags.map((item) => (
+            <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" {...{ [accord]: 'rating' }}>
+        <summary class="filter-summary">
+          <span class="filter-label">Rating</span>
+          <span class="filter-now" {...{ [now]: 'rating' }}>Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="rating">
+          {ratingFlags.map((item) => (
+            <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" {...{ [accord]: 'reviews' }}>
+        <summary class="filter-summary">
+          <span class="filter-label">Reviews</span>
+          <span class="filter-now" {...{ [now]: 'reviews' }}>Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="reviews">
+          {reviewFlags.map((item) => (
+            <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" {...{ [accord]: 'price' }}>
+        <summary class="filter-summary">
+          <span class="filter-label">Price</span>
+          <span class="filter-now" {...{ [now]: 'price' }}>Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="price">
+          {priceFlags.map((item) => (
+            <button type="button" class="soft-pill" {...{ [has]: item.v }} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
         </div>
       </details>
     </div>
@@ -76,15 +159,59 @@ const isBoard = scope === 'board';
           </div>
         </details>
       )}
-      <details class="filter-accord" data-filter-accord="ready">
+      <details class="filter-accord" data-filter-accord="listing">
         <summary class="filter-summary">
-          <span class="filter-label">Published</span>
-          <span class="filter-now" data-filter-now="ready">Any</span>
+          <span class="filter-label">Listing</span>
+          <span class="filter-now" data-filter-now="listing">Any</span>
         </summary>
-        <div class="filter-pills" data-filter-group="ready">
-          <button type="button" class="soft-pill" data-filter-has="email" aria-pressed="false">Has email</button>
-          <button type="button" class="soft-pill" data-filter-has="phone" aria-pressed="false">Has phone</button>
-          <button type="button" class="soft-pill" data-filter-has="website" aria-pressed="false">Has website</button>
+        <div class="filter-pills" data-filter-group="listing">
+          {listingFlags.map((item) => (
+            <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" data-filter-accord="open">
+        <summary class="filter-summary">
+          <span class="filter-label">Open</span>
+          <span class="filter-now" data-filter-now="open">Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="open">
+          {openFlags.map((item) => (
+            <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" data-filter-accord="rating">
+        <summary class="filter-summary">
+          <span class="filter-label">Rating</span>
+          <span class="filter-now" data-filter-now="rating">Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="rating">
+          {ratingFlags.map((item) => (
+            <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" data-filter-accord="reviews">
+        <summary class="filter-summary">
+          <span class="filter-label">Reviews</span>
+          <span class="filter-now" data-filter-now="reviews">Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="reviews">
+          {reviewFlags.map((item) => (
+            <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
+        </div>
+      </details>
+      <details class="filter-accord" data-filter-accord="price">
+        <summary class="filter-summary">
+          <span class="filter-label">Price</span>
+          <span class="filter-now" data-filter-now="price">Any</span>
+        </summary>
+        <div class="filter-pills" data-filter-group="price">
+          {priceFlags.map((item) => (
+            <button type="button" class="soft-pill" data-filter-has={item.v} data-filter-set={item.set} aria-pressed="false">{item.l}</button>
+          ))}
         </div>
       </details>
     </div>
