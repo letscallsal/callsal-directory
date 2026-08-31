@@ -18,22 +18,23 @@ const boardPreview = [
 ];
 ---
 
-<AppShell title="Directory" description="Find local businesses on a map and call them from a board. Free for 100 leads. No credit card." withRoom>
+<AppShell title="Directory" description="Turn Google Business listings into a calling board. Search a city, tap plus, and dial. Free for 100 leads. No credit card." withRoom>
   <section class="guest-sale" data-guest-sale>
     <header class="sale-intro">
-      <p class="sale-kicker">For people who call local businesses</p>
-      <h1>The map is the list. The list is the board.</h1>
+      <p class="sale-kicker">A calling tool, not another map tab</p>
+      <h1>Stop hunting Google Maps for businesses to call.</h1>
       <p class="sale-lede">
-        Search a city. Every pin is a Google Business listing — name, phone, hours.
-        Tap plus and that same card is on your board, ready to call.
-        Free for 100 leads. No credit card.
+        If you sell to local shops, you already know the loop. Open Maps. Click a pin.
+        Hope they have a number. Copy it into a note. Forget who you already rang.
+        Do it sixty more times. Directory is that job, finished: a map of real Google
+        Business listings, and a board you actually work from.
       </p>
     </header>
 
     <figure class="sale-window" data-sale-window>
       <figcaption class="sale-window-bar">
         <span>Directory</span>
-        <span>Milton, ON</span>
+        <span>Milton, ON — live</span>
       </figcaption>
       <div class="sale-window-body">
         <aside class="sale-rail" aria-label="Listings in view">
@@ -65,29 +66,64 @@ const boardPreview = [
         </div>
       </div>
     </figure>
+    <p class="sale-caption">
+      This is the product. Pan Milton. Every lime pin is a Google Business profile with a
+      number on the card. Tap plus and it is yours. Join first — the live map of Canada
+      and the US opens the moment you have an account.
+    </p>
+
+    <div class="sale-block">
+      <h2>What you are looking at</h2>
+      <p>
+        Directory does not dump every restaurant, bus stop, and apartment building onto
+        a map. It pulls businesses that keep a Google Business profile — the ones with
+        a public name, a phone, hours, a site, a rating. The same records a customer
+        would find. You get them as a list you can call, not as a place you have to
+        visit.
+      </p>
+      <p>
+        Search any city in Canada or the United States. Filter by niche — barbers,
+        dentists, gyms, lawyers, salons, trades — or take everything in view. Move the
+        map, hit Search this area, and the list refreshes for that viewport. Name and
+        phone sit on the card. Hours, site, open or closed, and the Google listing
+        are one tap away.
+      </p>
+    </div>
 
     <ol class="sale-beats">
       <li>
         <span>01</span>
-        <h2>Search a city</h2>
-        <p>Open anywhere in Canada or the United States. The map only shows real Google Business profiles — not every pin on Google Maps.</p>
+        <h2>Find a market, not a pin</h2>
+        <p>
+          Type a city. The map fills with businesses you can actually ring. Pick a
+          niche if you only want dentists in Burlington, or leave it open and work
+          the whole view. You are not zooming around hoping a useful shop appears.
+        </p>
       </li>
       <li>
         <span>02</span>
-        <h2>Save the ones you want</h2>
-        <p>Tap plus on a listing. The same card lands on your board in New, number already there.</p>
+        <h2>Save without copying anything</h2>
+        <p>
+          Tap plus. That listing lands in New with the number already on it. Same
+          card you saw on the map — name, phone, city, type. Nothing pasted into
+          Notes. Nothing lost in a spreadsheet named “leads final v3.”
+        </p>
       </li>
       <li>
         <span>03</span>
-        <h2>Call down the board</h2>
-        <p>Move people through six stages as you work. Paid accounts can import a whole city once a day.</p>
+        <h2>Call, then move the card</h2>
+        <p>
+          Six stages: New, Contacted, Responded, Meeting, Proposal, Won. Drag as
+          you work. The phone stays on the card so you can dial from the board.
+          Paid accounts skip the one-by-one grind and import a city once a day.
+        </p>
       </li>
     </ol>
 
     <figure class="sale-window sale-window-board" aria-hidden="true">
       <figcaption class="sale-window-bar">
         <span>Leads</span>
-        <span>Your board</span>
+        <span>The same cards, on a board</span>
       </figcaption>
       <div class="sale-board">
         {boardPreview.map((col) => (
@@ -109,31 +145,121 @@ const boardPreview = [
       </div>
     </figure>
 
+    <div class="sale-block">
+      <h2>On every listing</h2>
+      <p>
+        A lead is useless if you still have to look the number up. Directory keeps
+        the calling facts on the card and the rest in the sheet.
+      </p>
+      <ul class="sale-facts">
+        <li>
+          <strong>Name and phone</strong>
+          <span>On the card. Copy or tap. That is the whole point.</span>
+        </li>
+        <li>
+          <strong>Open or closed</strong>
+          <span>So you do not dial a shop that shut at five.</span>
+        </li>
+        <li>
+          <strong>Hours, site, and maps</strong>
+          <span>One tap into the listing sheet. No extra Google tab.</span>
+        </li>
+        <li>
+          <strong>Type, city, rating</strong>
+          <span>Enough to know who you are ringing before you ring them.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sale-split">
+      <div>
+        <h2>If you are just getting started</h2>
+        <p>
+          You do not need a CRM, a data vendor, or a $999 seat to make twenty
+          honest calls this week. Join free. Open a city you already know. Plus
+          the shops you want. The board holds 100 leads — enough to work a
+          neighbourhood properly. No credit card. No trial that turns into a bill.
+        </p>
+      </div>
+      <div>
+        <h2>If you run a team</h2>
+        <p>
+          Paid is the same product with the ceiling taken off. No lead cap. Once
+          every 24 hours you import one city — a single niche, or every niche in
+          that city — and the pipeline fills with numbers ready to dial. That is
+          how an agency works a market instead of nibbling at it.
+        </p>
+      </div>
+    </div>
+
+    <div class="sale-block">
+      <h2>Why this is not just Google Maps</h2>
+      <div class="sale-compare">
+        <div>
+          <h3>Google Maps</h3>
+          <ul>
+            <li>Built for getting you to a place</li>
+            <li>Mixes shops with parks, stops, and homes</li>
+            <li>You copy numbers by hand</li>
+            <li>No memory of who you already called</li>
+            <li>No board, no stages, no import</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Directory</h3>
+          <ul>
+            <li>Built for calling a city</li>
+            <li>Google Business listings only</li>
+            <li>Phone is already on the card</li>
+            <li>Plus saves it to your pipeline</li>
+            <li>Six stages, and a city import on Paid</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div class="sale-plans">
       <article class="sale-plan is-free">
-        <p class="sale-plan-kicker">Start here</p>
+        <p class="sale-plan-kicker">No card. No trial.</p>
         <h2>Free</h2>
         <p class="sale-plan-price">$0</p>
+        <p class="sale-plan-blurb">
+          For one person who needs a cleaner list and a reason to pick up the phone.
+        </p>
         <ul>
+          <li>Map of Canada and the United States</li>
           <li>100 leads on your board</li>
-          <li>Add listings one at a time</li>
-          <li>Full map of Canada and the US</li>
-          <li>No credit card</li>
+          <li>Add listings one at a time with plus</li>
+          <li>Name, phone, hours, site on every card</li>
+          <li>Your board stays yours</li>
         </ul>
         <button type="button" class="btn-primary hover-lift" data-leads-pick="free">Join free</button>
       </article>
       <article class="sale-plan">
-        <p class="sale-plan-kicker">For agencies</p>
+        <p class="sale-plan-kicker">One city a day</p>
         <h2>Paid</h2>
         <p class="sale-plan-price">$999 <span>a month</span></p>
+        <p class="sale-plan-blurb">
+          For agencies that need a market in the pipeline before lunch, not a pile of pins.
+        </p>
         <ul>
-          <li>Unlimited leads</li>
+          <li>Everything in Free</li>
+          <li>No lead cap</li>
           <li>Import one city every 24 hours</li>
-          <li>One niche, or the whole city</li>
-          <li>The board stays yours</li>
+          <li>One niche, or every niche in that city</li>
+          <li>Oracle drafts a next call — it never sends</li>
         </ul>
         <button type="button" class="btn-glass hover-lift" data-leads-pick="paid">Join paid</button>
       </article>
+    </div>
+
+    <div class="sale-close">
+      <h2>Open a city. Start calling.</h2>
+      <p>
+        Free takes a minute. You get the map, the list, and a board that holds
+        100 leads. When the city is too big for plus, Paid fills it for you.
+      </p>
+      <button type="button" class="btn-primary hover-lift" data-leads-pick="free">Join free</button>
     </div>
   </section>
 </AppShell>

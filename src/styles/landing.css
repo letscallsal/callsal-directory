@@ -83,7 +83,7 @@
 
 .hero-sub {
   margin: 1.15rem 0 0;
-  max-width: 22rem;
+  max-width: 26rem;
   color: #111;
   font-family: var(--ui);
   font-size: clamp(0.95rem, 2.6vw, 1.12rem);
@@ -595,13 +595,178 @@ input[type="text"]::placeholder {
 
 .sale-lede {
   margin: 0.85rem 0 0;
-  max-width: 32rem;
+  max-width: 36rem;
   color: #bdbdbd;
   font-family: var(--ui);
   font-size: 1.02rem;
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.6;
   text-wrap: pretty;
+}
+
+.sale-caption {
+  margin: -1.5rem 0 2.1rem;
+  max-width: 36rem;
+  color: #8f8f8f;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.sale-block {
+  margin: 0 0 2.25rem;
+}
+
+.sale-block h2,
+.sale-split h2,
+.sale-close h2 {
+  margin: 0 0 0.65rem;
+  color: #fff;
+  font-family: var(--display);
+  font-size: clamp(1.25rem, 4vw, 1.55rem);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.sale-block p,
+.sale-split p,
+.sale-close p {
+  margin: 0 0 0.85rem;
+  max-width: 36rem;
+  color: #b8b8b8;
+  font-size: 1rem;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.sale-block p:last-child,
+.sale-split p:last-child {
+  margin-bottom: 0;
+}
+
+.sale-facts {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.sale-facts li {
+  padding: 0.85rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sale-facts strong {
+  display: block;
+  margin: 0 0 0.2rem;
+  color: #fff;
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sale-facts span {
+  color: #9c9c9c;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.sale-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 0 0 2.25rem;
+}
+
+.sale-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.sale-compare > div {
+  padding: 1rem 1.05rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sale-compare h3 {
+  margin: 0 0 0.65rem;
+  color: #fff;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.sale-compare ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sale-compare li {
+  position: relative;
+  margin: 0 0 0.4rem;
+  padding-left: 0.9rem;
+  color: #b0b0b0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.sale-compare li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: #5a5a5a;
+}
+
+.sale-compare > div:last-child {
+  border-color: rgba(204, 255, 0, 0.4);
+}
+
+.sale-compare > div:last-child h3 {
+  color: #CCFF00;
+}
+
+.sale-compare > div:last-child li::before {
+  background: #CCFF00;
+}
+
+.sale-plan-blurb {
+  margin: -0.35rem 0 0.85rem;
+  color: #9c9c9c;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.sale-close {
+  margin: 2.4rem 0 0;
+  padding: 1.5rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sale-close .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  margin-top: 0.4rem;
+  padding: 0.7rem 1.35rem;
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: -0.015em;
 }
 
 .sale-window {
@@ -874,6 +1039,24 @@ html.has-room:not(.is-app):not(.is-leads):has(#app-chrome.is-stuck) .chrome-slot
 
   .sale-lede {
     font-size: 1.08rem;
+  }
+
+  .sale-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem 2rem;
+  }
+
+  .sale-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+  }
+
+  .sale-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
   }
 
   .sale-window-body {
