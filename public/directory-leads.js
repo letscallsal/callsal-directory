@@ -673,7 +673,7 @@
       + '<p class="lead-type">' + esc(lead.type || '') + (lead.city ? ' · ' + esc(lead.city) : '') + '</p>'
       + '<div class="lead-main">'
       + '<div class="lead-copy">'
-      + '<h3>' + esc(lead.name) + '</h3>'
+      + '<h3 dir="auto">' + esc(lead.name) + '</h3>'
       + (phone ? '<p class="lead-phone" data-lead-act="copy" data-copy="' + esc(phone) + '" data-tip="' + esc(phone) + '">' + esc(phone) + '</p>' : '')
       + '</div>'
       + renderLeadActs(lead)

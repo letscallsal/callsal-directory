@@ -189,7 +189,7 @@
       + '<p class="lead-type">' + esc(cat) + '</p>'
       + '<div class="lead-main">'
       + '<div class="lead-copy">'
-      + '<h3>' + esc(shop.name) + '</h3>'
+      + '<h3 dir="auto">' + esc(shop.name) + '</h3>'
       + phoneLine
       + '</div>'
       + cardActs(shop)

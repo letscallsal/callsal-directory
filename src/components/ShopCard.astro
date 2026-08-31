@@ -47,7 +47,7 @@ const webHref = website ? (/^https?:\/\//i.test(website) ? website : `https://${
 >
   <div class="card hover-lift">
     <span class="card-cat">{catLine}</span>
-    <h3>{shop.name}</h3>
+    <h3 dir="auto">{shop.name}</h3>
     {phone ? (
       <p class="lead-phone" data-lead-act="copy" data-copy={phone} data-tip={phone}>{phone}</p>
     ) : (

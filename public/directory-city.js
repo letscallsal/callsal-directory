@@ -70,16 +70,19 @@
       return '<li><button type="button" class="guest-city-opt" data-city-pick="' +
         escapeAttr(row.id || '') +
         '" data-city-label="' + escapeAttr(label) +
-        '" role="option">' + escapeHtml(text) + '</button></li>';
+        '" role="option" dir="auto">' + escapeHtml(text) + '</button></li>';
     }).join('');
     var first = visibleButtons()[0];
     if (first) first.classList.add('is-hi');
   }
 
   function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, function (ch) {
-      return ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;' })[ch];
-    });
+    return String(value || '')
+      .replace(/&/g, '&' + 'amp;')
+      .replace(/</g, '&' + 'lt;')
+      .replace(/>/g, '&' + 'gt;')
+      .replace(/"/g, '&' + 'quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function escapeAttr(value) {

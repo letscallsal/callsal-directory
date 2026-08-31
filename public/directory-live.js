@@ -147,7 +147,7 @@
       + ' data-shop-hours="' + esc(hours) + '">'
       + '<div class="card hover-lift">'
       + '<span class="card-cat">' + esc(cat) + '</span>'
-      + '<h3>' + esc(shop.name) + '</h3>'
+      + '<h3 dir="auto">' + esc(shop.name) + '</h3>'
       + phoneLine
       + cardActs(shop)
       + '</div>'
