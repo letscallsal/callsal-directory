@@ -562,23 +562,18 @@
     return map;
   }
 
-  function startGoogle(key) {
-    return loadScript('https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&v=weekly').then(function () {
-      if (!window.google || !window.google.maps) throw new Error('no maps');
-      engine = 'google';
-      ensureGoogle();
+  function startLeaflet() {
+    loadCss('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+    return loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(function () {
+      if (!window.L) throw new Error('Map could not load.');
+      engine = 'leaflet';
+      ensureLeaflet();
     });
   }
 
   function bootMap() {
     if (mapsBoot) return mapsBoot;
-    mapsBoot = fetch('/api/maps-config', { credentials: 'same-origin' })
-      .then(function (res) {
-        return res.json().then(function (data) {
-          if (!res.ok || !data || !data.key) throw new Error((data && data.error) || 'Google Maps is not configured');
-          return startGoogle(data.key);
-        });
-      });
+    mapsBoot = startLeaflet();
     return mapsBoot;
   }
 
@@ -812,7 +807,7 @@
         }
       }
     }).catch(function (err) {
-      setStatus((err && err.message) || 'Google Maps could not load.');
+      setStatus((err && err.message) || 'Map could not load.');
     });
   }
 

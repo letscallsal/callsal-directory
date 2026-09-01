@@ -183,7 +183,7 @@
     if (data.price) rows.push('<li><span>Price</span> <span>' + esc(data.price) + '</span></li>');
     if (data.summary) rows.push('<li><span>About</span> <span>' + esc(data.summary) + '</span></li>');
     if (data.maps) {
-      rows.push('<li><span>Google Business</span> <span><a href="' + esc(safeHref(data.maps)) + '" target="_blank" rel="noopener noreferrer">Open listing</a></span></li>');
+      rows.push('<li><span>Map</span> <span><a href="' + esc(safeHref(data.maps)) + '" target="_blank" rel="noopener noreferrer">Open listing</a></span></li>');
     }
     return rows.length ? '<ul class="shop-info-fields">' + rows.join('') + '</ul>' : '';
   }

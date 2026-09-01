@@ -1,6 +1,12 @@
 import seed from './milton-seed.js';
 import { findMetro, type Metro } from './metros.js';
-import { resolveGoogleKey } from './google-key.js';
+import {
+  decodeGeoId,
+  photonGeocode,
+  photonReverse,
+  photonSuggest,
+  searchOsmArea,
+} from './osm-search.js';
 
 export type ShopCategory =
   | 'dental'
@@ -289,222 +295,6 @@ async function writeCache(key: string, result: PlacesResult): Promise<void> {
   }
 }
 
-type GooglePlace = {
-  id?: string;
-  displayName?: { text?: string };
-  formattedAddress?: string;
-  shortFormattedAddress?: string;
-  addressComponents?: Array<{ longText?: string; shortText?: string; types?: string[] }>;
-  nationalPhoneNumber?: string;
-  internationalPhoneNumber?: string;
-  websiteUri?: string;
-  types?: string[];
-  primaryType?: string;
-  primaryTypeDisplayName?: { text?: string };
-  businessStatus?: string;
-  photos?: Array<{ name?: string }>;
-  rating?: number;
-  userRatingCount?: number;
-  googleMapsUri?: string;
-  googleMapsLinks?: { placeUri?: string; directionsUri?: string };
-  regularOpeningHours?: { weekdayDescriptions?: string[] };
-  currentOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
-  editorialSummary?: { text?: string };
-  priceLevel?: string;
-  priceRange?: { startPrice?: { currencyCode?: string; units?: string }; endPrice?: { currencyCode?: string; units?: string } };
-  pureServiceAreaBusiness?: boolean;
-  location?: { latitude?: number; longitude?: number };
-  openingDate?: { year?: number; month?: number; day?: number };
-  consumerAlert?: { overview?: string };
-};
-
-const PLACE_CORE_FIELDS = [
-  'id',
-  'displayName',
-  'formattedAddress',
-  'shortFormattedAddress',
-  'addressComponents',
-  'nationalPhoneNumber',
-  'internationalPhoneNumber',
-  'websiteUri',
-  'types',
-  'primaryType',
-  'primaryTypeDisplayName',
-  'businessStatus',
-  'photos',
-  'rating',
-  'userRatingCount',
-  'googleMapsUri',
-  'googleMapsLinks',
-  'regularOpeningHours.weekdayDescriptions',
-  'currentOpeningHours.openNow',
-  'currentOpeningHours.weekdayDescriptions',
-  'priceLevel',
-  'priceRange',
-  'pureServiceAreaBusiness',
-  'location',
-  'openingDate',
-  'consumerAlert',
-];
-
-const PLACE_DETAILS_MASK = [...PLACE_CORE_FIELDS, 'editorialSummary'].join(',');
-
-const PLACE_SEARCH_MASK =
-  PLACE_CORE_FIELDS.map((field) => 'places.' + field).join(',') + ',nextPageToken';
-
-async function searchGoogleNiche(
-  metro: Metro,
-  niche: (typeof NICHE_QUERIES)[number],
-  key: string,
-  radius = 18000,
-  pages = 2,
-): Promise<Shop[]> {
-  const inPlace = metro.city && metro.city !== 'Map' ? ` in ${metro.city} ${metro.region}` : '';
-  const shops: Shop[] = [];
-  let pageToken = '';
-  for (let page = 0; page < pages; page += 1) {
-    const body: Record<string, unknown> = {
-      textQuery: `${niche.query}${inPlace}`,
-      pageSize: 20,
-      languageCode: 'en',
-      regionCode: metro.country,
-      includedType: niche.includedType,
-      locationBias: {
-        circle: {
-          center: { latitude: metro.lat, longitude: metro.lng },
-          radius,
-        },
-      },
-    };
-    if (pageToken) body.pageToken = pageToken;
-    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': key,
-        'X-Goog-FieldMask': PLACE_SEARCH_MASK,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) break;
-    const data = (await res.json()) as { places?: GooglePlace[]; nextPageToken?: string };
-    for (const place of data.places || []) {
-      if (!isLeadWorthy(place.types || [])) continue;
-      const shop = mapGooglePlace(place, metro, niche.category);
-      if (shop) shops.push(shop);
-    }
-    if (!data.nextPageToken) break;
-    pageToken = data.nextPageToken;
-  }
-  return shops;
-}
-
-function parseAddressComponents(
-  components: GooglePlace['addressComponents'],
-  fallback: { city: string; region: string; country: string },
-): { city: string; region: string; country: string } {
-  if (!components?.length) return fallback;
-  const pick = (type: string, short = false) => {
-    const hit = components.find((item) => (item.types || []).includes(type));
-    return (short ? hit?.shortText : hit?.longText) || '';
-  };
-  const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || fallback.city;
-  const region = pick('administrative_area_level_1', true) || fallback.region;
-  const countryRaw = pick('country', true) || fallback.country;
-  const country = countryRaw || fallback.country;
-  return { city: city.trim() || fallback.city, region, country };
-}
-
-function priceRangeLabel(range?: GooglePlace['priceRange']): string | undefined {
-  if (!range?.startPrice && !range?.endPrice) return undefined;
-  const money = (row?: { currencyCode?: string; units?: string }) => {
-    if (!row || row.units == null) return '';
-    const n = Number(row.units);
-    if (!Number.isFinite(n)) return '';
-    try {
-      return new Intl.NumberFormat('en', { style: 'currency', currency: row.currencyCode || 'USD', maximumFractionDigits: 0 }).format(n);
-    } catch {
-      return String(row.units);
-    }
-  };
-  const start = money(range.startPrice);
-  const end = money(range.endPrice);
-  if (start && end) return start + '–' + end;
-  return start || end || undefined;
-}
-
-function openingDateLabel(date?: GooglePlace['openingDate']): string | undefined {
-  if (!date?.year || !date?.month) return undefined;
-  const month = String(date.month).padStart(2, '0');
-  const day = date.day ? String(date.day).padStart(2, '0') : '';
-  return day ? `${date.year}-${month}-${day}` : `${date.year}-${month}`;
-}
-
-function priceLabel(level?: string): string | undefined {
-  if (!level) return undefined;
-  const map: Record<string, string> = {
-    PRICE_LEVEL_FREE: 'Free',
-    PRICE_LEVEL_INEXPENSIVE: '$',
-    PRICE_LEVEL_MODERATE: '$$',
-    PRICE_LEVEL_EXPENSIVE: '$$$',
-    PRICE_LEVEL_VERY_EXPENSIVE: '$$$$',
-  };
-  return map[level];
-}
-
-function mapGooglePlace(place: GooglePlace, metro: Metro, fallbackCategory: ShopCategory): Shop | null {
-  if (String(place.businessStatus || '').toUpperCase() === 'CLOSED_PERMANENTLY') return null;
-  const name = place.displayName?.text?.trim();
-  if (!name) return null;
-  const fromParts = parseAddressComponents(place.addressComponents, metro);
-  const parsed = parseFormattedAddress(place.formattedAddress || place.shortFormattedAddress, fromParts);
-  const slug = `${slugify(name)}-${slugify(parsed.city)}`;
-  const phone = (place.nationalPhoneNumber || place.internationalPhoneNumber || '').trim() || undefined;
-  const website = place.websiteUri;
-  const hours = place.currentOpeningHours?.weekdayDescriptions || place.regularOpeningHours?.weekdayDescriptions;
-  const photo = place.id && place.photos?.length
-    ? `/api/photo?placeId=${encodeURIComponent(place.id)}`
-    : undefined;
-  const openNow = typeof place.currentOpeningHours?.openNow === 'boolean' ? place.currentOpeningHours.openNow : undefined;
-  return {
-    name,
-    slug,
-    city: parsed.city,
-    region: parsed.region,
-    country: parsed.country,
-    address: parsed.address || place.shortFormattedAddress,
-    phone,
-    website,
-    placeId: place.id,
-    photo,
-    mapsUrl: place.googleMapsLinks?.placeUri || place.googleMapsUri || mapsSearchUrl(name, parsed.address),
-    rating: place.rating,
-    reviews: place.userRatingCount,
-    hours,
-    lat: place.location?.latitude,
-    lng: place.location?.longitude,
-    status: place.businessStatus,
-    openNow,
-    summary: place.editorialSummary?.text,
-    primaryType: place.primaryTypeDisplayName?.text || place.primaryType,
-    priceLevel: priceLabel(place.priceLevel),
-    priceRange: priceRangeLabel(place.priceRange),
-    serviceArea: place.pureServiceAreaBusiness === true,
-    openingDate: openingDateLabel(place.openingDate),
-    flagged: Boolean(place.consumerAlert),
-    category: pickCategory(place.types || [], fallbackCategory),
-    verified: {
-      phone: Boolean(phone),
-      website: Boolean(website),
-      email: false,
-      address: Boolean(place.formattedAddress || place.shortFormattedAddress),
-      ownerName: false,
-      socials: false,
-      photo: Boolean(photo),
-    },
-  };
-}
-
 const FRANCHISE_PATTERNS = [
   /anytime fitness/i, /planet fitness/i, /goodlife/i, /fit4less/i,
   /mcdonald/i, /starbucks/i, /tim horton/i, /subway/i, /pizza hut/i,
@@ -519,351 +309,14 @@ function isFranchise(name: string): boolean {
   return FRANCHISE_PATTERNS.some((pattern) => pattern.test(name));
 }
 
-type LegacyPlace = {
-  place_id?: string;
-  name?: string;
-  formatted_address?: string;
-  vicinity?: string;
-  rating?: number;
-  user_ratings_total?: number;
-  types?: string[];
-  geometry?: { location?: { lat?: number; lng?: number } };
-};
-
-type LegacyDetails = {
-  name?: string;
-  formatted_address?: string;
-  formatted_phone_number?: string;
-  website?: string;
-  rating?: number;
-  user_ratings_total?: number;
-  url?: string;
-  opening_hours?: { weekday_text?: string[] };
-  geometry?: { location?: { lat?: number; lng?: number } };
-};
-
-async function fetchLegacyJson<T>(url: string): Promise<T | null> {
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  return (await res.json()) as T;
-}
-
-async function reverseGeocode(lat: number, lng: number, key: string): Promise<Metro | undefined> {
-  const data = await fetchLegacyJson<{
-    status?: string;
-    results?: Array<{
-      address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }>;
-    }>;
-  }>(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`);
-  if (!data || data.status !== 'OK' || !data.results?.length) return undefined;
-  const comps = data.results[0].address_components || [];
-  const pick = (type: string, short = false) => {
-    const hit = comps.find((item) => (item.types || []).includes(type));
-    return (short ? hit?.short_name : hit?.long_name) || '';
-  };
-  const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || pick('administrative_area_level_2');
-  const region = pick('administrative_area_level_1', true);
-  const countryRaw = pick('country', true);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
-  return {
-    city: city || 'Map',
-    region,
-    country: countryRaw || '',
-    lat,
-    lng,
-  };
-}
-
-async function fetchGooglePlace(placeId: string, key: string): Promise<GooglePlace | null> {
-  const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-    headers: {
-      'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask': PLACE_DETAILS_MASK,
-    },
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as GooglePlace;
-  if (!data.id) data.id = placeId;
-  return data;
-}
-
-async function enrichWithDetails(shops: Shop[], metro: Metro, key: string, limit = 32): Promise<Shop[]> {
-  const head = shops.slice(0, limit);
-  const tail = shops.slice(limit);
-  const filled = await Promise.all(
-    head.map(async (shop) => {
-      if (!shop.placeId) return shop;
-      const modern = await fetchGooglePlace(shop.placeId, key);
-      if (modern) {
-        const mapped = mapGooglePlace(modern, metro, shop.category);
-        if (!mapped) return shop;
-        return {
-          ...shop,
-          ...mapped,
-          slug: shop.slug,
-          category: shop.category,
-        };
-      }
-      const payload = await fetchLegacyJson<{ status?: string; result?: LegacyDetails }>(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(shop.placeId)}` +
-          `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url,geometry&key=${key}`,
-      );
-      if (payload?.status !== 'OK' || !payload.result) return shop;
-      const details = payload.result;
-      const parsed = parseFormattedAddress(details.formatted_address, metro);
-      const phone = details.formatted_phone_number || shop.phone;
-      const website = details.website || shop.website;
-      return {
-        ...shop,
-        name: details.name || shop.name,
-        city: parsed.city && parsed.city !== 'Map' ? parsed.city : shop.city,
-        region: parsed.region || shop.region,
-        country: parsed.country || shop.country,
-        address: parsed.address || shop.address,
-        phone,
-        website,
-        mapsUrl: details.url || shop.mapsUrl,
-        rating: details.rating ?? shop.rating,
-        reviews: details.user_ratings_total ?? shop.reviews,
-        hours: details.opening_hours?.weekday_text || shop.hours,
-        lat: details.geometry?.location?.lat ?? shop.lat,
-        lng: details.geometry?.location?.lng ?? shop.lng,
-        verified: {
-          ...shop.verified,
-          phone: Boolean(phone),
-          website: Boolean(website),
-          address: Boolean(parsed.address || shop.address),
-        },
-      };
-    }),
-  );
-  return [...filled, ...tail];
-}
-
-async function searchLegacyNiche(
-  metro: Metro,
-  niche: (typeof NICHE_QUERIES)[number],
-  key: string,
-  radius = 18000,
-): Promise<Shop[]> {
-  const inPlace = metro.city && metro.city !== 'Map' ? ` in ${metro.city} ${metro.region}` : '';
-  const query = encodeURIComponent(`${niche.query}${inPlace}`);
-  const searchUrl =
-    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}` +
-    `&location=${metro.lat},${metro.lng}&radius=${Math.round(radius)}&key=${key}`;
-  const data = await fetchLegacyJson<{ status?: string; results?: LegacyPlace[] }>(searchUrl);
-  if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') || !data.results?.length) {
-    return [];
-  }
-
-  const basics = data.results
-    .filter((place) => place.place_id && place.name && !isFranchise(place.name))
-    .slice(0, 16);
-
-  const detailed = await Promise.all(
-    basics.slice(0, 12).map(async (place) => {
-      const detailsUrl =
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}` +
-        `&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,url,geometry&key=${key}`;
-      const payload = await fetchLegacyJson<{ status?: string; result?: LegacyDetails }>(detailsUrl);
-      return mapLegacyPlace(place, metro, niche.category, payload?.status === 'OK' ? payload.result : undefined);
-    }),
-  );
-
-  const rest = basics.slice(12).map((place) => mapLegacyPlace(place, metro, niche.category));
-  return [...detailed, ...rest].filter((shop): shop is Shop => Boolean(shop));
-}
-
-function mapLegacyPlace(
-  place: LegacyPlace,
-  metro: Metro,
-  fallbackCategory: ShopCategory,
-  details?: LegacyDetails,
-  allowFranchise = false,
-): Shop | null {
-  const name = (details?.name || place.name || '').trim();
-  if (!name || (!allowFranchise && isFranchise(name))) return null;
-  const parsed = parseFormattedAddress(
-    details?.formatted_address || place.formatted_address || place.vicinity,
-    metro,
-  );
-  const placeId = place.place_id;
-  const photo = placeId ? `/api/photo?placeId=${encodeURIComponent(placeId)}` : undefined;
-  const phone = details?.formatted_phone_number;
-  const website = details?.website;
-  return {
-    name,
-    slug: `${slugify(name)}-${slugify(parsed.city)}`,
-    city: parsed.city,
-    region: parsed.region,
-    country: parsed.country,
-    address: parsed.address,
-    phone,
-    website,
-    placeId,
-    photo,
-    mapsUrl: details?.url || mapsSearchUrl(name, parsed.address),
-    rating: details?.rating ?? place.rating,
-    reviews: details?.user_ratings_total ?? place.user_ratings_total,
-    hours: details?.opening_hours?.weekday_text,
-    lat: details?.geometry?.location?.lat ?? place.geometry?.location?.lat,
-    lng: details?.geometry?.location?.lng ?? place.geometry?.location?.lng,
-    category: pickCategory(place.types || [], fallbackCategory),
-    verified: {
-      phone: Boolean(phone),
-      website: Boolean(website),
-      email: false,
-      address: Boolean(parsed.address),
-      ownerName: false,
-      socials: false,
-      photo: Boolean(photo),
-    },
-  };
-}
-
-type PhotonFeature = {
-  geometry?: { coordinates?: number[] };
-  properties?: {
-    name?: string;
-    osm_type?: string;
-    osm_id?: number;
-    osm_key?: string;
-    osm_value?: string;
-    street?: string;
-    housenumber?: string;
-    postcode?: string;
-    city?: string;
-    state?: string;
-    countrycode?: string;
-    country?: string;
-  };
-};
-
-async function photonGet(url: string): Promise<PhotonFeature[]> {
-  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } });
-  if (!res.ok) return [];
-  const data = (await res.json()) as { features?: PhotonFeature[] };
-  return data.features || [];
-}
-
-async function geocodeCity(query: string): Promise<Metro | undefined> {
-  const known = findMetro(query);
-  if (known && !/,/.test(query)) return known;
-  const googleKey = await resolveGoogleKey();
-  if (googleKey) {
-    const data = await fetchLegacyJson<{
-      status?: string;
-      results?: Array<{
-        formatted_address?: string;
-        geometry?: { location?: { lat?: number; lng?: number } };
-        address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }>;
-      }>;
-    }>(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleKey}`,
-    );
-    if (data?.status === 'OK' && data.results?.length) {
-      const hit = data.results[0];
-      const comps = hit.address_components || [];
-      const pick = (type: string, short = false) => {
-        const row = comps.find((item) => (item.types || []).includes(type));
-        return (short ? row?.short_name : row?.long_name) || '';
-      };
-      const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || query.split(',')[0].trim();
-      const region = pick('administrative_area_level_1', true);
-      const countryRaw = pick('country', true);
-      const lat = hit.geometry?.location?.lat;
-      const lng = hit.geometry?.location?.lng;
-      if (city && Number.isFinite(lat) && Number.isFinite(lng)) {
-        const catalogHit = findMetro(city, region, countryRaw);
-        if (catalogHit) return catalogHit;
-        return { city, region, country: countryRaw || '', lat: lat as number, lng: lng as number };
-      }
-    }
-  }
-  return undefined;
-}
-
-function mapPhotonFeature(feature: PhotonFeature, metro: Metro, fallbackCategory: ShopCategory): Shop | null {
-  const props = feature.properties || {};
-  const name = props.name?.trim();
-  if (!name) return null;
-  const code = (props.countrycode || metro.country || '').toUpperCase();
-  const city = (props.city || metro.city).trim();
-  const stateRaw = String(props.state || metro.region).trim();
-  const region = /^[A-Za-z]{2}$/.test(stateRaw) ? stateRaw.toUpperCase() : metro.region;
-  const street = [props.housenumber, props.street].filter(Boolean).join(' ');
-  const address = [street, city, region, props.postcode].filter(Boolean).join(', ');
-  const osmId = props.osm_id ? `osm:${props.osm_type || 'N'}:${props.osm_id}` : undefined;
-  const category = props.osm_key && props.osm_value
-    ? categoryFromOsm(props.osm_key, props.osm_value)
-    : fallbackCategory;
-  const coords = feature.geometry?.coordinates;
-  const lng = Array.isArray(coords) ? Number(coords[0]) : undefined;
-  const lat = Array.isArray(coords) ? Number(coords[1]) : undefined;
-  return {
-    name,
-    slug: `${slugify(name)}-${slugify(city)}`,
-    city,
-    region,
-    country: code,
-    address: address || undefined,
-    placeId: osmId,
-    mapsUrl: mapsSearchUrl(name, address),
-    lat: Number.isFinite(lat) ? lat : undefined,
-    lng: Number.isFinite(lng) ? lng : undefined,
-    category: category === 'other' ? fallbackCategory : category,
-    verified: {
-      phone: false,
-      website: false,
-      email: false,
-      address: Boolean(address),
-      ownerName: false,
-      socials: false,
-      photo: false,
-    },
-  };
-}
-
-async function searchPhotonArea(
-  lat: number,
-  lng: number,
-  niche: (typeof NICHE_QUERIES)[number],
-): Promise<Shop[]> {
-  const metro: Metro = {
-    city: 'Map',
-    region: '',
-    country: '',
-    lat,
-    lng,
-  };
-  const features = await photonGet(
-    `https://photon.komoot.io/api/?q=${encodeURIComponent(niche.query)}&lat=${lat}&lon=${lng}&limit=12&lang=en&osm_tag=${encodeURIComponent(niche.osmTag)}`,
-  );
-  return features
-    .map((feature) => mapPhotonFeature(feature, metro, niche.category))
-    .filter((shop): shop is Shop => Boolean(shop));
-}
-
-async function searchPhotonNiche(metro: Metro, niche: (typeof NICHE_QUERIES)[number]): Promise<Shop[]> {
-  const query = `${niche.query} ${metro.city} ${metro.region}`;
-  const features = await photonGet(
-    `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=10&lang=en&osm_tag=${encodeURIComponent(niche.osmTag)}`,
-  );
-  return features
-    .map((feature) => mapPhotonFeature(feature, metro, niche.category))
-    .filter((shop): shop is Shop => Boolean(shop));
-}
 
 function mergeShops(groups: Shop[][]): Shop[] {
   const merged = new Map<string, Shop>();
   const score = (shop: Shop) =>
-    (shop.placeId && !String(shop.placeId).startsWith('osm:') ? 16 : 0) +
-    (shop.photo ? 8 : 0) +
-    (shop.website ? 4 : 0) +
-    (shop.phone ? 2 : 0) +
-    (shop.rating ? 1 : 0);
+    (shop.phone ? 4 : 0) + (shop.website ? 2 : 0) + (shop.address ? 1 : 0);
   for (const group of groups) {
     for (const shop of group) {
+      if (isFranchise(shop.name)) continue;
       const key = shopDedupeKey(shop);
       const prev = merged.get(key);
       if (!prev || score(shop) > score(prev)) merged.set(key, shop);
@@ -878,21 +331,31 @@ function seedForCity(city: string): Shop[] {
   return seedShops().filter((shop) => shop.city.toLowerCase() === want);
 }
 
+async function geocodeCity(query: string): Promise<Metro | undefined> {
+  return photonGeocode(query);
+}
+
+function areaCacheKey(lat: number, lng: number, radius: number, category: string): string {
+  const rlat = Math.round(lat * 200) / 200;
+  const rlng = Math.round(lng * 200) / 200;
+  const r = Math.round(radius / 250) * 250;
+  return `directory:places:osm:v1:${rlat}:${rlng}:${r}:${category || 'all'}`;
+}
+
 export async function listCityShops(
-  city = 'milton',
+  city = '',
   region = '',
   country = '',
   category = '',
 ): Promise<PlacesResult> {
   const rawCity = city.trim();
-  if (!rawCity) {
-    return { source: 'places', city: '', shops: [] };
-  }
+  if (!rawCity) return { source: 'places', city: '', shops: [] };
 
-  const metro = findMetro(rawCity, region, country) || (await geocodeCity([rawCity, region, country].filter(Boolean).join(' ')));
+  const metro =
+    findMetro(rawCity, region, country) ||
+    (await geocodeCity([rawCity, region, country].filter(Boolean).join(' ')));
   if (!metro) {
-    const local = seedForCity(rawCity);
-    return { source: 'seed', city: rawCity, region, country, shops: local };
+    return { source: 'seed', city: rawCity, region, country, shops: seedForCity(rawCity) };
   }
 
   const niche = category.trim().toLowerCase();
@@ -900,137 +363,18 @@ export async function listCityShops(
   const cached = await readCache(key);
   if (cached) return cached;
 
-  const wanted = NICHE_QUERIES.filter((item) => !niche || item.category === niche);
-  const googleKey = await resolveGoogleKey();
-  let source: PlacesResult['source'] = 'listings';
-  let live: Shop[] = [];
-
-  if (googleKey) {
-    try {
-      const groups = await Promise.all(wanted.map((item) => searchGoogleNiche(metro, item, googleKey)));
-      live = mergeShops(groups).filter((shop) => !isFranchise(shop.name));
-      if (live.length) source = 'places';
-    } catch {
-      live = [];
-    }
-    const phones = live.filter((shop) => shop.phone).length;
-    if (!live.length || phones < Math.min(8, live.length)) {
-      try {
-        const groups = await Promise.all(wanted.map((item) => searchLegacyNiche(metro, item, googleKey)));
-        live = mergeShops([live, ...groups]);
-        if (live.length) source = 'places';
-      } catch {
-        /* keep what new returned */
-      }
-    }
-  }
-
-  const shops = live;
+  const live = mergeShops([await searchOsmArea(metro, 8000, niche)]);
   const result: PlacesResult = {
-    source: live.length ? 'places' : 'seed',
+    source: live.length ? 'places' : 'listings',
     city: metro.city,
     region: metro.region,
     country: metro.country,
     lat: metro.lat,
     lng: metro.lng,
-    shops,
+    shops: live.slice(0, 160),
   };
   if (live.length) await writeCache(key, result);
   return result;
-}
-
-function areaCacheKey(lat: number, lng: number, radius: number, category: string): string {
-  const rlat = Math.round(lat * 200) / 200;
-  const rlng = Math.round(lng * 200) / 200;
-  const r = Math.round(radius / 250) * 250;
-  return `directory:places:area:v10:${rlat}:${rlng}:${r}:${category || 'all'}`;
-}
-
-function offsetLatLng(lat: number, lng: number, northM: number, eastM: number): { lat: number; lng: number } {
-  const dLat = northM / 111320;
-  const dLng = eastM / (111320 * Math.cos((lat * Math.PI) / 180) || 1);
-  return { lat: lat + dLat, lng: lng + dLng };
-}
-
-function areaCells(lat: number, lng: number, radius: number): Array<{ lat: number; lng: number; radius: number }> {
-  if (radius <= 1600) return [{ lat, lng, radius }];
-  const step = radius * 0.52;
-  const cellR = Math.max(700, radius * 0.58);
-  return [
-    [-1, -1],
-    [-1, 1],
-    [1, -1],
-    [1, 1],
-  ].map(([north, east]) => {
-    const point = offsetLatLng(lat, lng, north * step, east * step);
-    return { lat: point.lat, lng: point.lng, radius: cellR };
-  });
-}
-
-async function searchLegacyNearby(
-  metro: Metro,
-  key: string,
-  radius: number,
-  type = '',
-  pages = 1,
-): Promise<Shop[]> {
-  let url =
-    `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${metro.lat},${metro.lng}` +
-    `&radius=${Math.round(radius)}&key=${key}`;
-  if (type) url += `&type=${encodeURIComponent(type)}`;
-  const shops: Shop[] = [];
-  for (let page = 0; page < pages; page += 1) {
-    const data = await fetchLegacyJson<{
-      status?: string;
-      results?: LegacyPlace[];
-      next_page_token?: string;
-    }>(url);
-    if (!data || (data.status !== 'OK' && data.status !== 'ZERO_RESULTS')) break;
-    for (const place of data.results || []) {
-      const fallback = type ? categoryFromTypes([type, ...(place.types || [])]) : categoryFromTypes(place.types || []);
-  const shop = mapLegacyPlace(place, metro, fallback === 'other' ? 'other' : fallback, undefined, true);
-      if (shop && isLeadWorthy(place.types || [])) shops.push(shop);
-    }
-    if (!data.next_page_token || page === pages - 1) break;
-    await new Promise((resolve) => setTimeout(resolve, 2100));
-    url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(data.next_page_token)}&key=${key}`;
-  }
-  return shops;
-}
-
-async function searchGoogleNearby(
-  metro: Metro,
-  key: string,
-  radius: number,
-  includedType = '',
-): Promise<Shop[]> {
-  const body: Record<string, unknown> = {
-    maxResultCount: 20,
-    languageCode: 'en',
-    regionCode: metro.country || 'US',
-    locationRestriction: {
-      circle: {
-        center: { latitude: metro.lat, longitude: metro.lng },
-        radius: Math.max(600, Math.min(radius, 50000)),
-      },
-    },
-  };
-  if (includedType) body.includedTypes = [includedType];
-  const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask': PLACE_SEARCH_MASK,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) return [];
-  const data = (await res.json()) as { places?: GooglePlace[] };
-  return (data.places || [])
-    .filter((place) => isLeadWorthy(place.types || []))
-    .map((place) => mapGooglePlace(place, metro, includedType ? categoryFromTypes([includedType, ...(place.types || [])]) : categoryFromTypes(place.types || [])))
-    .filter((shop): shop is Shop => Boolean(shop));
 }
 
 export async function listAreaShops(opts: {
@@ -1051,76 +395,14 @@ export async function listAreaShops(opts: {
   const cached = await readCache(key);
   if (cached) return cached;
 
-  const googleKey = await resolveGoogleKey();
-  let live: Shop[] = [];
-  const guessedCountry = '';
-  let metro: Metro = { city: '', region: '', country: guessedCountry, lat, lng };
-  if (googleKey) {
-    const typed = NICHE_QUERIES.find((item) => item.category === niche);
-    try {
-      metro = (await reverseGeocode(lat, lng, googleKey)) || metro;
-      if (typed) {
-        const cells = areaCells(lat, lng, radius);
-        const nearby = await Promise.all(
-          cells.map((cell) =>
-            searchGoogleNearby(
-              { ...metro, lat: cell.lat, lng: cell.lng },
-              googleKey,
-              cell.radius,
-              typed.includedType,
-            ),
-          ),
-        );
-        live = mergeShops(nearby).filter((shop) => !isFranchise(shop.name));
-        const nearbyPhones = live.filter((shop) => shop.phone).length;
-        if (!live.length || nearbyPhones < Math.min(6, live.length)) {
-          const text = await searchGoogleNiche(metro, typed, googleKey, radius, 1);
-          live = mergeShops([live, text]).filter((shop) => !isFranchise(shop.name));
-        }
-        live = live.filter((shop) => {
-          if (!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))) return true;
-          return haversineMeters({ lat, lng }, { lat: Number(shop.lat), lng: Number(shop.lng) }) <= radius * 1.25;
-        });
-        const phones = live.filter((shop) => shop.phone).length;
-        if (!live.length || phones < Math.min(6, live.length)) {
-          const fallback = await searchLegacyNiche(metro, typed, googleKey, radius);
-          live = mergeShops([
-            live,
-            fallback.filter((shop) => {
-              if (!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))) return true;
-              return haversineMeters({ lat, lng }, { lat: Number(shop.lat), lng: Number(shop.lng) }) <= radius * 1.25;
-            }),
-          ]);
-        }
-      } else {
-        const cells = areaCells(lat, lng, radius);
-        const modern = await Promise.all(
-          cells.map((cell) => searchGoogleNearby({ ...metro, lat: cell.lat, lng: cell.lng }, googleKey, cell.radius)),
-        );
-        live = mergeShops(modern).filter((shop) => !isFranchise(shop.name));
-        const phones = live.filter((shop) => shop.phone).length;
-        if (!live.length || phones < Math.min(8, live.length)) {
-          const groups = await Promise.all(
-            cells.map((cell) =>
-              searchLegacyNearby(
-                { ...metro, lat: cell.lat, lng: cell.lng },
-                googleKey,
-                cell.radius,
-                '',
-                1,
-              ),
-            ),
-          );
-          live = await enrichWithDetails(mergeShops([live, ...groups]), metro, googleKey, 48);
-        }
-      }
-    } catch {
-      live = [];
-    }
-  }
+  const metro = (await photonReverse(lat, lng)) || { city: '', region: '', country: '', lat, lng };
+  const live = mergeShops([await searchOsmArea({ ...metro, lat, lng }, radius, niche)]).filter((shop) => {
+    if (!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))) return true;
+    return haversineMeters({ lat, lng }, { lat: Number(shop.lat), lng: Number(shop.lng) }) <= radius * 1.25;
+  });
 
   const result: PlacesResult = {
-    source: live.length ? 'places' : 'seed',
+    source: live.length ? 'places' : 'listings',
     city: metro.city,
     region: metro.region,
     country: metro.country,
@@ -1150,104 +432,20 @@ export type ResolvedPlace = {
 };
 
 export async function suggestPlaces(query: string): Promise<PlaceSuggestion[]> {
-  const q = query.trim();
-  if (q.length < 2) return [];
-  const key = await resolveGoogleKey();
-  if (!key) return [];
-
-  const modern = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': key,
-    },
-    body: JSON.stringify({ input: q, languageCode: 'en' }),
-  });
-  if (modern.ok) {
-    const data = (await modern.json()) as {
-      suggestions?: Array<{
-        placePrediction?: {
-          placeId?: string;
-          text?: { text?: string };
-          structuredFormat?: { mainText?: { text?: string }; secondaryText?: { text?: string } };
-        };
-      }>;
-    };
-    const rows = (data.suggestions || [])
-      .map((row) => {
-        const pred = row.placePrediction;
-        if (!pred?.placeId) return null;
-        const label = pred.text?.text || '';
-        const main = pred.structuredFormat?.mainText?.text || label;
-        const secondary = pred.structuredFormat?.secondaryText?.text || '';
-        if (!label) return null;
-        return { id: pred.placeId, label, main, secondary };
-      })
-      .filter((row): row is PlaceSuggestion => Boolean(row));
-    if (rows.length) return rows.slice(0, 8);
-  }
-
-  const legacy = await fetchLegacyJson<{
-    status?: string;
-    predictions?: Array<{
-      place_id?: string;
-      description?: string;
-      structured_formatting?: { main_text?: string; secondary_text?: string };
-    }>;
-  }>(`https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${key}`);
-  if (legacy?.status !== 'OK' || !legacy.predictions?.length) return [];
-  return legacy.predictions
-    .slice(0, 8)
-    .map((row) => ({
-      id: row.place_id || '',
-      label: row.description || '',
-      main: row.structured_formatting?.main_text || row.description || '',
-      secondary: row.structured_formatting?.secondary_text || '',
-    }))
-    .filter((row) => row.id && row.label);
+  return photonSuggest(query);
 }
 
 export async function resolvePlace(placeId: string): Promise<ResolvedPlace | undefined> {
-  const id = placeId.replace(/^places\//, '').trim();
-  if (!id) return undefined;
-  const key = await resolveGoogleKey();
-  if (!key) return undefined;
-  const modern = await fetchGooglePlace(id, key);
-  if (modern?.location && Number.isFinite(modern.location.latitude) && Number.isFinite(modern.location.longitude)) {
-    const parsed = parseAddressComponents(modern.addressComponents, { city: '', region: '', country: '' });
-    return {
-      lat: modern.location.latitude as number,
-      lng: modern.location.longitude as number,
-      city: parsed.city,
-      region: parsed.region,
-      country: parsed.country,
-      label: modern.formattedAddress || modern.displayName?.text || parsed.city,
-    };
-  }
-  const payload = await fetchLegacyJson<{
-    status?: string;
-    result?: { formatted_address?: string; geometry?: { location?: { lat?: number; lng?: number } }; address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }> };
-  }>(
-    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(id)}` +
-      `&fields=formatted_address,geometry,address_component&key=${key}`,
-  );
-  const loc = payload?.result?.geometry?.location;
-  if (payload?.status === 'OK' && loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
-    const comps = payload.result?.address_components || [];
-    const pick = (type: string, short = false) => {
-      const row = comps.find((item) => (item.types || []).includes(type));
-      return (short ? row?.short_name : row?.long_name) || '';
-    };
-    return {
-      lat: loc.lat as number,
-      lng: loc.lng as number,
-      city: pick('locality') || pick('postal_town') || '',
-      region: pick('administrative_area_level_1', true),
-      country: pick('country', true),
-      label: payload.result?.formatted_address || '',
-    };
-  }
-  return undefined;
+  const decoded = decodeGeoId(placeId.trim());
+  if (!decoded) return undefined;
+  return {
+    lat: decoded.lat,
+    lng: decoded.lng,
+    city: decoded.city,
+    region: decoded.region,
+    country: decoded.country,
+    label: decoded.label,
+  };
 }
 
 export async function resolveQuery(query: string): Promise<ResolvedPlace | undefined> {

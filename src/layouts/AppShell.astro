@@ -15,7 +15,7 @@ interface Props {
   withRoom?: boolean;
 }
 
-const { title, description = 'A live Google Business index you turn into a calling board. Search anywhere. Free to start.', withRoom = false } = Astro.props;
+const { title, description = 'A live map of local businesses you turn into a calling board. Search anywhere. Free to start.', withRoom = false } = Astro.props;
 const shops = await getShops();
 const pageTitle = title === 'Directory' ? 'DIRECTORY | AI-Powered Business Directory' : `${title} | DIRECTORY`;
 const canonical = new URL(Astro.url.pathname, Astro.site);

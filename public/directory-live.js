@@ -237,7 +237,7 @@
     });
     var liveRows = document.querySelector('[data-live-rows]');
     if (liveRows && liveRows.querySelector('[data-shop-row]')) liveRows.hidden = false;
-    var source = payload.source === 'places' ? 'Google Business' : 'live listings';
+    var source = payload.source === 'places' ? 'live listings' : 'live listings';
     setStatus(shops.length + ' ' + source + ' in ' + payload.city + (payload.region ? ', ' + payload.region : '') + '.');
     if (typeof window.__dirApplyShopFilters === 'function') window.__dirApplyShopFilters();
     if (typeof window.__dirPaintAddLeads === 'function') window.__dirPaintAddLeads();
