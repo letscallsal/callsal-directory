@@ -149,11 +149,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.28rem;
+  min-width: 0;
 }
 
 .lead-copy {
   min-width: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .lead-card h3 {
@@ -180,6 +182,10 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
   unicode-bidi: isolate;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lead-phone-empty {

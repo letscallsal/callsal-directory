@@ -122,6 +122,18 @@
     return document.querySelector('[data-map-stage] [data-search-here]');
   }
 
+  function scanEl() {
+    if (saleMode()) return document.querySelector('[data-sale-window] [data-map-scan]');
+    return document.querySelector('[data-map-stage] [data-map-scan]');
+  }
+
+  function setScanning(on) {
+    var el = scanEl();
+    if (el) el.hidden = !on;
+    var btn = searchBtn();
+    if (on && btn) btn.hidden = true;
+  }
+
   function countEl() {
     return saleMode()
       ? document.querySelector('[data-sale-count]')
@@ -548,9 +560,8 @@
       [WORLD.lat, WORLD.lng],
       WORLD.zoom,
     );
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
+    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
       maxZoom: 19,
     }).addTo(map);
     bindMove();
@@ -578,6 +589,7 @@
       return loadShops(query, fly);
     }
     loading = true;
+    setScanning(true);
     setStatus('Scanning this area…');
     showSearchHere(false);
     try {
@@ -601,6 +613,7 @@
       setStatus('Could not load listings.');
     }
     loading = false;
+    setScanning(false);
     resizeMap();
   }
 

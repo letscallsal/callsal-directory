@@ -826,6 +826,7 @@ input[type="text"]::placeholder {
   flex-direction: column;
   height: min(38rem, 78vh);
   min-height: 28rem;
+  min-width: 0;
 }
 
 .sale-map-stage {
@@ -846,7 +847,8 @@ input[type="text"]::placeholder {
   bottom: 0.55rem;
 }
 
-.sale-map-stage .map-search-here {
+.sale-map-stage .map-search-here,
+.sale-map-stage .map-scan {
   top: 0.55rem;
 }
 
@@ -854,6 +856,7 @@ input[type="text"]::placeholder {
   display: flex;
   flex-direction: column;
   flex: 0 0 42%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -862,6 +865,7 @@ input[type="text"]::placeholder {
 
 .sale-rail .listings-track {
   mask-image: none;
+  overflow-x: hidden;
 }
 
 .sale-window-board {
