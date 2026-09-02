@@ -89,17 +89,18 @@ const previewCols = PREVIEW_COLS.map((col) => {
   </div>
 
   <div class="leads-app" data-leads-app hidden>
-    <header class="page-head">
-      <p class="page-kicker">FOR AGENCIES AND FREELANCERS</p>
-      <h1 class="page-title">Leads</h1>
-      <p class="page-tag">Free: plus on a listing, 100 cap. Paid: no cap. Import one city every 24 hours.</p>
+    <header class="pipe-head">
+      <div>
+        <p class="pipe-title">Pipeline</p>
+        <p class="leads-usage" data-leads-usage></p>
+      </div>
+      <button type="button" class="pipe-btn pipe-filters" data-leads-filters-btn>Filters</button>
     </header>
 
     <div class="leads-toolbar">
-      <p class="leads-usage" data-leads-usage></p>
       <div class="leads-actions">
-        <button type="button" class="soft-pill" data-scan-leads>IMPORT CITY</button>
-        <button type="button" class="soft-pill" data-ask-oracle>ORACLE</button>
+        <button type="button" class="pipe-btn" data-scan-leads>Import city</button>
+        <button type="button" class="pipe-btn" data-ask-oracle>Oracle</button>
       </div>
     </div>
 

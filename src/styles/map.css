@@ -88,6 +88,10 @@ html.is-leads [data-leads-menu] {
   flex: 0 0 var(--sidebar);
 }
 
+html.is-leads:not(.is-app) [data-leads-menu] {
+  display: none !important;
+}
+
 html:not(.is-leads) [data-leads-menu] {
   display: none;
 }

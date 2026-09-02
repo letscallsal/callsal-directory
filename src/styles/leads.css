@@ -30,6 +30,63 @@
   margin: 0 0 0.4rem;
 }
 
+.pipe-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin: 0 0 0.55rem;
+}
+
+.pipe-title {
+  margin: 0 0 0.12rem;
+  color: #fff;
+  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pipe-title::before {
+  content: '';
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.42rem;
+  background: #CCFF00;
+  vertical-align: 0.05rem;
+}
+
+.pipe-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.85rem;
+  border: 1.5px solid #CCFF00;
+  border-radius: 0.18rem;
+  background: transparent;
+  color: #CCFF00;
+  font-family: Syne, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pipe-btn:hover,
+.pipe-btn:focus-visible {
+  background: #CCFF00;
+  color: #111;
+}
+
+@media (min-width: 861px) {
+  .pipe-filters {
+    display: none;
+  }
+}
+
 .leads-usage {
   margin: 0;
   color: #8a8a8a;
@@ -52,17 +109,24 @@
 }
 
 .kanban {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(9.5rem, 1fr));
-  gap: 0.28rem;
-  overflow: auto;
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
   flex: 1;
   min-height: 0;
-  align-content: stretch;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.kanban::-webkit-scrollbar {
+  display: none;
 }
 
 .kanban-col {
-  min-width: 9.5rem;
+  flex: 1 0 11.2rem;
+  min-width: 11.2rem;
   min-height: 0;
   padding: 0.32rem 0.28rem 0.32rem;
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -70,6 +134,7 @@
   background: rgba(255, 255, 255, 0.015);
   display: flex;
   flex-direction: column;
+  scroll-snap-align: start;
 }
 
 .kanban-col.is-drop {
@@ -676,7 +741,6 @@ body.leads-drawer-open .scrim {
 .kanban-preview {
   pointer-events: none;
   margin: 0 0 1.15rem;
-  grid-template-columns: repeat(6, minmax(9.5rem, 1fr));
   flex: none;
   max-height: 22rem;
 }
@@ -810,8 +874,60 @@ body.leads-drawer-open .scrim {
     grid-template-columns: 1fr;
   }
 
+  .leads-toolbar,
+  .leads-actions {
+    width: 100%;
+  }
+
+  .leads-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+  }
+
+  .kanban {
+    margin-inline: -0.55rem;
+    padding: 0 0.55rem 0.45rem;
+  }
+
+  .kanban-col {
+    flex: 0 0 min(84vw, 20rem);
+    min-width: min(84vw, 20rem);
+  }
+
   .kanban-preview {
+    max-height: min(52vh, 28rem);
+    margin-inline: -0.85rem;
+    padding: 0 0.85rem 0.2rem;
+  }
+
+  html.is-leads.is-app [data-leads-menu],
+  html.is-leads.is-map-locked [data-leads-menu] {
+    position: fixed;
+    top: var(--chrome);
+    left: 0;
+    bottom: 0;
+    z-index: 46;
+    width: min(18.5rem, 86vw);
+    flex: none;
+    transform: translate3d(-105%, 0, 0) !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@media (min-width: 861px) {
+  .kanban {
+    display: grid;
     grid-template-columns: repeat(6, minmax(9.5rem, 1fr));
-    max-height: 16rem;
+    overflow: auto;
+    scroll-snap-type: none;
+  }
+
+  .kanban-col {
+    flex: none;
+    min-width: 0;
+    width: auto;
   }
 }

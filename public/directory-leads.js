@@ -781,8 +781,8 @@
     const usageEl = document.querySelector('[data-leads-usage]');
     if (usageEl && usage) {
       usageEl.textContent = lastLeads.plan === 'paid'
-        ? 'Paid. ' + usage.leadCount + ' leads. No cap.'
-        : 'Free. ' + usage.leadCount + ' of ' + (usage.leadCap || 100) + ' leads.';
+        ? usage.leadCount + ' leads in funnel'
+        : usage.leadCount + ' of ' + (usage.leadCap || 100) + ' leads in funnel';
     }
     const leads = lastLeads.leads || [];
     STAGES.forEach((stage) => {
@@ -1050,6 +1050,12 @@
 
   document.addEventListener('click', (event) => {
     const target = event.target;
+    const filtersBtn = target && target.closest ? target.closest('[data-leads-filters-btn]') : null;
+    if (filtersBtn) {
+      event.preventDefault();
+      if (currentUser) toggleLeadsMenu();
+      return;
+    }
     const pill = target && target.closest ? target.closest('[data-leads-pill]') : null;
     if (pill && isLeadsPath()) {
       event.preventDefault();
