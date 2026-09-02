@@ -42,7 +42,8 @@ Bookmark controls sit on cards and listing pages. `/saved/` is the Saved view.
 Required in production:
 
 - `JWT_SECRET` — signing key for the session cookie. Generate a long random string.
-- `GOOGLE_PLACES_API_KEY` — optional but recommended. When set, city search pulls name, address, phone, website, hours, rating, and photos straight from Google Business profiles. Without it, the index still loads live map listings for any Canada / US city.
+
+Listings come from OpenStreetMap. No Google key.
 
 One of these pairs (reuse the website KV if it is already provisioned):
 

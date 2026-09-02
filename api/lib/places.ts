@@ -142,7 +142,7 @@ function slugify(value: string): string {
 
 function mapsSearchUrl(name: string, address?: string): string {
   const query = [name, address].filter(Boolean).join(' ');
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
 }
 
 function parseFormattedAddress(
