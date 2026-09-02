@@ -28,6 +28,26 @@ const SKIP_AMENITY = new Set([
   'grave_yard',
   'fountain',
   'clock',
+  'fuel',
+  'charging_station',
+  'bank',
+  'bureau_de_change',
+]);
+
+const SKIP_SHOP = new Set([
+  'convenience',
+  'supermarket',
+  'kiosk',
+  'tobacco',
+  'newsagent',
+  'lottery',
+  'alcohol',
+  'beverages',
+  'variety_store',
+  'department_store',
+  'mall',
+  'wholesale',
+  'gas',
 ]);
 
 type OsmTags = Record<string, string>;
@@ -105,10 +125,10 @@ function overpassQuery(lat: number, lng: number, radius: number, niche: string):
   const body = typed
     ? phone(typed)
     : [
-        phone('["shop"]'),
+        phone('["shop"!~"^(convenience|supermarket|kiosk|tobacco|newsagent|lottery|alcohol|beverages|variety_store|department_store|mall)$"]'),
         phone('["office"]'),
         phone('["craft"]'),
-        phone('["amenity"~"^(restaurant|cafe|fast_food|bar|pub|ice_cream|clinic|dentist|doctors|pharmacy|veterinary|car_wash|bank)$"]'),
+        phone('["amenity"~"^(restaurant|cafe|bar|pub|clinic|dentist|doctors|veterinary|car_wash)$"]'),
         phone('["leisure"~"^(fitness_centre|sports_centre|spa)$"]'),
       ].join('');
   return `[out:json][timeout:22];(${body});out center 160;`;
@@ -164,6 +184,7 @@ function mapOsmEl(el: OsmEl, metro: Metro, niche: string): Shop | null {
   const name = String(tags.name || '').trim();
   if (!name) return null;
   if (SKIP_AMENITY.has(tags.amenity || '')) return null;
+  if (SKIP_SHOP.has(tags.shop || '')) return null;
   const lat = Number(el.lat ?? el.center?.lat);
   const lng = Number(el.lon ?? el.center?.lon);
   const phone = String(tags.phone || tags['contact:phone'] || tags['contact:mobile'] || '').trim();

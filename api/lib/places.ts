@@ -269,7 +269,7 @@ function isLeadWorthy(types: string[]): boolean {
 
 function cacheKey(city: string, region: string, country: string, category: string): string {
   const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  return `directory:places:v8:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
+  return `directory:places:osm:v2:${norm(country)}:${norm(region)}:${norm(city)}:${norm(category) || 'all'}`;
 }
 
 async function readCache(key: string): Promise<PlacesResult | null> {
@@ -303,6 +303,13 @@ const FRANCHISE_PATTERNS = [
   /jiffy lube/i, /midas/i, /h&r block/i, /massage envy/i,
   /the ups store/i, /fedex office/i, /walmart/i, /costco/i,
   /home depot/i, /canadian tire/i, /shoppers drug/i,
+  /7[\s-]*eleven/i, /seven eleven/i, /circle k\b/i, /mac'?s convenience/i,
+  /couche[- ]tard/i, /esso\b/i, /petro[- ]canada/i, /\bshell\b/i,
+  /\bbp\b/i, /chevron/i, /ultramar/i, /pioneer gas/i,
+  /dunkin/i, /popeyes/i, /chipotle/i, /five guys/i, /\ba\s*&\s*w\b/i,
+  /apple store/i, /\bindigo\b/i, /best buy/i, /staples/i, /rexall/i,
+  /london drugs/i, /metro grocery/i, /\bsobeys\b/i, /loblaws/i, /no frills/i,
+  /freshco/i, /food basics/i, /dollarama/i, /dollar tree/i, /miniso/i,
 ];
 
 function isFranchise(name: string): boolean {
@@ -339,7 +346,7 @@ function areaCacheKey(lat: number, lng: number, radius: number, category: string
   const rlat = Math.round(lat * 200) / 200;
   const rlng = Math.round(lng * 200) / 200;
   const r = Math.round(radius / 250) * 250;
-  return `directory:places:osm:v1:${rlat}:${rlng}:${r}:${category || 'all'}`;
+  return `directory:places:osm:v2:${rlat}:${rlng}:${r}:${category || 'all'}`;
 }
 
 export async function listCityShops(
