@@ -294,7 +294,7 @@
 
 .sidebar-saved[aria-current="page"] { color: var(--lime); }
 
-.auth-modal[hidden] { display: none; }
+.auth-modal[hidden] { display: none !important; }
 
 .auth-modal {
   position: fixed;

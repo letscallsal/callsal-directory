@@ -1,30 +1,14 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
-import milton from '../data/milton-leads.json';
-import { typeLabel } from '../lib/shops';
 
 const PREVIEW_COLS = [
-  { label: 'NEW', n: 4 },
-  { label: 'CONTACTED', n: 3 },
-  { label: 'RESPONDED', n: 3 },
-  { label: 'MEETING', n: 2 },
-  { label: 'PROPOSAL', n: 2 },
-  { label: 'WON', n: 1 },
+  { label: 'NEW' },
+  { label: 'CONTACTED' },
+  { label: 'RESPONDED' },
+  { label: 'MEETING' },
+  { label: 'PROPOSAL' },
+  { label: 'WON' },
 ];
-
-const previewShops = (milton.shops as Array<{
-  name: string;
-  city?: string;
-  phone?: string;
-  category?: string;
-}>).filter((shop) => shop.phone);
-
-let cursor = 0;
-const previewCols = PREVIEW_COLS.map((col) => {
-  const items = previewShops.slice(cursor, cursor + col.n);
-  cursor += col.n;
-  return { ...col, items };
-});
 ---
 
 <AppShell title="Leads" description="Search a city of local businesses, tap plus, and call from a board.">
@@ -35,24 +19,14 @@ const previewCols = PREVIEW_COLS.map((col) => {
       <p class="page-tag">Search any place on earth. Tap plus. Call the board. Listings are live local businesses — name and phone, ready to dial. Free included.</p>
     </header>
 
-    <div class="kanban kanban-preview" aria-hidden="true">
-      {previewCols.map((col) => (
+    <div class="kanban kanban-preview" data-guest-board aria-hidden="true">
+      {PREVIEW_COLS.map((col) => (
         <section class="kanban-col">
-          <h2>{col.label} <span>{col.items.length}</span></h2>
-          {col.items.map((shop) => (
-            <article class="lead-card">
-                <p class="lead-type">{typeLabel(shop.category || '')}</p>
-              <div class="lead-main">
-                <div class="lead-copy">
-                  <h3 dir="auto">{shop.name}</h3>
-                  <p class="lead-phone">{shop.phone}</p>
-                </div>
-              </div>
-            </article>
-          ))}
+          <h2>{col.label} <span>0</span></h2>
         </section>
       ))}
     </div>
+    <p class="guest-street" data-guest-street>Opening a Toronto street…</p>
 
     <div class="leads-steps">
       <article class="leads-step">

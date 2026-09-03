@@ -135,6 +135,10 @@
   }
 
   function openAuth(mode) {
+    if (typeof window.__dirOpenAuth === 'function') {
+      window.__dirOpenAuth(mode || 'register');
+      return;
+    }
     const join = document.querySelector('[data-join]');
     const login = document.querySelector('[data-login]');
     if (mode === 'login' && login) login.click();
@@ -766,6 +770,85 @@
     });
   }
 
+  const TORONTO_STREETS = [
+    { name: 'Queen West', lat: 43.6476, lng: -79.4018 },
+    { name: 'King West', lat: 43.6453, lng: -79.3955 },
+    { name: 'Ossington', lat: 43.6489, lng: -79.4202 },
+    { name: 'Dundas West', lat: 43.6498, lng: -79.4342 },
+    { name: 'College', lat: 43.6547, lng: -79.4075 },
+    { name: 'Yonge and Dundas', lat: 43.6561, lng: -79.3802 },
+    { name: 'Queen East', lat: 43.6594, lng: -79.347 },
+    { name: 'The Annex', lat: 43.6699, lng: -79.4032 },
+    { name: 'Liberty Village', lat: 43.6386, lng: -79.4203 },
+    { name: 'Kensington', lat: 43.6546, lng: -79.4005 },
+  ];
+  const GUEST_COL_SIZES = [4, 3, 3, 2, 2, 1];
+  const TYPE_LABELS = {
+    barber: 'Barber', food: 'Food', dental: 'Dental', legal: 'Legal', salon: 'Salon',
+    accounting: 'Accounting', auto: 'Auto', fitness: 'Fitness', wellness: 'Wellness',
+    trades: 'Trades', other: 'Local',
+  };
+  let guestPreviewToken = 0;
+
+  function guestCardHtml(shop) {
+    const type = TYPE_LABELS[shop.category] || 'Local';
+    return '<article class="lead-card">'
+      + '<p class="lead-type">' + esc(type) + '</p>'
+      + '<div class="lead-main"><div class="lead-copy">'
+      + '<h3 dir="auto">' + esc(shop.name) + '</h3>'
+      + (shop.phone ? '<p class="lead-phone">' + esc(shop.phone) + '</p>' : '')
+      + '</div></div></article>';
+  }
+
+  async function fillGuestPreview() {
+    const board = document.querySelector('[data-guest-board]');
+    if (!board || currentUser) return;
+    if (board.getAttribute('data-filled') === '1') return;
+    const token = ++guestPreviewToken;
+    const note = document.querySelector('[data-guest-street]');
+    const street = TORONTO_STREETS[Math.floor(Math.random() * TORONTO_STREETS.length)];
+    if (note) note.textContent = 'Opening ' + street.name + ', Toronto…';
+    let shops = [];
+    try {
+      const res = await fetch(
+        '/api/places?lat=' + encodeURIComponent(street.lat)
+        + '&lng=' + encodeURIComponent(street.lng)
+        + '&radius=1200',
+        { credentials: 'same-origin' },
+      );
+      const data = await res.json();
+      shops = ((data && data.shops) || []).filter((shop) => shop.phone);
+    } catch {
+      shops = [];
+    }
+    if (token !== guestPreviewToken) return;
+    if (!shops.length) {
+      if (note) note.textContent = 'No live listings on that street. Join free and search your own.';
+      return;
+    }
+    for (let i = shops.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shops[i];
+      shops[i] = shops[j];
+      shops[j] = tmp;
+    }
+    let cursor = 0;
+    board.querySelectorAll('.kanban-col').forEach((col, idx) => {
+      const n = GUEST_COL_SIZES[idx] || 0;
+      const items = shops.slice(cursor, cursor + n);
+      cursor += n;
+      const h2 = col.querySelector('h2');
+      if (h2) {
+        const label = (h2.textContent || '').replace(/\s+\d+\s*$/, '').trim();
+        h2.innerHTML = esc(label) + ' <span>' + items.length + '</span>';
+      }
+      col.querySelectorAll('.lead-card').forEach((card) => card.remove());
+      if (h2) h2.insertAdjacentHTML('afterend', items.map(guestCardHtml).join(''));
+    });
+    board.setAttribute('data-filled', '1');
+    if (note) note.textContent = street.name + ', Toronto — live';
+  }
+
   function paintLeadsBoard() {
     const guest = document.querySelector('[data-leads-guest]');
     const app = document.querySelector('[data-leads-app]');
@@ -773,6 +856,7 @@
     if (!currentUser) {
       if (guest) guest.hidden = false;
       if (app) app.hidden = true;
+      fillGuestPreview();
       return;
     }
     if (guest) guest.hidden = true;
@@ -870,9 +954,10 @@
     try {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
       const data = await res.json();
-      currentUser = res.ok && data.user ? data.user : null;
+      if (res.ok && data.user) currentUser = data.user;
+      else if (res.ok) currentUser = null;
     } catch {
-      currentUser = null;
+      /* keep optimistic user from auth-changed if cookie is still landing */
     }
     leadSlugs = new Set();
     lastLeads = { plan: 'free', leads: [], usage: null, oracle: null };
@@ -1086,6 +1171,12 @@
     paintLeadsBoard();
     bindBoardFilters();
     if (!isLeadsPath()) setLeadsMenu(false);
+  });
+  window.addEventListener('callsal:auth-changed', (event) => {
+    const user = event && event.detail ? event.detail.user : null;
+    currentUser = user || null;
+    paintLeadsBoard();
+    void refreshLeads();
   });
   void refreshLeads();
   window.setTimeout(refreshLeads, 800);

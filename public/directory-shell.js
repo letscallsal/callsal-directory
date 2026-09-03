@@ -615,6 +615,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         setAuthMode(mode || 'register');
         if (authModal) authModal.hidden = false;
       }
+      window.__dirOpenAuth = openAuth;
 
       function closeAuth() {
         if (authModal) authModal.hidden = true;
@@ -690,6 +691,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
             paintAuth();
             paintBookmarks();
             paintSaved();
+            window.dispatchEvent(new CustomEvent('callsal:auth-changed', { detail: { user: null } }));
           });
           return;
         }
@@ -721,6 +723,30 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
         void go(url.pathname + url.search, true);
       });
 
+      async function enterApp(user) {
+        currentUser = user;
+        applyAppMode(true);
+        closeAuth();
+        paintAuth();
+        window.dispatchEvent(new CustomEvent('callsal:auth-changed', { detail: { user: currentUser } }));
+        const onLeads = normalize(location.pathname) === '/leads';
+        let wantLeads = onLeads || lastView() === '/leads/';
+        try {
+          if (sessionStorage.getItem('directory:leads-pick')) wantLeads = true;
+        } catch {
+          /* private */
+        }
+        cache.delete('/leads');
+        cache.delete('/');
+        if (wantLeads) {
+          if (onLeads) return;
+          await go('/leads/', true);
+          return;
+        }
+        if (onLeads) return;
+        await go('/', true);
+      }
+
       authForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -730,7 +756,10 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
           authError.hidden = true;
           authError.textContent = '';
         }
-        if (authSubmit) authSubmit.disabled = true;
+        if (authSubmit) {
+          authSubmit.disabled = true;
+          authSubmit.textContent = authMode === 'register' ? 'CREATING…' : 'LOGGING IN…';
+        }
         try {
           const res = await fetch(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', {
             method: 'POST',
@@ -738,7 +767,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
           });
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (!res.ok || !data.user) {
             if (authError) {
               authError.textContent = data.error || 'TRY AGAIN';
@@ -746,19 +775,19 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
             }
             return;
           }
-          currentUser = data.user;
-          applyAppMode(true);
-          closeAuth();
           form.reset();
           await refreshAuth();
-          void go(lastView() === '/leads/' ? '/leads/' : '/', true);
+          await enterApp(data.user);
         } catch {
           if (authError) {
             authError.textContent = 'TRY AGAIN';
             authError.hidden = false;
           }
         } finally {
-          if (authSubmit) authSubmit.disabled = false;
+          if (authSubmit) {
+            authSubmit.disabled = false;
+            authSubmit.textContent = authMode === 'register' ? 'CREATE ACCOUNT' : 'LOG IN';
+          }
         }
       });
 

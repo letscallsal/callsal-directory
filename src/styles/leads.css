@@ -740,9 +740,16 @@ body.leads-drawer-open .scrim {
 
 .kanban-preview {
   pointer-events: none;
-  margin: 0 0 1.15rem;
+  margin: 0 0 0.45rem;
   flex: none;
   max-height: 22rem;
+}
+
+.guest-street {
+  margin: 0 0 1.15rem;
+  color: #8a8a8a;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
 }
 
 .kanban-preview .kanban-col {

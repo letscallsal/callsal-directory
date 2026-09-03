@@ -1140,11 +1140,16 @@ html.is-leads main {
   padding: 0.4rem 0.55rem 0.45rem;
 }
 
-html.is-leads .leads-app {
+html.is-leads .leads-app:not([hidden]) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+html.is-leads .leads-app[hidden],
+html.is-leads .leads-sale[hidden] {
+  display: none !important;
 }
 
 html.is-leads .leads-app .page-head {
