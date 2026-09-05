@@ -139,8 +139,14 @@ html.is-leads .page-foot {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
-.map-search-here[hidden] {
-  display: none;
+.map-search-here[hidden],
+.map-scan[hidden] {
+  display: none !important;
+}
+
+.map-stage:has(.map-scan:not([hidden])) .map-search-here,
+.sale-map-stage:has(.map-scan:not([hidden])) .map-search-here {
+  display: none !important;
 }
 
 .map-status {
@@ -334,7 +340,7 @@ html.is-leads .page-foot {
 }
 
 .map-scan[hidden] {
-  display: none;
+  display: none !important;
 }
 
 @keyframes map-scan-pulse {

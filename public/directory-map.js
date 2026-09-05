@@ -128,10 +128,16 @@
   }
 
   function setScanning(on) {
-    var el = scanEl();
-    if (el) el.hidden = !on;
-    var btn = searchBtn();
-    if (on && btn) btn.hidden = true;
+    document.querySelectorAll('[data-search-here]').forEach(function (btn) {
+      btn.hidden = true;
+    });
+    document.querySelectorAll('[data-map-scan]').forEach(function (el) {
+      el.hidden = true;
+    });
+    if (on) {
+      var el = scanEl();
+      if (el) el.hidden = false;
+    }
   }
 
   function countEl() {
@@ -347,8 +353,16 @@
   }
 
   function showSearchHere(on) {
+    if (loading) {
+      var busy = searchBtn();
+      if (busy) busy.hidden = true;
+      moved = true;
+      return;
+    }
     var btn = searchBtn();
     if (btn) btn.hidden = !(on && getZoom() >= 11);
+    var scan = scanEl();
+    if (scan) scan.hidden = true;
     moved = on;
   }
 
