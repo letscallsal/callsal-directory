@@ -534,13 +534,19 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       const authSubmit = document.querySelector('[data-auth-submit]');
       const authSwitch = document.querySelector('[data-auth-switch]');
 
-      function guestButtons() {
-        return `<button type="button" class="auth-text-btn" data-join>JOIN</button><button type="button" class="auth-text-btn" data-login>LOGIN</button>`;
+      function guestButtons(slot) {
+        if (slot === 'chrome') {
+          return '<button type="button" class="auth-text-btn" data-login>LOGIN</button>';
+        }
+        return '<button type="button" class="auth-text-btn" data-join>JOIN</button><button type="button" class="auth-text-btn" data-login>LOGIN</button>';
       }
 
-      function userButtons() {
+      function userButtons(slot) {
+        if (slot === 'chrome') {
+          return '<button type="button" class="auth-text-btn auth-logout-btn" data-logout>LOGOUT</button>';
+        }
         const name = currentUser?.name || 'SAVED';
-        return `<span class="auth-user">${name}</span><button type="button" class="auth-logout" data-logout aria-label="Logout">×</button>`;
+        return '<span class="auth-user">' + name + '</span><button type="button" class="auth-logout" data-logout aria-label="Logout">×</button>';
       }
 
       function paintLeadsPill(path) {
@@ -554,7 +560,7 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
 
       function paintAuth() {
         document.querySelectorAll('[data-auth-slot]').forEach((slot) => {
-          slot.innerHTML = currentUser ? userButtons() : guestButtons(slot.getAttribute('data-auth-slot'));
+          slot.innerHTML = currentUser ? userButtons(slot.getAttribute('data-auth-slot')) : guestButtons(slot.getAttribute('data-auth-slot'));
         });
         paintLeadsPill(location.pathname);
       }

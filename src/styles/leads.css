@@ -914,7 +914,7 @@ body.leads-drawer-open .scrim {
     top: var(--chrome);
     left: 0;
     bottom: 0;
-    z-index: 46;
+    z-index: 60;
     width: min(18.5rem, 86vw);
     flex: none;
     transform: translate3d(-105%, 0, 0) !important;
