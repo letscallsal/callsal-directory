@@ -506,3 +506,51 @@ html.is-app:has(#app-chrome.is-stuck):not(.is-leads) .viewport {
   .map-status { bottom: calc(32vh + 0.7rem); }
   .map-zoom { bottom: calc(32vh + 0.7rem); }
 }
+
+/* Layer lock: menus and chrome sit above the map, list, and Leaflet panes. */
+.map-stage,
+.sale-map-stage {
+  isolation: isolate;
+  z-index: var(--z-map, 0) !important;
+}
+
+.listings-rail {
+  z-index: var(--z-rail, 20);
+}
+
+.scrim,
+body.drawer-open .scrim,
+body.leads-drawer-open .scrim {
+  z-index: var(--z-scrim, 90) !important;
+}
+
+#sidebar,
+#leads-menu,
+.sidebar {
+  z-index: var(--z-menu, 100);
+}
+
+body.drawer-open #sidebar,
+body.leads-drawer-open #leads-menu {
+  position: fixed !important;
+  top: var(--chrome) !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  z-index: var(--z-menu, 100) !important;
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+.chrome-slot,
+.app-chrome,
+.app-chrome.is-stuck,
+html.is-app .app-chrome,
+html.is-map-locked .app-chrome {
+  z-index: var(--z-chrome, 110) !important;
+}
+
+.auth-modal {
+  z-index: var(--z-modal, 200) !important;
+}
