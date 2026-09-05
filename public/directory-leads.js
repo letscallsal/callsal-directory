@@ -1145,8 +1145,7 @@
     if (pill && isLeadsPath()) {
       event.preventDefault();
       event.stopPropagation();
-      if (currentUser) toggleLeadsMenu();
-      else setLeadsMenu(false);
+      toggleLeadsMenu();
       return;
     }
     if (target && target.closest && target.closest('[data-menu]')) {

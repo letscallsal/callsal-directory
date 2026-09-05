@@ -535,15 +535,15 @@ const withRoom = window.__DIRECTORY_WITH_ROOM;
       const authSwitch = document.querySelector('[data-auth-switch]');
 
       function guestButtons(slot) {
-        if (slot === 'chrome') {
+        if (slot === 'leads') {
           return '<button type="button" class="auth-text-btn" data-login>LOGIN</button>';
         }
-        return '<button type="button" class="auth-text-btn" data-join>JOIN</button><button type="button" class="auth-text-btn" data-login>LOGIN</button>';
+        return '<button type="button" class="auth-text-btn" data-join>JOIN</button>';
       }
 
       function userButtons(slot) {
-        if (slot === 'chrome') {
-          return '<button type="button" class="auth-text-btn auth-logout-btn" data-logout>LOGOUT</button>';
+        if (slot === 'leads') {
+          return '<button type="button" class="auth-text-btn" data-logout>LOGOUT</button>';
         }
         const name = currentUser?.name || 'SAVED';
         return '<span class="auth-user">' + name + '</span><button type="button" class="auth-logout" data-logout aria-label="Logout">×</button>';

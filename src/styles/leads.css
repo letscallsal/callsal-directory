@@ -697,6 +697,22 @@
   border-radius: 9999px;
 }
 
+[data-leads-menu] .sidebar-auth .auth-text-btn {
+  color: #ccff00;
+  border: 1px solid rgba(204, 255, 0, 0.4);
+  border-radius: 9999px;
+  padding: 0.4rem 0.75rem;
+}
+
+[data-leads-menu] .sidebar-auth .auth-text-btn:hover {
+  background: #ccff00;
+  color: #111;
+}
+
+html:not(.is-app) [data-leads-menu] .shop-filters {
+  display: none;
+}
+
 body.drawer-open #leads-menu {
   display: none !important;
   visibility: hidden !important;

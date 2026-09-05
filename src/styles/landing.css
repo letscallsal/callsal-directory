@@ -423,45 +423,7 @@ html.has-room:not(.intro-done) .scroll-hint {
   pointer-events: none;
 }
 
-/* Right-side chrome: LEADS with LOGIN / LOGOUT under it. */
-.chrome-end {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0.18rem;
-  flex: 0 0 auto;
-  min-width: 0;
-  z-index: 81;
-}
-
-.chrome-auth {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.chrome-auth .auth-text-btn,
-.chrome-auth .auth-logout-btn {
-  padding: 0.12rem 0.45rem;
-  border: 1px solid rgba(204, 255, 0, 0.4);
-  border-radius: 9999px;
-  background: transparent;
-  color: #ccff00;
-  font-family: var(--display);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  line-height: 1.2;
-}
-
-.chrome-auth .auth-text-btn:hover,
-.chrome-auth .auth-logout-btn:hover {
-  background: #ccff00;
-  color: #111;
-  border-color: #ccff00;
-}
-
+/* Right-side chrome is LEADS. LOGIN / LOGOUT live in the Leads menu. */
 .leads-pill {
   display: inline-flex;
   align-items: center;
@@ -554,9 +516,6 @@ body.drawer-open .scrim {
   }
   .app-chrome .est {
     display: none;
-  }
-  .app-chrome .chrome-end {
-    flex: 0 0 auto;
   }
   .app-chrome .leads-pill {
     padding: 0.3rem 0.5rem;

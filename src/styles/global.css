@@ -12,7 +12,7 @@
   --lime: #CCFF00;
   --cyan: #00F0FF;
   --sidebar: 15.5rem;
-  --chrome: 3.15rem;
+  --chrome: 2.5rem;
   --gutter: clamp(1rem, 2.4vw, 1.75rem);
   --display: "Syne", var(--ui);
   --ui: "Inter", "Noto Sans", "Noto Sans JP", "Noto Sans SC", "Noto Sans TC", "Noto Sans KR", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari", "Noto Sans Thai", "Hiragino Sans", "PingFang SC", "PingFang TC", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei", "Segoe UI", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", ui-sans-serif, system-ui, sans-serif;
